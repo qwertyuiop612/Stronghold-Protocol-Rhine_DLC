@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "profile": "vanilla",
+  "upstreamVersion": "0.2.1",
+  "source": "c2a2ef778cf728ff29b953b9842b2a39b1e9cbea",
+  "files": [
+    {
+      "path": "assets.json",
+      "size": 1114330,
+      "sha256": "52551174da55b55f6e4c9d43d1bb8fd9165dd889c16ae4b78faa8a3644cf3008"
+    },
+    {
+      "path": "backups.json",
+      "size": 1883848,
+      "sha256": "7b528a931577556716d935d0c9509eb05c1f6a2f24464ad500ac8f2a795a806f"
+    },
+    {
+      "path": "bands.json",
+      "size": 35918,
+      "sha256": "8f18abc99eb50639a1f2fc679a84015d6d8cc8aa3ff7c7d22ad6db5dc347053b"
+    },
+    {
+      "path": "bonds.json",
+      "size": 85693,
+      "sha256": "53a22f4724771b6ff40041635e907c0af39790731f661b0439fc593f5a91c94c"
+    },
+    {
+      "path": "bosses.json",
+      "size": 18057,
+      "sha256": "427c12bcdb23c449ab2d423129b1d339ecd76cc7c70a181a3d2b5a4af88b96a9"
+    },
+    {
+      "path": "chess.json",
+      "size": 1712670,
+      "sha256": "34338e7cd766981ce43d3e4049d9a60b3d2aea017e00f5cfea8682bcfe54461b"
+    },
+    {
+      "path": "choices.json",
+      "size": 124363,
+      "sha256": "995a9d2a5e3aaf7bbf00df017a2796dcee12f27b1d8c04c33d637e4130eeae35"
+    },
+    {
+      "path": "config.json",
+      "size": 63217,
+      "sha256": "e25fb7e7f79aee7e349e06ab976568ec225d77b59f1dbf4ca24d1ab5787fa656"
+    },
+    {
+      "path": "effects.json",
+      "size": 253427,
+      "sha256": "96e28be614f04da6d58c9e95706d742863c756b94dcad498e808c3410ba620e3"
+    },
+    {
+      "path": "emotes.json",
+      "size": 9746,
+      "sha256": "1c63ef4c57c1184b140d7830d1ada3ee4f1e4db7bb877570ab033399f7565aa4"
+    },
+    {
+      "path": "enemies.json",
+      "size": 407255,
+      "sha256": "043fdad2dd0dc210f285355d6a4db70f5466c898c6bbcd0d56ee9b219f6e1f45"
+    },
+    {
+      "path": "factions.json",
+      "size": 22026,
+      "sha256": "6bdcf7933eee4b156476769d724d60b34f4b69b095726d1638f02b91d8a22362"
+    },
+    {
+      "path": "garrisons.json",
+      "size": 150039,
+      "sha256": "f5b1f5558a263c95abcf36411c31e781efd3ebb1bebdced99ad1f242c2a960e3"
+    },
+    {
+      "path": "i18n/en.json",
+      "size": 2274454,
+      "sha256": "c274adcf856cd06060605d69823e85a0d3f43ae4f857d8829f5755698f7f36d7"
+    },
+    {
+      "path": "i18n/ja.json",
+      "size": 2613640,
+      "sha256": "8b2ab9ca1aa4387a36f43eb36a498ca287abd8ee438fad985a218f6dee5ca255"
+    },
+    {
+      "path": "i18n/ko.json",
+      "size": 2436671,
+      "sha256": "f989a7d4487ed1ed301eea2f77d349188290a63cfc65be2149928b3164382a7f"
+    },
+    {
+      "path": "i18n/zh-TW.json",
+      "size": 2040328,
+      "sha256": "970abdcf0be49fc7171eb7cf12c9d5cb64c6d435cdc340534c42f94105e00935"
+    },
+    {
+      "path": "items.json",
+      "size": 170806,
+      "sha256": "6122a3cd75531f551a03082f000426a2d6b8028788fbd1abbaea5286592fbba4"
+    },
+    {
+      "path": "stages.json",
+      "size": 266095,
+      "sha256": "1939b85b5b34bd943a334244ae62806b296f5a5a614b3e0876a84ef801be40df"
+    },
+    {
+      "path": "tokens.json",
+      "size": 133951,
+      "sha256": "ca98a1189d62c3221e3bc9d149f8ba67d44cab5a6c5e780251fb162177d6519c"
+    },
+    {
+      "path": "tuning.json",
+      "size": 621,
+      "sha256": "931253292844e51327e5273197dc03fb425bc966b65cb496f1f55f26832da3fd"
+    },
+    {
+      "path": "waves.json",
+      "size": 137772,
+      "sha256": "80cb535958f22a1bf4ea71b26155c6f92ee1b49dd24b88acf4b2bcdf73d80e68"
+    }
+  ]
+}

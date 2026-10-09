@@ -1,0 +1,137 @@
+{
+  "title": "莱茵生命扩展待修记录",
+  "recordedDate": "2026-10-04",
+  "status": "装置重做已并入正式版0.2.1-rhine.2，保留六人规则；发行验收见Release，线上另行切换。后续常规改动直接维护正式开发分支。",
+  "updatedDate": "2026-10-08",
+  "currentRelease": "v0.2.1-rhine.2",
+  "currentBranch": "codex/rhine-upstream-021",
+  "items": [
+    {
+      "id": "mayer-summon-count",
+      "operator": "梅尔",
+      "title": "削弱机械水獭召唤数量",
+      "requestedBehavior": "非精锐状态提供1个召唤物，精锐状态提供2个召唤物。",
+      "normalCount": 1,
+      "eliteCount": 2,
+      "status": "已实现并通过验证"
+    },
+    {
+      "id": "ptilopsis-research-stacks",
+      "operator": "白面鸮",
+      "title": "强化莱茵生命产层，改按在场干员统计",
+      "requestedBehavior": "每在场1名莱茵生命干员增加2层；同名重复干员分别计数。白面鸮处于精锐状态时，每名增加4层。",
+      "normalLayersPerMember": 2,
+      "eliteLayersPerMember": 4,
+      "countingBasis": "在场莱茵生命干员数量，替换现有不同实际阶数计数方式",
+      "countSameNameSeparately": true,
+      "status": "已实现并通过验证",
+      "virtualHarmonyMembersCount": false
+    },
+    {
+      "id": "mayer-summon-healing",
+      "operator": "梅尔",
+      "title": "机械水獭禁止干员治疗，保留医疗装置治疗",
+      "requestedBehavior": "梅尔召唤物不能接受奶妈以及塞雷娅等干员的治疗，但可以接受生命维持仪等医疗装置治疗。",
+      "blockOperatorHealing": true,
+      "allowMedicalDeviceHealing": true,
+      "status": "已实现并通过验证"
+    },
+    {
+      "id": "rhine-nine-members",
+      "title": "增加莱茵生命9人盟约档位",
+      "requestedBehavior": "莱茵生命达到9人时，允许三个不同科研装置全部上场。保留3人一台、6人两台的原有档位。",
+      "thresholds": [
+        3,
+        6,
+        9
+      ],
+      "deviceLimits": [
+        1,
+        2,
+        3
+      ],
+      "status": "已实现并通过验证"
+    },
+    {
+      "id": "research-device-grid-range",
+      "title": "三种科研装置作用范围改为棋盘格高亮",
+      "requestedBehavior": "范围需要贴合棋盘格，参照干员部署时的攻击范围显示，取消当前圆圈显示。预放置和选中范围应与实际作用区域一致。",
+      "status": "已实现并通过验证"
+    },
+    {
+      "id": "research-device-charge-bar",
+      "device": "能量谐振仪（脉冲攻击装置）",
+      "title": "显示装置充能进度",
+      "requestedBehavior": "由周围干员释放技能充能的装置，在装置下方增加类似干员技能条的充能条，显示实际充能进度及攻击后的状态。",
+      "status": "已实现并通过验证"
+    },
+    {
+      "id": "research-device-attack-effects",
+      "device": "能量谐振仪（脉冲攻击装置）",
+      "title": "增强攻击反馈",
+      "requestedBehavior": "增加明确的攻击特效，让玩家能够清晰判断装置已经发动攻击；发射、命中及充能状态变化应相互对应。",
+      "status": "已实现并通过验证"
+    },
+    {
+      "id": "large-room-bounty-options",
+      "title": "五至六席悬赏追加三张现有目标",
+      "requestedBehavior": "仅起始参战人数五至六席时，在原六张悬赏牌后追加三张现有I/II/II阶目标，赏金分别为1/2/2，共九张。真人与AI共同计数，单人与一至四席沿用原张数。",
+      "startingPlayerCounts": [
+        5,
+        6
+      ],
+      "originalCardCount": 6,
+      "extendedCardCount": 9,
+      "extraTiers": [
+        1,
+        2,
+        2
+      ],
+      "extraCoins": [
+        1,
+        2,
+        2
+      ],
+      "status": "已实施，发布验收另行记录",
+      "implementedDate": "2026-10-05"
+    },
+    {
+      "id": "dorothy-tier-four",
+      "operator": "多萝西",
+      "title": "多萝西普通与精锐改为四阶",
+      "requestedBehavior": "莱茵版多萝西普通与精锐从五阶调整为四阶，技能、模组、陷阱与产层机制保留。",
+      "normalTier": 4,
+      "eliteTier": 4,
+      "status": "已实施，发布验收另行记录",
+      "implementedDate": "2026-10-05"
+    },
+    {
+      "id": "room-rhine-toggle",
+      "title": "房主开局前切换莱茵扩展或原版数据",
+      "requestedBehavior": "单人与合作新房间默认开启莱茵生命扩展，房主仅在等待室开局前可切换；关闭后使用随包固定的上游v0.1.2完整原版游戏数据。各房独立，切换取消队友准备，数据加载和调配同步后才可开始，对局中及重连时保留本局固定选择。",
+      "defaultEnabled": true,
+      "hostOnly": true,
+      "allowedPhase": "LOBBY",
+      "independentPerRoom": true,
+      "vanillaUsesFullDataProfile": true,
+      "status": "已实施，发布验收另行记录",
+      "implementedDate": "2026-10-05"
+    },
+    {
+      "id": "rhine-output-conversion",
+      "title": "莱茵输出转换增强",
+      "implementedDate": "2026-10-06",
+      "requestedBehavior": "6莱茵成果共享15%/25%；能量一级AOE、二级本方全场充能、三级钙质化25格；生态持续50%减速；主机取消100/200上限。",
+      "status": "已制作，测试和发布记录见变更记录"
+    },
+    {
+      "id": "rhine-device-rework-20261008",
+      "title": "生态治疗合并、能量全范围与九莱茵单级激光钻机",
+      "requestedDate": "2026-10-08",
+      "status": "已并入正式版v0.2.1-rhine.2并通过源码验证，正式包验收另行记录",
+      "requestedBehavior": "生态二三级范围内干员接受任意来源治疗均加盾；一级能量保留3点充能，发射命中装置范围全部敌人，能量一/二/三级采用180/240/300分档方案；钻机只有一级，仅九莱茵，全场锁定面板最大生命值最高的敌人至死亡，150%A/s每秒加算5%初始伤害，20秒封顶300%A/s后每秒追加最大HP0.5%真实，BOSS按本战场分摊血量。",
+      "verification": { "tests": 5683, "passed": 5658, "failed": 0, "conditionalSkipped": 25, "browserPassed": 6 }
+    }
+  ],
+  "verifiedDate": "2026-10-04"
+}

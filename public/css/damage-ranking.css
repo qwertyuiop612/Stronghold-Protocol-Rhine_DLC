@@ -1,0 +1,26 @@
+.damage-rank { position: relative; }
+.damage-rank > .gm__gear svg { width: .28rem; height: .28rem; }
+.damage-rank__panel { position: absolute; left: 0; bottom: calc(100% + .14rem); width: min(3.8rem, 82vw); color: var(--text-hi, #e6eeeb); background: rgba(12, 22, 24, .96); border: 1px solid var(--mint-700, #28574c); box-shadow: 0 8px 28px #0008; padding: .16rem; pointer-events: auto; }
+.damage-rank__panel header { display: flex; justify-content: space-between; align-items: flex-start; gap: .1rem; cursor: move; touch-action: none; user-select: none; -webkit-user-select: none; }
+.damage-rank__panel strong { font-size: .18rem; }
+.damage-rank__panel small { display: block; color: #94aaa4; font-size: .12rem; margin-top: .04rem; }
+.damage-rank__panel header button { background: transparent; border: 0; color: #b7c9c3; font-size: .24rem; cursor: pointer; min-width: 32px; min-height: 32px; }
+.damage-rank__legend { display: flex; gap: .15rem; margin: .14rem 0; font-size: .12rem; }
+.damage-rank__legend span { display: flex; align-items: center; gap: .04rem; }
+.damage-rank__legend i { width: .09rem; height: .09rem; }
+.damage-rank__phys { background: #f4ad55; }
+.damage-rank__arts { background: #a984ed; }
+.damage-rank__true { background: #eceded; }
+.damage-rank__elemental { background: #36d2b1; }
+.damage-rank__rows { max-height: min(3.8rem, 48vh); overflow-y: auto; overscroll-behavior: contain; }
+.damage-rank__row { margin-bottom: .12rem; }
+.damage-rank__label { display: flex; justify-content: space-between; gap: .1rem; font-size: .14rem; margin-bottom: .04rem; }
+.damage-rank__label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.damage-rank__label b { font-variant-numeric: tabular-nums; }
+.damage-rank__track { display: flex; height: .08rem; background: #ffffff0c; overflow: hidden; }
+.damage-rank__track span { height: 100%; }
+.damage-rank__empty { padding: .22rem 0; font-size: .14rem; color: #94aaa4; }
+.damage-rank__panel footer { border-top: 1px solid #ffffff18; padding-top: .1rem; font-size: .14rem; }
+@media (max-width: 600px) {
+  .damage-rank__panel { position: fixed; left: max(12px, env(safe-area-inset-left)); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 110px); width: min(340px, calc(100vw - 24px)); }
+}
