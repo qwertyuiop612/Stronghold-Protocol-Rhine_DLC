@@ -1,3 +1,4 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/op-kalts2.js — 凯尔希·思衡托 (char_1052_kalts2) 自选 operator kit: 6★ 守望者 (医疗), an owned-6★
 // pick of the tier-5 and tier-6 自选 slots; every skill, both talents and the trait at every form (she has no module),
 // and the kit of her summon 战术锚点 (token_10068_kalts2_mtship). Kit contract and the 自选 rules: ../README.md ("How to add
@@ -76,6 +77,7 @@
 import { num, talentBb, skillRec, batMod, up } from '../shared/tier1.js';
 import { releaseSkillSummon } from '../../tokens.js';
 import { COLS } from '../../../constants.js';
+import { hypot } from '../../../detmath.js';
 
 const S1 = 'skchr_kalts2_1';
 const S2 = 'skchr_kalts2_2';
@@ -111,7 +113,7 @@ const isAnchorOf = (t, unit) => !!t && t.kind === 'token' && t.defId === ANCHOR 
 const anchorsOf = (battle, unit) => battle.allyUnits.filter((t) => isAnchorOf(t, unit));
 const isRhodes = (a) => (a?.def?.raw?.nationId ?? a?.def?.nationId) === 'rhodes';
 /** A friendly operator other than `unit` standing on the field. */
-const otherOp = (a, unit) => a !== unit && a.kind === 'op' && up(a) && !a.hidden;
+const otherOp = (a, unit) => a !== unit && nativeOperator(a) && up(a) && !a.hidden;
 /** The anchor stock content/tokens.js releaseSkillSummon keeps on its owner. */
 function setStock(unit, n) {
   const s = unit.mem.summonStock || (unit.mem.summonStock = {});
@@ -235,7 +237,7 @@ function startTransport(battle, unit, anchor) {
     }, { owner: unit });
   }
   const from = { x: unit.x, y: unit.y }, to = { x: anchor.x, y: anchor.y };
-  const T = Math.hypot(to.x - from.x, to.y - from.y) / TRANSPORT_SPEED;
+  const T = hypot(to.x - from.x, to.y - from.y) / TRANSPORT_SPEED;
   const f = { t0: battle.time, T, from, to, hit: new Set(), anchor, r: anchor.tileR, c: anchor.tileC, dir: anchor.dir };
   unit.mem.k2flight = f;
   battle.releaseBlocked(unit);
@@ -267,6 +269,8 @@ export default {
         [S1]: { kind: 'duration', mods: { atkPct: num(b1.atk), aspd: num(b1.attack_speed) } },
         [S2]: {
           kind: 'ammo',
+          // The larger active range contains attack targets as well as patients (#406).
+          trigger: { rule: 'ACTIVE_RANGE', grid: s2?.rangeGrid, enemies: true },
           ammo: Math.max(1, Math.floor(num(b2['attack@trigger_time'], 10))),
           mods: { atkPct: num(b2.atk) },
           targeting: s2?.rangeGrid ? { rangeGrid: s2.rangeGrid } : undefined,

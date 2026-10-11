@@ -12,7 +12,7 @@ export const FORCED_EXIT = 'forcedExit';
  * own effect (user playtest #2 item 4: 香槟炸弹's blast — sim fx `{ consumed: true, id }` before its 'die' — is its end,
  * not a knock-out), nor for an operator entering the battle knocked out (FORCED_EXIT).
  */
-export const showsDeathFx = (info, consumed = false, reason = null) => !consumed && reason !== FORCED_EXIT && info?.kind !== 'device';
+export const showsDeathFx = (info, consumed = false, reason = null) => !consumed && reason !== FORCED_EXIT && info?.kind !== 'device' && !info?.kazdelSoul;
 
 /**
  * The views' info of a battle unit from its UnitInfo (m.field / fieldMeta `units`, a 'spawn' event; snapshot.js
@@ -36,6 +36,7 @@ export function renderInfo(u) {
     dir: typeof u.dir === 'string' ? u.dir : undefined,
     // the unit's current model form (UnitInfo.form: an enemy's mode, a 傀儡师's 替身): the view starts in it (UnitView reads info.form)
     form: typeof u.form === 'string' ? u.form : undefined,
+    ...(u.kazdelSoul === true ? { kazdelSoul: true, soulOf: typeof u.soulOf === 'number' || typeof u.soulOf === 'string' ? u.soulOf : undefined } : {}),
     // Reconnecting / observing must show the device's current breakthrough before its next effect is emitted.
     researchStage: Number.isInteger(u.researchStage) && u.researchStage >= 0 && u.researchStage <= 2 ? u.researchStage : undefined,
     researchActive: typeof u.researchActive === 'boolean' ? u.researchActive : undefined,
@@ -45,7 +46,12 @@ export function renderInfo(u) {
     // DESIGN §16 loadout of an ally (UnitInfo.skillIndex / moduleId): the Spine actor plays that skill's clip, and a
     // tap hands them to the detail card (a teammate's unit shows its owner's skill / module)
     skillIndex: Number.isInteger(u.skillIndex) ? u.skillIndex : undefined,
+    // an ally whose skill is an ammo magazine (UnitInfo.ammoSkill): its rounds are the cells under the HP bar, so no sustained
+    // skill aura is drawn for it (render/fx/rings.js _aura)
+    ammoSkill: u.ammoSkill === true ? true : undefined,
     moduleId: typeof u.moduleId === 'string' ? u.moduleId : undefined,
+    // Scouted hand and temp units have details but no field attack range.
+    area: typeof u.area === 'string' ? u.area : undefined,
     // the ally's equipped item ids (UnitInfo.items, DESIGN §16 / §21.11): the detail card needs them for a teammate's
     // unit (resolveDetail `unitItems` → the read-only 装备 section and the 变形同构体 pairing chips); the owner's own
     // unit takes its items from the piece instead, so only other players' boards ever read this field

@@ -78,7 +78,9 @@ test('positionClass: a MELEE chess whose trait reads 「可以放置于远程位
 });
 
 test('g.move: legality per chess position, BAD_TILE outside, deploy cap 8, swaps allowed at cap', () => {
-  const { h, m, ps } = prepMatch();
+  // Placement capacity needs seven distinct tier-II melee fillers, independently of opening BAN rotation.
+  const data = { ...DATA, config: { ...DATA.config, bans: { ...DATA.config.bans, NORMAL: { core: 0, addon: 0 } } } };
+  const { h, m, ps } = prepMatch('act2autochess_m01', { data });
   const meleeId = chessOfTier(1, MELEE).find((id) => m.pool.has(id));
   const rangedId = chessOfTier(1, RANGED).find((id) => m.pool.has(id));
   const a = give(m, ps, meleeId);
@@ -98,6 +100,7 @@ test('g.move: legality per chess position, BAD_TILE outside, deploy cap 8, swaps
   const tiles = legalTiles(ps.deployMap(), 'melee').filter(([r, c]) => !ps.board.has(tileKey(r, c)));
   const extra = [];
   for (const id of chessOfTier(2, MELEE).filter((x) => m.pool.has(x)).slice(0, 7)) extra.push(give(m, ps, id));
+  assert.equal(extra.length, 7, 'seven distinct fillers keep merge rules out of the capacity test');
   for (let i = 0; i < 6; i++) assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: extra[i].uid, to: { area: 'board', row: tiles[i][0], col: tiles[i][1] } }), { ok: true });
   assert.equal(ps.deployCount, 8);
   assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: extra[6].uid, to: { area: 'board', row: tiles[6][0], col: tiles[6][1] } }), { error: ERR.BOARD_FULL });
@@ -255,8 +258,10 @@ test('withdrawing a deployed summon into a full hand: HAND_FULL like any other c
   assert.ok(drone && drone.count === 1, 'one 狼群');
   // (9,6): inside 伺夜's range ("只能部署在召唤者攻击范围内", player report #9 after 0.1.0)
   assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: drone.uid, to: { area: 'board', row: 9, col: 6 } }), { ok: true });
-  // golden items never merge with each other: a plain full hand
-  for (let i = 0; i < ps.hand.length; i++) if (!ps.hand[i]) giveItem(m, ps, 'chess_item_1_02_e_b', 'hand', i);
+  // One distinct golden per empty slot: goldens do not merge, and each base stays within its shared cap.
+  const fillers = Object.values(DATA.items).filter((r) => r.isGolden && r.itemType === 'EQUIP' && (m.gd.itemPoolCopies(r.id) ?? 0) >= 2).map((r) => r.id);
+  let n = 0;
+  for (let i = 0; i < ps.hand.length; i++) if (!ps.hand[i]) giveItem(m, ps, fillers[n++], 'hand', i);
   assert.ok(ps.hand.every(Boolean) && ps.tempEmpty);
   assert.equal(m.handle('p_0', { t: 'g.move', uid: drone.uid, to: { area: 'hand', idx: 0 } }).error, ERR.HAND_FULL, 'a new card for a full hand');
   assert.equal(ps.board.get('9,6'), drone, 'the 狼群 stays on the board');

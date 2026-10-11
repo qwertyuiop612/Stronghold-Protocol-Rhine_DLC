@@ -197,8 +197,14 @@ test('13: enemy-caused operator death spreads a temporary nonstacking revenge fr
 });
 
 test('14: every fourth normal spawn creates one counted echo on death, keeps remaining route and cannot split', () => {
-  const { b, e, a } = field(14);
-  const originals = [e, ...Array.from({ length: 3 }, () => b.spawnEnemy('enemy_test', { pos: [9, 10] }))];
+  // 0.2.2 counts only the enemies the stage itself scheduled in `b.total` (the HUD capsule's set), so the four
+  // spawns that open the echo are queued through the stage/spawn scheduler rather than spawned at runtime.
+  const { b, a } = field(14);
+  for (let i = 0; i < 3; i++) b._queueSpawn({ time: 0, enemyKey: 'enemy_test', pos: [9, 10], countInTotal: true }, true);
+  assert.equal(b.total, 3, 'only the three stage-scheduled spawns are in the capsule set');
+  run(b, 1.1);
+  const originals = b.enemies.filter((u) => u.tag !== 'asc_echo');
+  assert.equal(originals.length, 4);
   const fourth = originals[3];
   fourth.route.legs = [{ t: 'move', r: 9, c: 8 }, { t: 'move', r: 9, c: 2, final: true }];
   fourth.route.legIdx = 1;
@@ -209,9 +215,9 @@ test('14: every fourth normal spawn creates one counted echo on death, keeps rem
   assert.equal(echo.base.atk, fourth.base.atk);
   assert.equal(echo.bounty, null);
   assert.deepEqual(echo.route.legs, fourth.route.legs.slice(1));
-  assert.equal(b.total, 5);
+  assert.equal(b.total, 3, 'an echo is not one of the stage-scheduled enemies');
   b.kill(echo, a);
-  assert.equal(b.total, 5);
+  assert.equal(b.total, 3);
   assert.equal(b.enemies.filter(u => u.tag === 'asc_echo').length, 1);
 });
 

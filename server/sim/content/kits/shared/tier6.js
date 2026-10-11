@@ -1,3 +1,4 @@
+import { nativeOperator } from './nativeIdentity.js';
 // server/sim/content/kits/shared/tier6.js — helpers and notes of the hand-authored kits (formerly tier6.js; the kits
 // live one per file in ../ops/) for every tier-6 chess (阶 VI, DIY slots excluded) plus the
 // hidden chess granted by effects (盟约·辅助干员 chess_char_1_15, band Pith "优等生"; 妮芙 chess_char_6_10 is the hidden
@@ -27,7 +28,8 @@
 //  6_04 浊心斯卡蒂 S3 HP drain is non-lethal (like the geek drain); 鼓舞 = flat ATK added after the target's multipliers;
 //                海嗣 is inert (no attack) and only extends her aura (and her DEFAULT trigger); it expires after its
 //                duration and is re-summoned after its redeploy time when DP ≥ its cost (auto-redeploy emulation).
-//  6_05 异客     storm zone radius 1.5 tiles (not in data); strikes chain like her trait (4 targets, trait falloff);
+//  6_05 异客     storm zone = range x-1 (the 13-tile diamond) around the tile of the target's centre (PRTS S3 备注);
+//                strikes chain like her trait (4 targets, trait falloff) on their own bounce radius;
 //                the storm stops when she leaves the field.
 //  6_06 佩佩     splash stun via `damaged` (isSplash) hook; module ×1.15 when ≥3 enemies in the splash area.
 //  6_07 维娜     "attack enemies blocked by allies in talent range" = those enemies' tiles are added to her range;
@@ -111,6 +113,7 @@
 import { absoluteRangeKeys } from '../../../targeting.js';
 import { COLS, ROWS, PULL_STOP_RADIUS } from '../../../constants.js';
 import { hasHp } from '../../../damage.js';
+import { hypot } from '../../../detmath.js';
 
 // ------------------------------------------------------------------------------------------------------------------
 // helpers
@@ -146,7 +149,7 @@ const live = (u) => !!u && u.alive && u.deployed && !u.removed && !u.hidden;
 const isElite = (e) => !!e && (e.isBoss || e.def?.rank === 'ELITE' || e.def?.rank === 'BOSS');
 const hasBond = (u, id) => !!(u && u.def && Array.isArray(u.def.bonds) && u.def.bonds.includes(id));
 const keyOf = (u) => Math.round(u.y) * COLS + Math.round(u.x);
-const opsOf = (battle, ownerId) => battle.allies(ownerId).filter((a) => a.kind === 'op');
+const opsOf = (battle, ownerId) => battle.allies(ownerId).filter((a) => nativeOperator(a));
 const ANY = Object.freeze({ canHitFly: true });
 const enemiesIn = (battle, unit, keys) => battle.enemiesInKeys(keys || unit.rangeKeys || [], unit, ANY);
 const isTok = (t, id, owner) => !!t && t.kind === 'token' && t.defId === id && t.ownerUnit === owner;
@@ -237,7 +240,7 @@ function bestTile(battle, tiles) {
   let best = tiles[0], bd = Infinity;
   for (const t of tiles) {
     let d = Infinity;
-    for (const e of en) d = Math.min(d, Math.hypot(e.x - t[1], e.y - t[0]));
+    for (const e of en) d = Math.min(d, hypot(e.x - t[1], e.y - t[0]));
     if (d < bd - 1e-9) { bd = d; best = t; }
   }
   return best;

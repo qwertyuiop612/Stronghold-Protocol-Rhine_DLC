@@ -1,3 +1,4 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/op-slent2.js — 淬羽赫默 (char_1031_slent2) 自选 operator kit: 6★ 护佑者 (辅助), an owned-6★ pick of
 // the tier-5 and tier-6 自选 slots; every skill, both talents, the trait, both modules (BLS-X 难得清醒, BLS-Y 可控动量) at every
 // form, and the kit of her summon 夜灯 (token_10029_slent2_protrb). Kit contract and the 自选 rules: ../README.md ("How to add
@@ -92,7 +93,7 @@ export const RHINE = Object.freeze(new Set([
 const bbOf = (chess, id) => skillRec(chess, id)?.bb ?? {};
 const tileKey = (r, c) => r * COLS + c;
 /** An operator of the 莱茵生命 group (summons are no 干员). */
-export const isRhine = (a) => !!a && a.kind === 'op' && RHINE.has(a.def?.charId ?? a.defId);
+export const isRhine = (a) => !!a && nativeOperator(a) && RHINE.has(a.def?.charId ?? a.defId);
 const inKeys = (keys, a) => !!keys && keys.has(tileKey(a.tileR, a.tileC));
 
 /**
@@ -158,9 +159,10 @@ export default {
     return {
       trait: targets > 1 ? { maxTargets: targets } : null,
       skills: {
-        [S1]: { kind: 'duration', mods: { atkPct: num(b1.atk) }, attack: healAttack },
+        // [ASSUMED] her skills' attacks heal: 白铁's 铁钳号 (禁疗, no patient) alone does not open them (skills.js allyTargetsOk)
+        [S1]: { kind: 'duration', mods: { atkPct: num(b1.atk) }, attack: healAttack, allyTargets: false },
         [S2]: {
-          kind: 'duration', mods: { aspd: num(b2.attack_speed) }, attack: healAttack,
+          kind: 'duration', mods: { aspd: num(b2.attack_speed) }, attack: healAttack, allyTargets: false,
           onStart({ battle, unit }) {
             // a 夜灯 already up (the battle-start deploy) is this skill's drone; else her placed piece takes the field
             if (!battle.allyUnits.some((t) => t.kind === 'token' && t.defId === LAMP && t.ownerUnit === unit && t.alive)) releaseSkillSummon(battle, unit, LAMP);
@@ -168,7 +170,7 @@ export default {
           onEnd({ battle, unit }) { withdrawLamps(battle, unit); },
         },
         [S3]: {
-          kind: 'duration', mods: { atkPct: num(b3.atk) }, attack: healAttack,
+          kind: 'duration', mods: { atkPct: num(b3.atk) }, attack: healAttack, allyTargets: false,
           onStart({ unit }) { unit.mem.slent2Grave = true; },   // the one 不死 of this cast (slent2_shallow_grave[self])
           onEnd({ unit }) { unit.mem.slent2Grave = false; },
         },
@@ -218,7 +220,7 @@ export default {
           /** BLS-Y barrier on operator `a` (once per deployment of hers); `c` = the hpDamage ctx it takes, if any. */
           function giveBarrier(b, u, a, c) {
             const marks = u.mem.slent2Marks ?? (u.mem.slent2Marks = new Set());
-            if (a.kind !== 'op' || marks.has(a.id)) return;
+            if (!nativeOperator(a) || marks.has(a.id)) return;
             marks.add(a.id);
             let cap = u.s.maxHp * barrierScale * (isRhine(a) ? 2 : 1);
             if (c) { const took = Math.min(cap, c.amount); c.amount -= took; cap -= took; }
@@ -246,7 +248,7 @@ export default {
         battle.on('fatal', (c) => {
           const a = c.unit;
           if (c.prevented || !unit.mem.slent2Grave || !unit.skill?.active || !up(unit)) return;
-          if (!a || a.side !== 'ally' || a.kind !== 'op' || !inKeys(unit.rangeKeySet, a)) return;
+          if (!a || a.side !== 'ally' || !nativeOperator(a) || !inKeys(unit.rangeKeySet, a)) return;
           if (c.source === a || c.credit === a || holdsUndying(battle, a)) return;
           c.prevented = true;
           unit.mem.slent2Grave = false;

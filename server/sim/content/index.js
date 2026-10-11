@@ -28,6 +28,7 @@
 
 import { genericKit, genericTalents } from './generic.js';
 import { withUnitLoadouts } from '../simdata.js';
+import { isPotential } from '../../../shared/potential.js';
 
 // Content files are loaded with guarded dynamic imports: a module that fails to load (syntax error, throwing
 // top-level code, missing file) is logged and replaced by an empty module instead of breaking the server.
@@ -42,7 +43,8 @@ async function safeImport(path) {
 
 const KIT_REGISTRY = await safeImport('./kits/index.js');
 const RHINE_KITS = await safeImport('./kits/rhine.js');
-const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices', 'rhine', 'rhineMeta', 'relics'];
+const KAZDEL_KITS = await safeImport('./kits/kazdel.js');
+const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices', 'rhine', 'rhineMeta', 'kazdel', 'relics'];
 const DOMAINS = await Promise.all(DOMAIN_NAMES.map((n) => safeImport(`./${n}.js`)));
 const tokens = DOMAINS[0];
 const rhine = DOMAINS[DOMAIN_NAMES.indexOf('rhine')];
@@ -52,7 +54,7 @@ const rhine = DOMAINS[DOMAIN_NAMES.indexOf('rhine')];
  * (kits/index.js; each kit file is loaded guarded too)
  */
 // DIY characters keep upstream's charId kits. Rhine's own chess ids keep the expansion's rules.
-export const KITS = Object.freeze({ ...(RHINE_KITS.default ?? {}), ...(KIT_REGISTRY.KITS ?? {}) });
+export const KITS = Object.freeze({ ...(RHINE_KITS.default ?? {}), ...(KAZDEL_KITS.default ?? {}), ...(KIT_REGISTRY.KITS ?? {}) });
 
 /** Domain modules in install order, followed by the Rhine battle / prep expansion. */
 export const MODULES = Object.freeze(DOMAIN_NAMES.map((n, i) => [n, DOMAINS[i]]));
@@ -104,15 +106,15 @@ export function setupUnitKit(battle, unit, mode = 'full') {
   const def = unit.def || {};
   const raw = def.raw ?? def;
   const bb = def.skill?.bb ?? {};
-  if (unit.kind === 'token') {
+  if (unit.kind === 'token' && !unit.kazdelSoul) {
     const expansionToken = !isOtherBody(unit.ownerUnit?.def);
-    const tk = mode === 'full' ? (rhine.kits?.[def.id] ?? (expansionToken ? RHINE_KITS.tokenKits?.[def.id] : null) ?? tokens.kits?.[def.id] ?? tokens.default?.[def.id]) : null;
+    const tk = mode === 'full' ? (rhine.kits?.[def.id] ?? (expansionToken ? RHINE_KITS.tokenKits?.[def.id] : null) ?? KAZDEL_KITS.tokenKits?.[def.id] ?? tokens.kits?.[def.id] ?? tokens.default?.[def.id]) : null;
     if (typeof tk === 'function') {
       try { const k = tk(bb, raw, def); if (k) return k; } catch (e) { battle._handlerError(`tokenKit:${def.id}`, unit, e); }
     }
     return def.skill ? genericKit(bb, raw, def) : {};
   }
-  if (unit.kind !== 'op') return {};
+  if (unit.kind !== 'op' && !unit.kazdelSoul) return {};
   const injected = battle.opts && battle.opts.kits;
   if (mode === 'full' || injected) {
     const f = kitOf(def, injected) ?? (mode === 'full' ? kitOf(def, KITS) : undefined);
@@ -140,7 +142,8 @@ function inputEntry(unit) {
  * The loadout `{ skillIndex, moduleId }` a unit's PlayerBattleInput entry gives; an entry without loadout fields means
  * the DEFAULT loadout (`{}`), never "whatever the data view maps this chess id to" (another player's choice in a
  * multi-player field). `standIn: true` rides along (补位: the stand-in def whatever the skill / module fields say), as
- * does `diy` (自选: the pick of a DIY slot's piece). Null when the unit has no input entry.
+ * do `diy` (自选: the pick of a DIY slot's piece) and `potential` (0.2.2: 1–6, never a stand-in's). Null when the unit
+ * has no input entry.
  */
 function inputLoadout(unit) {
   const x = inputEntry(unit);
@@ -148,6 +151,7 @@ function inputLoadout(unit) {
   const extra = {
     ...(x.standIn === true ? { standIn: true } : null),
     ...(x.diy && typeof x.diy === 'object' ? { diy: x.diy } : null),
+    ...(x.standIn !== true && isPotential(x.potential) ? { potential: x.potential } : null),
   };
   if (x.skillIndex == null && x.moduleId == null) return extra;
   return { skillIndex: x.skillIndex ?? null, moduleId: x.moduleId ?? null, ...extra };

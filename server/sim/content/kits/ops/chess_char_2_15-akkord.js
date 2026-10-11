@@ -1,7 +1,9 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/chess_char_2_15-akkord.js — 协律 (char_4051_akkord) kit, tier 2 (hidden).
 // Conventions of the tier-2 kits: ../shared/tier2.js; kit contract and rules: ../README.md.
 
 import { num, talentBb, traitBb, onHitBy, alliesInGridOf, toggleBuff } from '../shared/tier1.js';
+import { hypot } from '../../../detmath.js';
 
 export default {
   // ---------------------------------------------------------------------------------------------------------------
@@ -18,7 +20,7 @@ export default {
         onAttack({ battle, unit }) {
           if (!(sc > 0)) return;
           for (const a of alliesInGridOf(battle, unit)) {
-            if (a === unit || a.kind !== 'op') continue;
+            if (a === unit || !nativeOperator(a)) continue;
             battle.fx('sonic', { x: a.x, y: a.y, radius: rad, id: unit.id });
             for (const e of battle.foesInRadius(a.x, a.y, rad)) {
               if (!e.s.flags.untargetable) battle.dealDamage(unit, e, { amount: unit.s.atk * sc, type: 'arts', isSkill: true, isSplash: true, tags: ['sonic'] });
@@ -28,12 +30,12 @@ export default {
       },
       talents: [{ install(battle, unit) {
         const v = num(t.atk);
-        if (v) toggleBuff(battle, unit, 'akkord:sync', () => alliesInGridOf(battle, unit).some((a) => a !== unit && a.kind === 'op'), { atkPct: v });
+        if (v) toggleBuff(battle, unit, 'akkord:sync', () => alliesInGridOf(battle, unit).some((a) => a !== unit && nativeOperator(a)), { atkPct: v });
         if (tb.damage_scale != null) {
           const mn = num(tb.min_dist), mx = num(tb.max_dist, 4), ds = num(tb.damage_scale);
           onHitBy(battle, unit, ({ target, dmg }) => {
             if (!dmg.isAttack) return;
-            const d = Math.hypot(target.x - unit.x, target.y - unit.y);
+            const d = hypot(target.x - unit.x, target.y - unit.y);
             dmg.amount *= 1 + ds * (mx > mn ? Math.max(0, Math.min(1, (d - mn) / (mx - mn))) : 1);
           });
         }

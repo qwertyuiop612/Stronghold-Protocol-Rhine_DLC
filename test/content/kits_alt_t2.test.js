@@ -52,7 +52,7 @@ const plain = (id, o = {}) => chessRec({ id, skill: null, ...o });
 
 test('kit coverage: every selectable skill of every visible tier-2 chess is hand-authored (normal + elite)', () => {
   const rep = kitCoverage({ tier: 2 });
-  assert.equal(rep.summary.chess, 18);
+  assert.equal(rep.summary.chess, 20);
   assert.equal(rep.summary.covered, rep.summary.skills, JSON.stringify(rep.chess.filter((r) => r.skills.some((s) => !s.covered)).map((r) => r.name)));
   for (const r of rep.chess) {
     for (const s of r.skills.filter((x) => !x.isDefault)) {
@@ -421,8 +421,9 @@ test('2_16 拉普兰德 S1 日晷: toggle (持续时间无限) ATK +atk; blocks 
     const bb = bbAlt(id);
     for (const roll of [true, false]) {
       const seen = [];
+      // 120 hits a minute at bat 0.5, each at the 5 % floor (12.5): 1500 in the 60 s, short of the normal form's 1791 HP
       const h = run({
-        defs: { enemies: { e: dummy('e', { atk: 300, bat: 0.5 }) } }, units: [U(id, 9, 5, { carryState: READY })], enemies: [{ key: 'e', pos: [9, 5] }],
+        defs: { enemies: { e: dummy('e', { atk: 250, bat: 0.5 }) } }, units: [U(id, 9, 5, { carryState: READY })], enemies: [{ key: 'e', pos: [9, 5] }],
         setup: (b) => { b.rng.chance = (p) => { seen.push(p); return roll; }; },
       });
       const u = h.unit(id);

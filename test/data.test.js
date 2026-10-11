@@ -16,6 +16,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { stripPotential } from '../shared/potential.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // DATA_DIR lets the suite validate an alternative build output (e.g. `--out /tmp/x`).
@@ -74,14 +75,14 @@ test('numbers: every stats/bb/enemyScale object holds only finite numbers (no nu
   assert.deepEqual(bad.slice(0, 10), [], `${bad.length} bad numeric fields`);
 });
 
-test('chess: base roster plus six Rhine expansion operators and two tier migrations', () => {
-  assert.equal(Object.keys(chess).length, 278);
-  assert.equal(visible.length, 118);
+test('chess: base roster plus Rhine and Kazdel expansions, including restored Vigna', () => {
+  assert.equal(Object.keys(chess).length, 292);
+  assert.equal(visible.length, 126);
   const perTier = {};
   for (const c of visible) perTier[c.tier] = (perTier[c.tier] || 0) + 1;
-  assert.deepEqual(perTier, { 1: 17, 2: 18, 3: 21, 4: 23, 5: 20, 6: 19 });
+  assert.deepEqual(perTier, { 1: 18, 2: 20, 3: 23, 4: 24, 5: 21, 6: 20 });
   assert.equal(normalChess.filter((c) => c.isDiy).length, 4);
-  assert.equal(normalChess.filter((c) => c.isHidden).length, 17);
+  assert.equal(normalChess.filter((c) => c.isHidden).length, 16);
 });
 
 test('chess: ids, golden pairs and references resolve', () => {
@@ -128,9 +129,9 @@ test('chess: every non-DIY chess has stats, range, classification and a resolvab
   assert.equal(chess.chess_char_1_01_a.targetPriority, 'fly');
 });
 
-test('bonds: 24 bonds including Rhine, with valid members, thresholds and effects', () => {
-  assert.equal(Object.keys(bonds).length, 24);
-  assert.equal(Object.values(bonds).filter((b) => b.isCore).length, 9);
+test('bonds: 25 bonds including Rhine and Kazdel, with valid members, thresholds and effects', () => {
+  assert.equal(Object.keys(bonds).length, 25);
+  assert.equal(Object.values(bonds).filter((b) => b.isCore).length, 10);
   const modes = new Set(['BOARD', 'BOARD_AND_DECK', 'BOARD_ALL_CHESS']);
   for (const b of Object.values(bonds)) {
     assert.ok(modes.has(b.countMode), `${b.bondId}: countMode ${b.countMode}`);
@@ -153,18 +154,18 @@ test('bonds: 24 bonds including Rhine, with valid members, thresholds and effect
   for (const c of normalChess) for (const b of c.bonds) assert.ok(bonds[b].members.includes(c.chessId), `${c.chessId} not in ${b}.members`);
 });
 
-test('garrisons: all referenced exist; 49 distinct effect keys including six Rhine traits', () => {
+test('garrisons: all referenced exist; 59 distinct effect keys including ten Kazdel traits', () => {
   const keys = new Set(Object.values(garrisons).map((g) => g.effectKey));
-  assert.equal(keys.size, 49);
+  assert.equal(keys.size, 59);
   for (const g of Object.values(garrisons)) {
     assert.ok(typeof g.eventType === 'string' && typeof g.desc === 'string', g.garrisonId);
     for (const o of g.owners) assert.ok(chess[o], `${g.garrisonId}: owner ${o}`);
   }
 });
 
-test('items: 119 item chess including two Rhine equipment pairs with valid references', () => {
-  assert.equal(Object.keys(items).length, 119);
-  assert.equal(Object.values(items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden).length, 58);
+test('items: 123 item chess including Rhine and Kazdel equipment pairs with valid references', () => {
+  assert.equal(Object.keys(items).length, 123);
+  assert.equal(Object.values(items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden).length, 60);
   assert.equal(Object.values(items).filter((i) => i.itemType === 'MAGIC').length, 3);
   for (const it of Object.values(items)) {
     assert.ok(effects[it.effectId], `${it.id}: effect ${it.effectId}`);
@@ -271,7 +272,9 @@ test('config: modes, rounds and templates', () => {
   assert.equal(config.economy.benchSize, 10);
   assert.equal(config.economy.deployCap, 8);
   assert.equal(config.economy.mergeCountOverrides.chess_char_2_11_a, 2);
-  assert.equal(config.economy.poolCopiesOverrides.chess_char_6_11_a, 4);
+  assert.equal(config.economy.poolCopiesOverrides.chess_char_2_11_a, 8);
+  assert.equal(config.economy.coopPoolMultiplier, 2);
+  assert.equal(config.economy.itemPoolCopiesOverrides.chess_item_5_07_e_a, 2);
   assert.deepEqual(config.hiddenCore.single, 350);
   assert.deepEqual(config.hiddenCore.multi, 1200);
   assert.equal(config.titles.length, 6);
@@ -510,8 +513,8 @@ test('chess: skills[] = every skill unlocked at the status, at the chess skill l
     assert.ok(wider(s.trigger.customRangeGrid, c.rangeGrid), `${c.chessId} ${s.skillId}: its running range strictly contains ${c.rangeId}`);
     if (s.rangeGrid) assert.deepEqual(s.trigger.customRangeGrid, s.rangeGrid, `${c.chessId} ${s.skillId}: the skill's own grid`);
   }
-  assert.equal(active.length, 78, '39 skills, normal + elite');
-  assert.equal(new Set(active.map(([c, s]) => `${c.baseId} ${s.skillId}`)).size, 39);
+  assert.equal(active.length, 84, '42 skills including Hoederer/Logos/Ascalon S3, normal + elite');
+  assert.equal(new Set(active.map(([c, s]) => `${c.baseId} ${s.skillId}`)).size, 42);
   // from the SEARCH row (解放者 / 阵法术师 / 安洁莉娜) and 深巡 S2's deviation: the owner's decisions of 2026-10-05
   const fromSearch = active.filter(([, s]) => s.trigger.rawRule === 'SEARCH').map(([c, s]) => `${c.baseId} ${s.skillId}`);
   assert.deepEqual([...new Set(fromSearch)].sort(), ['chess_char_3_08_a skchr_mint_1', 'chess_char_4_05_a skchr_beewax_1', 'chess_char_4_24_a skchr_billro_3', 'chess_char_5_19_a skchr_mlynar_2', 'chess_char_5_20_a skchr_aglina_3']);
@@ -558,7 +561,8 @@ test('chess: golden modules[] (+ statsBase/traitBase/talentsBase) compose back t
     // default loadout = the record's own stats / trait / talents
     assert.deepEqual(composeStats(c.statsBase, dm?.attr), c.stats, `${c.chessId}: statsBase + default attr = stats`);
     assert.deepEqual(dm?.traitOverride ?? c.traitBase, c.trait, `${c.chessId}: trait`);
-    assert.deepEqual(composeTalents(c.talentsBase, dm?.talentChanges), c.talents, `${c.chessId}: talents`);
+    // (the record's own lists chain their lower-potential entries — shared/potential.js; a composed list carries none)
+    assert.deepEqual(composeTalents(c.talentsBase, dm?.talentChanges), stripPotential(c.talents), `${c.chessId}: talents`);
     assert.equal(new Set(c.modules.map((m) => m.uniEquipId)).size, c.modules.length);
     for (const m of c.modules) {
       nMods++;
@@ -725,6 +729,32 @@ test('official spot checks (hard-coded values from the zh_CN client data)', () =
   assert.deepEqual([bands.band_sarkazb.totalHp, bands.band_lisa.totalHp], [45, 20]);
   assert.deepEqual(config.modes.mode_multi_abyss.rounds['15'].prepTime, 215);
   assert.equal(config.modes.mode_multi_abyss.enemyScale['6'].hp, 2.239488);   // 1.2^4 × 1.08
+});
+
+test('a module trait part that only adds a display line writes that line only (GitHub #400): 圣约送葬人 REA-Y heals 50 per enemy hit, its line ASPD +12', () => {
+  // official battle_equip_table uniequip_003_excu2: a DISPLAY part whose blackboard `value` 12 belongs to its own
+  // 「攻击速度+{value}」; the class trait's 「回复自身{value}生命」 stays the base 50 (REA-X's TRAIT_DATA_ONLY part rewrites it: 60)
+  const g = chess.chess_char_5_01_b;
+  const y = g.modules.find((m) => m.uniEquipId === 'uniequip_003_excu2').traitOverride;
+  assert.equal(y.desc, g.traitBase.desc, 'the class trait as without a module');
+  assert.match(y.desc, /每攻击到一个敌人回复自身50生命/);
+  assert.match(y.descRaw, /回复自身<@ba\.kw>50<\/>生命/);
+  assert.equal(y.moduleDesc, '攻击范围内存在2名及以上敌人时攻击速度+12');
+  assert.match(g.modules.find((m) => m.uniEquipId === 'uniequip_002_excu2').traitOverride.desc, /回复自身60生命/, 'REA-X');
+  // no other module record carries a trait line that differs from its owner's class trait only in a number its own
+  // display line uses (the class of this bug)
+  const forms = [...Object.values(chess), ...Object.values(D.backups.units || {}).flatMap((u) => Object.values(u.forms || {}))];
+  for (const f of forms) {
+    for (const m of f.modules || []) {
+      const o = m.traitOverride;
+      if (!o?.moduleDesc || !f.traitBase?.desc || o.desc === f.traitBase.desc) continue;
+      const nums = (t) => String(t).match(/\d+(?:\.\d+)?/g) || [];
+      const sameWords = o.desc.replace(/\d+(?:\.\d+)?/g, '#') === f.traitBase.desc.replace(/\d+(?:\.\d+)?/g, '#');
+      if (!sameWords) continue;
+      const moved = nums(o.desc).filter((n, i) => n !== nums(f.traitBase.desc)[i]);
+      assert.ok(!moved.every((n) => nums(o.moduleDesc).includes(n)), `${f.chessId || f.charId} ${m.uniEquipId}: ${o.desc} / ${o.moduleDesc}`);
+    }
+  }
 });
 
 /** Read an official cache file (only called when HAS_CACHE). */

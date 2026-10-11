@@ -3,6 +3,7 @@
 import { UF } from '../../../../shared/constants.js';
 import { clamp, isObj, tileKey } from './shared.js';
 import { N_, langInfo } from '../../../../shared/i18n.js';
+import { cannonStates } from '../../kazdelState.js';
 
 
 // ---- players, statuses, fields ------------------------------------------------------------------------
@@ -22,7 +23,9 @@ export const STATUS_META = Object.freeze({
 // ---- snapshots / battle HUD ---------------------------------------------------------------------------------
 
 /**
- * HUD numbers from a b.snap: { killed, total, dp, boss } (boss: { hp, max } when present).
+ * HUD numbers from a b.snap: { killed, resolved, total, dp, boss } (boss: { hp, max } when present).
+ * `resolved` is the capsule's numerator — knocked out + leaked among the round's own enemies (Battle.leakedInTotal);
+ * an older snapshot without it falls back to the kill count.
  * @param {any} snap
  */
 export function snapHud(snap) {
@@ -30,7 +33,9 @@ export function snapHud(snap) {
   const n = (v) => (Number.isFinite(v) ? v : null);
   let boss = null;
   if (isObj(snap.boss) && Number.isFinite(snap.boss.hp)) boss = { hp: snap.boss.hp, max: n(snap.boss.max) ?? n(snap.boss.maxHp) };
-  return { killed: n(snap.killed), total: n(snap.total), dp: n(snap.dp), boss };
+  const killed = n(snap.killed);
+  return { killed, resolved: n(snap.resolved) ?? killed, total: n(snap.total), dp: n(snap.dp), boss,
+    ...(Array.isArray(snap.kazdel) ? { kazdel: cannonStates(snap.kazdel), gameTime: n(snap.gt ?? snap.t) ?? 0 } : {}) };
 }
 
 /** Boss HP fraction 0..1 (null when unknown). */

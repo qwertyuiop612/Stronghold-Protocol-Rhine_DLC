@@ -21,7 +21,8 @@ const DATA = { chess, backups };
 const { ownedPool, prototypes } = backups.diy;
 const ELITES = ['char_608_acpion', 'char_609_acguad', 'char_610_acfend', 'char_611_acnipe', 'char_612_accast', 'char_613_acmedc', 'char_614_acsupo', 'char_615_acspec', 'char_617_sharp2'];
 const RESERVES5 = ['char_601_cguard', 'char_602_cdfend', 'char_603_csnipe', 'char_604_ccast', 'char_605_cmedic', 'char_606_csuppo'];
-const COLLAB = ['char_456_ash', 'char_1029_yato2', 'char_4123_ela', 'char_4141_marcil', 'char_4182_oblvns', 'char_4217_makoto'];
+// the data's own 自选 exclusion list (collab picks plus the operators the Rhine expansion put on the roster)
+const COLLAB = backups.diy.excluded;
 const SIEGE = 'char_112_siege';
 const T5 = 'chess_char_5_diy1_a', T5B = 'chess_char_5_diy2_a', T6 = 'chess_char_6_diy1_a', T6B = 'chess_char_6_diy2_a';
 
@@ -35,13 +36,20 @@ test('slots: two per tier (5, 6), each with its elite twin', () => {
   assert.equal(diyTokenOwner(SIEGE, chess.chess_char_6_diy1_b.status), 'char_112_siege@2/60/7/3');
 });
 
-test('diyPool: tier 5 = 15 prototypes + 71 owned 6★, tier 6 = 9 + 71; no preset, no collab; with the kit registry only kitted operators', () => {
+test('diyPool: tier 5 = 15 prototypes + 72 owned 6★, tier 6 = 9 + 72; no preset, no collab; with the kit registry only kitted operators', () => {
   const p5 = diyPool(5, { data: DATA }), p6 = diyPool(6, { data: DATA });
   assert.deepEqual(p5, [...RESERVES5, ...ELITES, ...ownedPool]);
   assert.deepEqual(p6, [...ELITES, ...ownedPool]);
-  assert.deepEqual([p5.length, p6.length], [86, 80]);
-  const roster = new Set(Object.values(chess).filter(c => !c.extension).map((c) => c.charId).filter(Boolean));
-  for (const id of p5) assert.ok(!roster.has(id) && !COLLAB.includes(id), id);
+  assert.deepEqual([p5.length, p6.length], [87, 81]);
+  // A 自选 pool entry is never a BASE-game roster operator. The Rhine/Kazdel expansion fields some of them
+  // (伊芙利特, 祖玛玛, 维什戴尔, 多萝西, 赫德雷, 阿斯卡纶, 逻各斯) as its own chess — the roster test therefore
+  // ignores the expansion records; the collab picks stay excluded outright.
+  const EXPANSION = new Set(['char_134_ifrit', 'char_416_zumama', 'char_1035_wisdel', 'char_4048_doroth',
+    'char_4088_hodrer', 'char_4132_ascln', 'char_4133_logos']);
+  const baseRoster = new Set(Object.values(chess)
+    .filter((c) => c.charId && !c.isDiy && !EXPANSION.has(c.charId) && !String(c.chessId).startsWith('chess_rhine_'))
+    .map((c) => c.charId));
+  for (const id of p5) assert.ok(!baseRoster.has(id) && !COLLAB.includes(id), id);
   assert.deepEqual(diyPool(4, { data: DATA }), [], 'no 自选 slot at tier 4');
   // the kit registry: the 预备干员 run the generic kit (exact for their skills), the nine elites their stand-in kits, the
   // owned 6★ only with an operator kit file (kits/index.js OPERATOR_KIT_FILES), in pool order

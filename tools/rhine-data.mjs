@@ -7,6 +7,8 @@ import { buildSkill, statsFrom, interpolateAttrs, baseTalentList, traitRecord, r
 import { RHINE_BOND, RHINE_CHARACTERS, RHINE_BALANCE, RHINE_DEVICES, RHINE_EQUIPMENT } from '../shared/rhineResearch.js';
 import { composeStats, composeTalents } from '../shared/loadoutRecord.js';
 import { applyOpeningBans } from '../shared/openingBans.js';
+import { KAZDEL_BOND, applyKazdelOpeningBans } from '../shared/kazdel.js';
+import { applyPotentialOverlay } from './extension-potential.mjs';
 
 export const RHINE_ADDITIONS = Object.freeze([
   { key: 'mayer', charId: 'char_242_otter', tier: 1, bonds: [RHINE_BOND], skillId: 'skchr_otter_1', defaultModuleId: 'uniequip_002_otter', subName: '召唤师', trait: 'mayer' },
@@ -36,23 +38,23 @@ function moduleChoices(ctx, char, status, label, spec) {
     const meta = ctx.uniequipTable.equipDict[id], ph = ordinaryModulePhase(ctx, id, equipLevel);
     if (meta.type === 'INITIAL' || !ph || spec.excludedModuleIds?.includes(id)) return [];
     const { op } = splitModuleParts(ph);
-    const hasTrait = op.some(p => bestCandidate(p.overrideTraitDataBundle?.candidates, phase, level, OPERATOR_POTENTIAL));
+    const hasTrait = op.some(p => bestCandidate(p.overrideTraitDataBundle?.candidates, phase, level, (ctx.potRank ?? OPERATOR_POTENTIAL)));
     const restrictedModes = [...new Set(ctx.battleEquipTable[id].phases.flatMap(p => p.parts.map(x => x.validInGameTag).filter(Boolean)))];
     const scopeNote = meta.isSpecialEquip ? '仅应用基础属性；生息演算限定的技力限制解除、食物、引敌、额外阻挡、群攻和物理脆弱效果在卫戍协议中不生效。'
       : id === 'uniequip_002_otter' ? '首个召唤物不占部署位；不过卫戍召唤物本来就不占人口，所以这条效果没了XP' : null;
-    const traitOverride = hasTrait ? traitRecord(ctx, char, phase, level, op, label, OPERATOR_POTENTIAL).trait : null;
+    const traitOverride = hasTrait ? traitRecord(ctx, char, phase, level, op, label, (ctx.potRank ?? OPERATOR_POTENTIAL)).trait : null;
     // RA-alpha's source trait part has no tag, but its own description explicitly scopes the
     // SP unlock to sandbox mode. Keep that original explanation while retaining the ordinary
     // blocking-only SP rule; the condition is semantic, not safely inferred from a null tag.
     if (id === 'uniequip_004_zumama' && traitOverride) {
-      const baseTrait = traitRecord(ctx, char, phase, level, [], label, OPERATOR_POTENTIAL).trait;
+      const baseTrait = traitRecord(ctx, char, phase, level, [], label, (ctx.potRank ?? OPERATOR_POTENTIAL)).trait;
       traitOverride.bb = clone(baseTrait.bb); traitOverride.bbStr = clone(baseTrait.bbStr);
     }
     return [{ uniEquipId: id, name: meta.uniEquipName,
       typeName: `${meta.typeName1}-${({ A: 'α', D: 'Δ' })[meta.typeName2] || meta.typeName2}`,
       typeIcon: meta.typeIcon, icon: meta.uniEquipIcon || id, isDefault: id === spec.defaultModuleId, level: equipLevel,
       attr: moduleAttr(ph), traitOverride,
-      talentChanges: moduleTalentChanges(ctx, op, phase, level, label, OPERATOR_POTENTIAL),
+      talentChanges: moduleTalentChanges(ctx, op, phase, level, label, (ctx.potRank ?? OPERATOR_POTENTIAL)),
       ...(scopeNote ? { scopeNote } : {}), ...(meta.isSpecialEquip ? { isSpecialEquip: true, restrictedModes } : {}) }];
   });
 }
@@ -66,11 +68,11 @@ function makeGarrison(key, gold) {
   const grade = gold ? 1 : 0, r = RHINE_BALANCE;
   if (key === 'copy_start') return garrison(id, '身前一格干员若为“进入休整期时”特质，本干员的特质与其相同', 'SERVER_PREP_START', 'SERVER_FRONT_SAME_EFFECT_PREP_START');
   if (key === 'copy_end') return garrison(id, '身前一格干员若为“休整期结束时”特质，本干员的特质与其相同', 'SERVER_PREP_FIN', 'SERVER_FRONT_SAME_EFFECT_PREP_FIN');
-  if (key === 'mayer') return garrison(id, `战斗中，身前一格科研装置每完成一次有效工作，使已激活的【莱茵生命】增加${r.mayerDeviceLayers[grade]}层。能量装置每次实际发射脉冲计一次；生态维持仪有实际治疗、护盾净增加或累计${r.ecologyResearchInterval}秒有效减速时计一次，同一装置${r.medicalInterval}秒内最多计一次，多个目标和治疗来源不重复计数；激光钻机累计${r.laserResearchInterval}秒有效输出计一次，逐次伤害不重复产层。无目标时暂停累计。同一装置只取最强的一名梅尔`, 'IN_BATTLE', 'RHINE_MAYER_RESEARCH', { device_layers: r.mayerDeviceLayers[grade] });
+  if (key === 'mayer') return garrison(id, `战斗中，身前一格科研装置每完成一次有效工作，使已激活的【莱茵生命】增加${r.mayerDeviceLayers[grade]}层。能量装置每次实际发射脉冲计一次；生态维持仪有实际治疗、护盾净增加或累计${r.ecologyResearchInterval}秒有效减速时计一次，同一装置${r.medicalInterval}秒内最多计一次，多个目标和治疗来源不重复计数；激光钻机累计${r.laserResearchInterval}秒有效输出计一次，逐次伤害不重复产层。无目标时暂停累计。同一装置只取最强的一名梅尔；每场普通主战同玩家全部梅尔共享${r.mayerBattleLayerCap[grade]}层预算，普通与精锐共存取48层，退场或换装置不重置`, 'IN_BATTLE', 'RHINE_MAYER_RESEARCH', { device_layers: r.mayerDeviceLayers[grade], max_layer: r.mayerBattleLayerCap[grade] });
   if (key === 'saria') return garrison(id, `战斗中，每${r.sariaLayerStep}层科研使自身治疗量提高${r.sariaHealBonus[grade] * 100}%`, 'IN_BATTLE', 'RHINE_SARIA_HEALING', { layer_step: r.sariaLayerStep, heal: r.sariaHealBonus[grade] });
   if (key === 'ifrit') return garrison(id, `战斗中，自身获得己方已部署且有效的单台科研装置中最高基础攻击力的${r.ifritInheritance[grade] * 100}%作为额外攻击力，多台不相加，无独立继承上限`, 'IN_BATTLE', 'RHINE_IFRIT_INHERITANCE', { atk_scale: r.ifritInheritance[grade] });
   if (key === 'astgenne') return garrison(id, `战斗中，首次开启技能时，使已激活的【莱茵生命】与【精准】各增加${r.astgenneFirstSkillLayers[grade]}层`, 'IN_BATTLE', 'RHINE_ASTGENNE_FIRST_SKILL', { layer: r.astgenneFirstSkillLayers[grade] }, { bond_ids: `${RHINE_BOND},preciShip` });
-  if (key === 'dorothy') return garrison(id, `战斗中，自身布置的陷阱每触发一枚，使已激活的【莱茵生命】增加${r.dorothyTrapLayers[grade]}层；每场普通主战最多获得${r.dorothyBattleLayerCap[grade]}层。一枚陷阱命中多人只计一次，连锁引爆逐枚计数；双倍伤害陷阱不额外产层，撤回、搬动或未触发销毁不产层`, 'IN_BATTLE', 'RHINE_DOROTHY_TRAP_RESEARCH', { layer: r.dorothyTrapLayers[grade], max_layer: r.dorothyBattleLayerCap[grade] }, { bond_id: RHINE_BOND });
+  if (key === 'dorothy') return garrison(id, `已激活的【莱茵生命】每层科研为自身提供${r.dorothyAttackPerLayer[grade]}点固定攻击力，不消耗科研；与六人盟约共享攻击以固定值相加。陷阱不再提供科研，原生技能与梦想家保持不变`, 'IN_BATTLE', 'RHINE_DOROTHY_ATTACK', { atk_per_layer: r.dorothyAttackPerLayer[grade] });
   return garrison(id, `休整期结束时，每名实际在场的莱茵生命干员使莱茵生命增加${r.ptilopsisLayersPerMember[grade]}层科研；同名干员分别计数，调和的虚拟人数不计入`, 'SERVER_PREP_FIN', 'RHINE_RESEARCH_BY_MEMBER', { layer: r.ptilopsisLayersPerMember[grade] }, { conditionkey: 'character_target_inboard' });
 }
 
@@ -89,7 +91,7 @@ function adaptDorothyTalent(talent, count) {
 function compileDorothyToken(ctx, chess) {
   const t = ctx.charTable[DOROTHY_TOKEN], variants = {}, owners = ['chess_rhine_dorothy_a', 'chess_rhine_dorothy_b'];
   for (const id of owners) {
-    const c = chess[id], opts = { ...c.status, potRank: OPERATOR_POTENTIAL, skillIndex: c.skill.index, label: id };
+    const c = chess[id], opts = { ...c.status, potRank: (ctx.potRank ?? OPERATOR_POTENTIAL), skillIndex: c.skill.index, label: id };
     if (c.module?.active) {
       opts.modulePhase = ordinaryModulePhase(ctx, c.module.id, c.module.level);
       opts.moduleTokenParts = splitModuleParts(opts.modulePhase).token;
@@ -122,8 +124,8 @@ function compileChess(ctx, config, spec, gold, index) {
   const chessId = gold ? goldenId : baseId;
   const st = config.economy.chessStatus[spec.tier][gold ? 'golden' : 'normal'];
   const status = { phase: st.phase, level: st.level, skillLevel: st.skillLevel, equipLevel: st.equipLevel };
-  const attrs = withPotential(c, interpolateAttrs(c, status.phase, status.level), OPERATOR_POTENTIAL, chessId);
-  const { trait, classify } = traitRecord(ctx, c, status.phase, status.level, [], chessId, OPERATOR_POTENTIAL);
+  const attrs = withPotential(c, interpolateAttrs(c, status.phase, status.level), (ctx.potRank ?? OPERATOR_POTENTIAL), chessId);
+  const { trait, classify } = traitRecord(ctx, c, status.phase, status.level, [], chessId, (ctx.potRank ?? OPERATOR_POTENTIAL));
   const skills = c.skills.flatMap((s, index) => {
     if (!unlocked(s.unlockCond, status.phase, status.level)) return [];
     const skill = buildSkill(ctx, s.skillId, status.skillLevel, null, chessId);
@@ -134,7 +136,7 @@ function compileChess(ctx, config, spec, gold, index) {
   });
   const skill = clone(skills.find(s => s.isDefault)); delete skill.isDefault;
   const g = makeGarrison(spec.trait, gold);
-  const statsBase = statsFrom(attrs), talentsBase = baseTalentList(ctx, c, status.phase, status.level, chessId, OPERATOR_POTENTIAL);
+  const statsBase = statsFrom(attrs), talentsBase = baseTalentList(ctx, c, status.phase, status.level, chessId, (ctx.potRank ?? OPERATOR_POTENTIAL));
   if (spec.key === 'mayer') for (const t of talentsBase) adaptMayerTalent(t, RHINE_BALANCE.mayerSummons[gold ? 1 : 0]);
   if (spec.key === 'dorothy') for (const t of talentsBase) adaptDorothyTalent(t, RHINE_BALANCE.dorothyTrapLimit[gold ? 1 : 0]);
   const modules = gold ? moduleChoices(ctx, { ...c, charId: spec.charId }, status, chessId, spec) : [];
@@ -143,7 +145,7 @@ function compileChess(ctx, config, spec, gold, index) {
   const mod = modules.find(m => m.isDefault);
   return { chessId, baseId, goldenId, isGolden: gold, tier: spec.tier, identifier: 200 + index,
     isHidden: false, isDiy: false, visible: true, chessType: 'PRESET', shopSortId: 200 + index,
-    backup: { charId: spec.charId, tmplId: null, skillIndex: skill.index, uniEquipId: spec.defaultModuleId, potRank: OPERATOR_POTENTIAL },
+    backup: { charId: spec.charId, tmplId: null, skillIndex: skill.index, uniEquipId: spec.defaultModuleId, potRank: (ctx.potRank ?? OPERATOR_POTENTIAL) },
     charId: spec.charId, name: c.name, appellation: c.appellation, rarity: Number(c.rarity.replace('TIER_', '')),
     profession: c.profession, subProfessionId: c.subProfessionId, subProfessionName: spec.subName, position: c.position,
     nationId: c.nationId, bonds: [...spec.bonds], garrisonIds: [g.garrisonId],
@@ -205,6 +207,7 @@ function applyEquipment({ items, effects }) {
 
 export async function applyRhineData(files, source = null) {
   const ctx = source || JSON.parse(await readFile(new URL('./rhine-data-source.json', import.meta.url), 'utf8'));
+  if (!Number.isInteger(ctx.potRank)) return applyPotentialOverlay(files, applyRhineData, ctx);
   const { chess, bonds, garrisons, tokens, effects, config } = files;
   applyOpeningBans(config);
   for (const [index, spec] of RHINE_ADDITIONS.entries()) for (const gold of [false, true]) {
@@ -258,7 +261,7 @@ export async function applyRhineData(files, source = null) {
   }
   const t = ctx.charTable[TOKEN], variants = {}, owners = ['chess_rhine_mayer_a', 'chess_rhine_mayer_b'];
   for (const id of owners) {
-    const c = chess[id], opts = { ...c.status, potRank: OPERATOR_POTENTIAL, skillIndex: c.skill.index, label: id };
+    const c = chess[id], opts = { ...c.status, potRank: (ctx.potRank ?? OPERATOR_POTENTIAL), skillIndex: c.skill.index, label: id };
     if (c.module?.active) {
       opts.modulePhase = ordinaryModulePhase(ctx, c.module.id, c.module.level);
       opts.moduleTokenParts = splitModuleParts(opts.modulePhase).token;
@@ -295,6 +298,7 @@ export async function applyRhineData(files, source = null) {
     rangeGrid: [[0,0]], dmgType: 'none', attackKind: 'ranged', projectile: 'none', canHitFly: false, skill: null,
     deployLimit: 1, count: 1, abnormal: [], variants: {}, assets: { avatar: d.tokenId, spine: null, icon: d.icon, sprite: d.sprite } };
   applyEquipment(files);
+  if (bonds[KAZDEL_BOND]) applyKazdelOpeningBans(config);
   return files;
 }
 

@@ -1,5 +1,6 @@
-// test/full-potential.test.js — every operator fights at FULL potential (潜能 6), the owner's decision of 2026-10-07
-// (GitHub #252, PR #255; tools/build-data.mjs OPERATOR_POTENTIAL, docs/DATA.md §2): every chess (normal and elite), 自选
+// test/full-potential.test.js — the data records are built at FULL potential (潜能 6: the default — the owner's decisions of
+// 2026-10-07, GitHub #252 / PR #255, and 2026-10-08: a lower potential is the player's 干员调配 setting, test/potential.test.js;
+// tools/build-data.mjs FULL_RANK, docs/DATA.md §2 / §2.3): every chess (normal and elite), 自选
 // pick and 补位 stand-in adds its character_table `potentialRanks` attribute steps and takes its talent / module-talent
 // candidates up to `requiredPotentialRank` 5; a summon picks its talent candidates at its owner's potential but takes
 // none of the owner's attribute steps. The evidence: a tournament video shows 刺玫 (chess_char_1_06_a) at ATK 435 and
@@ -86,13 +87,14 @@ test('every chess, 自选 form and stand-in form: the raw keyframes plus every p
     n++;
     if (Object.keys(steps(c.charId)).length) withSteps++;
   }
-  assert.equal(n, 258);
+  // 258 upstream chess; the Rhine/Kazdel expansion adds its own (all compiled by the same generator)
+  assert.ok(n >= 258, `${n} non-自选 chess with a character`);
   assert.ok(withSteps >= 220, `chess with potential steps: ${withSteps}`);
   let forms = 0;
   for (const [charId, u] of Object.entries(backups.units)) {
     for (const f of Object.values(u.forms)) { check(`${charId}@${f.status.phase}/${f.status.level}`, charId, f.status, f.stats); forms++; }
   }
-  assert.equal(forms, 256);
+  assert.equal(forms, 259);
   // the 原型干员 stand-ins have no potential ranks: their numbers are the plain keyframes
   for (const id of ['char_600_cpione', 'char_602_cdfend', 'char_608_acpion', 'char_617_sharp2']) assert.equal((CT[id].potentialRanks || []).length, 0, id);
 });
@@ -108,6 +110,9 @@ test('talent candidates: every chess talent is the last one unlocked at its stat
   let potentialTalents = 0;
   for (const c of Object.values(chess)) {
     if (c.isDiy || !c.charId) continue;
+    // the Rhine/Kazdel chess carry the expansion's own talent blackboards (梅尔's device layers, 伊芙利特's
+    // ATK inheritance …), so the official candidate list is not their source of truth
+    if (String(c.chessId).startsWith('chess_rhine_') || String(c.chessId).startsWith('chess_kazdel_')) continue;
     const base = c.talentsBase ?? c.talents;
     (CT[c.charId].talents || []).forEach((t, index) => {
       const cands = (t.candidates || []).filter((x) => ok(x, c.status.phase, c.status.level));

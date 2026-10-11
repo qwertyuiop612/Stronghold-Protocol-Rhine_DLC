@@ -1,3 +1,4 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/chess_char_6_03-yu.js — 余 (char_2026_yu) kit, tier 6.
 // Conventions of the tier-6 kits: ../shared/tier6.js; kit contract and rules: ../README.md.
 
@@ -51,6 +52,8 @@ function yu(bb, chess, def) {
     // 'teleport' fx). PRTS's 0.13 s between the damage and the teleport is not modelled (same tick).
     skchr_yu_2: {
       kind: 'duration',
+      // [ASSUMED] its burst and teleport pick enemies; 白铁's 铁钳号 alone does not open it (skills.js allyTargetsOk)
+      allyTargets: false,
       mods: { hpPct: num(bb.max_hp), atkPct: num(bb.atk), blockCnt: num(bb.block_cnt) },
       attack: { dmgType: 'arts' },
       onStart({ battle, unit }) {
@@ -79,6 +82,7 @@ function yu(bb, chess, def) {
     skill: {
       kind: 'duration',
       mods: { hpPct: num(bb.max_hp), atkPct: num(bb.atk), defPct: num(bb.def) },
+      allyTargets: false,   // [ASSUMED] its wall burns enemies crossing it; 白铁's 铁钳号 alone does not open it
       // the wall runs through his tile perpendicular to his direction (RIGHT / LEFT: his column; UP / DOWN: his row —
       // it turns with the deploy direction like a range) [ASSUMED orientation for UP / DOWN]
       onStart({ battle, unit }) {
@@ -145,7 +149,7 @@ function yu(bb, chess, def) {
         if (ds > 1) battle.on('hit', (ctx) => {
           const s = ctx.source;
           if (!s || ctx.dmg.type !== 'arts' || !ctx.target || ctx.target.side !== 'enemy' || !ctx.target.findBuff('burnBurst')) return;
-          if (s !== unit && !(s.kind === 'op' && s.ownerId === unit.ownerId && live(unit) && s3On(unit))) return;
+          if (s !== unit && !(nativeOperator(s) && s.ownerId === unit.ownerId && live(unit) && s3On(unit))) return;
           if (opsOf(battle, unit.ownerId).length >= cnt) ctx.dmg.mul *= ds;
         }, { owner: unit });
       } },

@@ -5,6 +5,8 @@
 // mid-flight the projectile fizzles, unless `hitDead: true` (then it lands at the last known position).
 
 import { PROJECTILE_SPEED } from './constants.js';
+import { captureKazdelCallback } from './kazdelOrigin.js';
+import { hypot } from './detmath.js';
 
 let seq = 0;
 const fin = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -31,7 +33,7 @@ export class ProjectileSystem {
       tx: fin(p.to ? p.to.x : (target ? target.x : fx), fx),
       ty: fin(p.to ? p.to.y : (target ? target.y : fy), fy),
       speed: p.speed > 0 ? p.speed : PROJECTILE_SPEED,
-      onHit: p.onHit ?? null,
+      onHit: captureKazdelCallback(this.battle, p.onHit ?? null),
       visual: p.visual ?? 'arrow',
       source: p.source ?? (p.from && p.from.id != null ? p.from : null),
       hitDead: !!p.hitDead,
@@ -55,7 +57,7 @@ export class ProjectileSystem {
         else p.target = null;
       }
       const dx = p.tx - p.x, dy = p.ty - p.y;
-      const d = Math.hypot(dx, dy);
+      const d = hypot(dx, dy);
       const step = p.speed * dt;
       if (d <= step || p.age >= p.maxAge) {
         p.x = p.tx; p.y = p.ty;

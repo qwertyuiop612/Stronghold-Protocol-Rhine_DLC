@@ -8,6 +8,7 @@
 // Additive mod keys scale with stacks (value × stacks); *Mul keys multiply (value ^ stacks).
 
 import { COLD_ASPD, COLD_FREEZE_DURATION, FREEZE_RES_DOWN, RESIST_DEFAULT, RESIST_PALSY_DECAY } from './constants.js';
+import { powi } from './detmath.js';
 
 /** 抵抗: "麻痹等状态每5秒流失1层" — tick of the resist buff. */
 function resistPalsyDecay({ battle, unit }) {
@@ -19,7 +20,7 @@ function resistPalsyDecay({ battle, unit }) {
 /** Additive mod keys (summed; × stacks). `atkFinal` = 最终加算: added after the percentages (units.js _recalc). */
 export const ADD_KEYS = Object.freeze([
   'defToRes', 'resToDef', 'defResClear',
-  'atkFlat', 'atkPct', 'atkFinal', 'defFlat', 'defPct', 'hpFlat', 'hpPct', 'resFlat', 'aspd', 'batPct', 'blockCnt',
+  'atkFlat', 'atkPct', 'atkFinal', 'defFlat', 'defPct', 'hpFlat', 'hpPct', 'hpFinal', 'resFlat', 'aspd', 'batPct', 'blockCnt',
   'rangeExtend', 'defIgnoreFlat', 'defIgnorePct', 'resIgnoreFlat', 'resIgnorePct', 'dodgePhys', 'dodgeArts',
   'spRecoveryFlat', 'maxTargets', 'taunt', 'hpRegen', 'hpRegenRatio', 'spCostFlat', 'moveFlat', 'massFlat',
   // 阻挡半径倍率 (PRTS 数值范围 BLOCK_RADIUS_SCALE, default 1): the air-block radius 0.8944 × (1 + Σ) — Battle._checkBlock
@@ -201,12 +202,12 @@ export function aggregateMods(buffs) {
         const v = m[k];
         if (typeof v !== 'number' || !Number.isFinite(v)) continue;
         if (k === 'shield') continue;
-        if (k.endsWith('Mul')) mul[k] = (mul[k] ?? 1) * (st === 1 ? v : Math.pow(v, st));
+        if (k.endsWith('Mul')) mul[k] = (mul[k] ?? 1) * (st === 1 ? v : powi(v, st));
         else if ((k === 'dodgePhys' || k === 'dodgeArts') && v > 0) {
           const p = Math.min(1, v);
           const d = dodge[k];
-          if (!d) dodge[k] = { n: st, p, miss: Math.pow(1 - p, st) };
-          else { d.n += st; d.miss *= Math.pow(1 - p, st); }
+          if (!d) dodge[k] = { n: st, p, miss: powi(1 - p, st) };
+          else { d.n += st; d.miss *= powi(1 - p, st); }
         } else {
           add[k] = (add[k] ?? 0) + v * st;
           if (k === 'rangeExtend' && b.persist && b.duration === Infinity) permRangeExtend += v * st;

@@ -4,6 +4,15 @@
 import { RHINE_BOND, RHINE_BALANCE, RHINE_DEVICES, rhineCapacity, rhineDevice, rhineDeviceUnlocked, rhineDeviceStage, advanceRhineResearch } from '../../../shared/rhineResearch.js';
 
 export class PlayerResearch {
+  /**
+   * Device tokens are fabricated by this code, never drafted from the shop, so they only exist when the match's data
+   * describes them. A degraded data set (a match built from chess/bonds alone, no tokens catalog — test/match/fullmatch)
+   * keeps the whole reserve locked instead of creating pieces outside the data's own catalog.
+   */
+  _rhinePlayable() {
+    return RHINE_DEVICES.every((d) => !!this.gd.token(d.tokenId));
+  }
+
   /** The reserve slot is fixed by device kind; points belong to the player, never to a transient token uid. */
   _returnResearch(piece) {
     const idx = RHINE_DEVICES.findIndex((d) => d.tokenId === piece?.id);
@@ -16,7 +25,8 @@ export class PlayerResearch {
 
   _syncResearch() {
     const bond = this.bonds[RHINE_BOND];
-    const cap = this.alive ? rhineCapacity(bond) : 0;
+    const playable = this._rhinePlayable();
+    const cap = playable && this.alive ? rhineCapacity(bond) : 0;
     if (cap) this.research.unlocked = true;
     // Rebuild fixed slots by identity, not their saved array index. Older states can still contain the retired
     // ecology card; it cannot become a laser or cause a second medical/energy card to be generated.
@@ -60,7 +70,7 @@ export class PlayerResearch {
         this.research.points[d.key] = 0;
         this.research.stages[d.key] = 0;
       }
-      if (!this.alive || !rhineDeviceUnlocked(d, bond) || seen.has(d.key)) continue;
+      if (!playable || !this.alive || !rhineDeviceUnlocked(d, bond) || seen.has(d.key)) continue;
       this.research.points[d.key] ??= 0;
       this.research.stages[d.key] ??= 0;
       this.research.hand[idx] = this.newPiece('token', d.tokenId, { research: true, researchKey: d.key, ownerUid: null });
@@ -68,7 +78,7 @@ export class PlayerResearch {
   }
 
   researchView() {
-    const capacity = this.alive ? rhineCapacity(this.bonds[RHINE_BOND]) : 0;
+    const capacity = this.alive && this._rhinePlayable() ? rhineCapacity(this.bonds[RHINE_BOND]) : 0;
     const all = [...this.board.values(), ...this.research.hand.filter(Boolean)];
     const deployed = new Set([...this.board.values()].filter((p) => p.research).map((p) => p.uid));
     return {

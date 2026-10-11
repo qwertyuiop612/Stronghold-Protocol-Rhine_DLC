@@ -5,6 +5,14 @@ import { getDataProfile } from '../../server/data.js';
 import { give, legalTileFor, makeMatch } from './harness.js';
 
 const BEACON = 'chess_item_5_04_e_a';
+// Inert hand/temp filler. It must stay invisible to the shared-inventory invariants, because these tests
+// fill every slot with `newPiece`, which bypasses both the pool and the merge step:
+//   * the pool gives no cap to records that are not shop items (a non-EQUIP, effect-only record is never a
+//     shop item), so the `held <= cap` check skips it;
+//   * the merge check only covers normal mergeable EQUIP records, so a non-EQUIP record never trips it.
+// (A golden EQUIP filler counts 2 per copy against its base record's cap; a normal shop EQUIP filler trips
+// the merge rule. Both were tried and rejected.)
+const FILLER = 'chess_item_6_03_m';
 const QUIET = { info() {}, warn() {}, error() {} };
 const held = (ps) => [...ps.hand, ...ps.temp, ...ps.board.values()].filter(Boolean);
 const beacons = (ps) => held(ps).filter((p) => p.kind === 'item' && p.id === BEACON);
@@ -83,7 +91,7 @@ test('a full hand receives the beacon in temp and can use it during the same pre
     h.toPrep(1);
     const ps = h.ps('p_0');
     ps.bandId = null;
-    for (let i = 0; i < ps.hand.length; i++) ps.hand[i] = ps.newPiece('item', 'chess_item_1_03_e_b');
+    for (let i = 0; i < ps.hand.length; i++) ps.hand[i] = ps.newPiece('item', FILLER);
     h.m.startRound(10);
     const beacon = ps.temp.find((p) => p?.id === BEACON);
     assert.ok(beacon, 'hand overflow reaches the existing temp inventory');
@@ -101,8 +109,8 @@ test('both inventories full retain their contents and report the existing reward
     h.toPrep(1);
     const ps = h.ps('p_0');
     ps.bandId = null;
-    for (let i = 0; i < ps.hand.length; i++) ps.hand[i] = ps.newPiece('item', 'chess_item_1_03_e_b');
-    for (let i = 0; i < ps.temp.length; i++) ps._putTemp(i, ps.newPiece('item', 'chess_item_1_03_e_b'));
+    for (let i = 0; i < ps.hand.length; i++) ps.hand[i] = ps.newPiece('item', FILLER);
+    for (let i = 0; i < ps.temp.length; i++) ps._putTemp(i, ps.newPiece('item', FILLER));
     const before = held(ps).map((p) => p.uid);
     h.m.startRound(10);
     assert.equal(beacons(ps).length, 0);
@@ -161,7 +169,7 @@ for (const rhine of [true, false]) for (const golden of [false, true]) {
       const mate = m.gd.visibleChess.find((id) => id !== core && m.gd.chess(id).bonds.includes(bond) && legalTileFor(m, receiver, id));
       assert.ok(mate);
       give(m, receiver, mate, 'board', legalTileFor(m, receiver, mate));
-      for (let i = 0; i < receiver.hand.length; i++) receiver.hand[i] ||= receiver.newPiece('item', 'chess_item_1_03_e_b');
+      for (let i = 0; i < receiver.hand.length; i++) receiver.hand[i] ||= receiver.newPiece('item', FILLER);
       const original = golden ? m.gd.goldenIdOf(core) : core;
       const target = give(m, sender, original);
       const beacon = beacons(sender).find((p) => p.meta.sixPlayerBeaconRound === 14);
@@ -253,8 +261,8 @@ test('a full R14 recipient keeps the immediate elite gift pending and receives i
     const mate = m.gd.visibleChess.find((id) => id !== core && m.gd.chess(id).bonds.includes(bond) && legalTileFor(m, receiver, id));
     assert.ok(mate);
     give(m, receiver, mate, 'board', legalTileFor(m, receiver, mate));
-    for (let i = 0; i < receiver.hand.length; i++) receiver.hand[i] ||= receiver.newPiece('item', 'chess_item_1_03_e_b');
-    for (let i = 0; i < receiver.temp.length; i++) receiver.temp[i] ||= receiver.newPiece('item', 'chess_item_1_03_e_b');
+    for (let i = 0; i < receiver.hand.length; i++) receiver.hand[i] ||= receiver.newPiece('item', FILLER);
+    for (let i = 0; i < receiver.temp.length; i++) receiver.temp[i] ||= receiver.newPiece('item', FILLER);
     const original = m.gd.goldenIdOf(core);
     const target = give(m, sender, original);
     const beacon = beacons(sender).find((p) => p.meta.sixPlayerBeaconRound === 14);

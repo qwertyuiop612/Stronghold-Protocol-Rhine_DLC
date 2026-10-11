@@ -1,3 +1,4 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/op-sleach.js — 琴柳 (char_479_sleach) 自选 operator kit: 6★ 执旗手 (先锋), an owned-6★ pick of the
 // tier-5 and tier-6 自选 slots; every skill, both talents, the trait and both modules (BEA-X 牧人的歌, BEA-Y “友谊万岁”) at every
 // form. Kit contract and the 自选 rules: ../README.md ("How to add an operator (自选)").
@@ -58,6 +59,7 @@ import { num, talentBb, moduleBb, traitBb, moduleOn, skillRec, up } from '../sha
 import { absoluteRangeKeys, sortEnemyTargets } from '../../../targeting.js';
 import { offsetTile } from '../../../dir.js';
 import { COLS } from '../../../constants.js';
+import { hypot } from '../../../detmath.js';
 
 const S1 = 'skcom_assist_cost[3]';
 const S2 = 'skchr_sleach_2';
@@ -84,7 +86,7 @@ export const CAMOU_KEY = 'sleach:camou';
 const bbOf = (chess, id) => skillRec(chess, id)?.bb ?? {};
 const tileKey = (r, c) => r * COLS + c;
 /** A living deployed operator (summons / devices are no 干员). */
-const isOp = (a) => !!a && a.kind === 'op' && a.alive && a.deployed && !a.hidden;
+const isOp = (a) => !!a && nativeOperator(a) && a.alive && a.deployed && !a.hidden;
 
 /** The tile of her flag: the one S2 / S3 threw it to while they run, else her own (she holds it). */
 function flagTile(unit) {
@@ -150,7 +152,7 @@ function s3Tile(battle, unit, grid) {
   for (const k of keys) {
     const r = (k / COLS) | 0, c = k % COLS;
     if (!ground(r, c) || battle.unitAt(r, c)) continue;
-    const d = Math.hypot(c - top.x, r - top.y);
+    const d = hypot(c - top.x, r - top.y);
     if (d < bd - 1e-9) { bd = d; best = [r, c]; }
   }
   return best ?? [unit.tileR, unit.tileC];
@@ -299,7 +301,7 @@ export default {
           if (!(cut > 0) && !(bonus > 0)) return;
           const cuts = new Map();
           let pending = false, bonusReady = false;
-          const mine = (a) => !!a && a.kind === 'op' && a !== unit && a.ownerId === unit.ownerId;
+          const mine = (a) => !!a && nativeOperator(a) && a !== unit && a.ownerId === unit.ownerId;
           const waiting = (a) => mine(a) && !a.alive && !a.removed;
           const applyCut = (a) => {
             if (!(cut > 0) || cuts.has(a)) return;

@@ -24,7 +24,7 @@ const WTRMAN = 'token_10030_mlyss_wtrman';
 
 test('resolveLoadout: legal choices resolve, anything else falls back to the default', { skip }, () => {
   const n = C[INSIDE];
-  assert.deepEqual(resolveLoadout(n, null), { skillIndex: 1, moduleId: null, skillIsDefault: true, moduleIsDefault: true, isDefault: true });
+  assert.deepEqual(resolveLoadout(n, null), { skillIndex: 1, moduleId: null, potential: 6, skillIsDefault: true, moduleIsDefault: true, potentialIsDefault: true, isDefault: true });
   assert.equal(resolveLoadout(n, { skillIndex: 0 }).skillIndex, 0);
   assert.equal(resolveLoadout(n, { skill: 0 }).skillIndex, 0, 'client shape { skill, module } accepted');
   assert.equal(resolveLoadout(n, { skillIndex: 2 }).skillIndex, 1, 'S3 is not unlocked at E1 → default');
@@ -80,7 +80,7 @@ test('getChess(id, loadout): selected skill (bb, SP, trigger) and module (stats,
   assert.equal(s1.skill.id, 'skchr_inside_1');
   assert.deepEqual(s1.skill.bb, C[INSIDE].skills[0].bb);
   assert.equal(s1.skill.spCost, C[INSIDE].skills[0].spCost);
-  assert.deepEqual(s1.loadout, { skillIndex: 0, moduleId: null, skillIsDefault: false, moduleIsDefault: true, isDefault: false });
+  assert.deepEqual(s1.loadout, { skillIndex: 0, moduleId: null, potential: 6, skillIsDefault: false, moduleIsDefault: true, potentialIsDefault: true, isDefault: false });
   assert.deepEqual(s1.stats, def0.stats, 'a skill choice never changes stats');
   assert.ok(Object.isFrozen(s1) && Object.isFrozen(s1.skill.bb), 'variant defs are frozen like every def');
   assert.equal(C[INSIDE].skill.skillId, 'skchr_inside_2', 'the raw record is never mutated');
@@ -295,8 +295,8 @@ test('harness battle with injected kits: non-default skill via the view uses the
 
 test('tools/kit-coverage: every visible chess and each selectable skill, defaults hand-authored', { skip }, () => {
   const rep = kitCoverage();
-  assert.equal(rep.summary.chess, 118);
-  assert.equal(rep.chess.length, 118);
+  assert.equal(rep.summary.chess, 126);
+  assert.equal(rep.chess.length, 126);
   for (const r of rep.chess) {
     const ch = loadoutOptions(C[r.chessId], C[C[r.chessId].goldenId]);
     assert.deepEqual(r.skills.map((s) => s.index), ch.skills, `${r.chessId}: selectable skills listed`);

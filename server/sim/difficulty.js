@@ -1,6 +1,7 @@
 // Custom ascension rules. Uses the same hooks, buffs and game clock in server and browser battles.
 import { DIFFICULTY_RULES } from '../../shared/difficulty.js';
 import { RESIST_STATUSES } from './buffs.js';
+import { hypot } from './detmath.js';
 
 const P = Object.fromEntries(DIFFICULTY_RULES.map(r => [r.key, r.params]));
 const leader = e => e.isBoss || e.bossPool || e.def.rank === 'BOSS';
@@ -39,7 +40,7 @@ export function guardDifficultyDamage(b, source, target, amount, dmg) {
   if (rules.escort && ['phys', 'arts', 'true'].includes(dmg.type)
       && b.enemiesInRadius(target.x, target.y, P.escort.radius, true).some(e => e !== target && liveEnemy(e))) amount *= P.escort.taken;
   if (rules.longshot && source?.side === 'ally' && !dmg.sourceless && ['phys', 'arts'].includes(dmg.type)
-      && Math.hypot(source.x - target.x, source.y - target.y) > P.longshot.distance) amount *= P.longshot.taken;
+      && hypot(source.x - target.x, source.y - target.y) > P.longshot.distance) amount *= P.longshot.taken;
   return amount;
 }
 

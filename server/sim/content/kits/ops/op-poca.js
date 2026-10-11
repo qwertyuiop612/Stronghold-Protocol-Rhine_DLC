@@ -1,3 +1,4 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/op-poca.js — 早露 (char_197_poca) 自选 operator kit: 6★ 攻城手 (狙击), an owned-6★ pick of the
 // tier-5 and tier-6 自选 slots; every skill, both talents, the trait and both modules at every form.
 // Kit contract and the 自选 rules: ../README.md ("How to add an operator (自选)").
@@ -36,6 +37,7 @@
 
 import { num, talentBb, moduleBb, moduleOn, traitBb, skillRec, statBuff, onHitBy, enemiesInGrid, up } from '../shared/tier1.js';
 import { hasHp } from '../../../damage.js';
+import { hypot } from '../../../detmath.js';
 
 const S1 = 'skcom_atk_up[3]';
 const S2 = 'skchr_poca_2';
@@ -50,7 +52,7 @@ const DRIVE_KEY = 'talent:poca:studentSkills';
 
 const bbOf = (chess, id) => skillRec(chess, id)?.bb ?? {};
 const count = (v, d) => Math.max(1, Math.floor(num(v, d)));
-const isStudent = (a) => !!a && a.kind === 'op' && STUDENTS.has(a.def?.charId);
+const isStudent = (a) => !!a && nativeOperator(a) && STUDENTS.has(a.def?.charId);
 /** A running skill of `a` (a passive is no 技能期间). */
 const inSkill = (a) => !!(a.skill && a.skill.active && a.skill.kind !== 'passive');
 
@@ -161,7 +163,7 @@ export default {
         if (ds > 0) {
           onHitBy(battle, unit, ({ target, dmg }) => {
             if (!dmg.isAttack) return;
-            const d = Math.hypot(target.x - unit.x, target.y - unit.y);
+            const d = hypot(target.x - unit.x, target.y - unit.y);
             dmg.mul *= 1 + ds * Math.max(0, Math.min(1, (d - lo) / Math.max(1e-6, hi - lo)));
           });
         }

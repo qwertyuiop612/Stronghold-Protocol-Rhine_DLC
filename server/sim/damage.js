@@ -53,6 +53,7 @@
 import { MIN_DAMAGE_RATIO, ELEMENT, ELEMENT_ORDER, PALSY_MAX } from './constants.js';
 import { BOSS_HIT_LIMIT } from '../../shared/constants.js';
 import { evadesGround } from './targeting.js';
+import { kazdelCannonOwner } from './kazdelOrigin.js';
 import { guardDifficultyDamage } from './difficulty.js';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -86,6 +87,7 @@ export function makeDamageInfo(d = {}) {
     isAttack: !!d.isAttack,
     isProjectile: !!d.isProjectile,
     tags: d.tags ?? [],
+    kazdelCannonOwnerId: d.kazdelCannonOwnerId ?? null,
     cancel: false,
     noSp: !!d.noSp,
     ignoreSleep: !!d.ignoreSleep,
@@ -121,6 +123,48 @@ export function periodicDamage(amount) {
  */
 export function isHpLoss(dmg) {
   return !!dmg && Array.isArray(dmg.tags) && dmg.tags.includes('hpLoss');
+}
+
+/**
+ * Record one redirect ratio of the pre-redirect hit and leave the victim the rest.
+ * Each recorded ratio is a share of that hit; the victim keeps `1 − sum`. Two redirects therefore
+ * add up with the part the victim still takes. [ASSUMED] 浊心斯卡蒂 S1 and 坚守 do not say how they
+ * combine; multiplying the two remainders drops the product of the ratios. A sum of 1 or more leaves
+ * the victim with none of this hit (the same loss a single 100 % redirect already has, because the
+ * HP that arrives is 0 and no share is dealt).
+ * @param {object} dmg normalised DamageInfo
+ * @param {number} ratio
+ */
+export function applyRedirectCut(dmg, ratio) {
+  const r = ratio < 0 ? 0 : ratio > 1 ? 1 : Number(ratio) || 0;
+  if (!(r > 0) || !dmg) return 0;
+  const prev = Array.isArray(dmg.redirectCuts) ? dmg.redirectCuts : (dmg.redirectCuts = []);
+  let prevSum = 0;
+  for (const x of prev) prevSum += x;
+  const prevKeep = prevSum >= 1 ? 0 : 1 - prevSum;
+  prev.push(r);
+  const nextSum = prevSum + r;
+  const nextKeep = nextSum >= 1 ? 0 : 1 - nextSum;
+  if (prevKeep > 1e-12) dmg.mul *= nextKeep / prevKeep;
+  else dmg.mul *= 0;
+  return r;
+}
+
+/**
+ * This redirect's share of the HP that reached the victim, taken from the pre-redirect amount.
+ * @param {number} amount HP removed from the victim after every redirect cut
+ * @param {number} own this redirect's ratio
+ * @param {number[]|undefined} cuts every ratio recorded on the hit
+ */
+export function redirectShare(amount, own, cuts) {
+  const list = Array.isArray(cuts) ? cuts : [];
+  let sum = 0;
+  for (const x of list) sum += x;
+  const o = own > 0 ? own : 0;
+  if (!(amount > 0) || !(o > 0) || !(sum > 0)) return 0;
+  const keep = 1 - sum;
+  if (keep > 1e-12) return amount / keep * o;
+  return amount * (o / sum);
 }
 
 /** 沉睡 (ba.sleep "无敌且无法行动"): only attackers whose profile has `hitSleep` (or `ignoreSleep` damage) reach a sleeper. */
@@ -225,9 +269,18 @@ export function absorbShields(battle, target, amount, type = null) {
 /**
  * Full damage pipeline. Returns the HP actually removed (0 when dodged/cancelled/absorbed).
  */
+export function kazdelCannonImmune(battle, source, target, dmg) {
+  const cannon = source?.kazdelCannon || dmg?.tags?.includes('kazdelCannon') || battle._kazdelCannonDamageDepth > 0;
+  if (!cannon) return false;
+  const ownerId = kazdelCannonOwner(battle, source, dmg);
+  // Missing provenance must never turn a cannon derivative into team-wide friendly fire.
+  return !!target?.kazdelSoul || (target?.side === 'ally' && (ownerId == null || target.ownerId !== ownerId));
+}
+
 export function dealDamage(battle, source, target, dmgIn) {
   if (!target || !target.alive || target.removed || target.hidden || !target.deployed) return 0;
   const dmg = dmgIn && dmgIn._norm ? dmgIn : makeDamageInfo(dmgIn);
+  if (kazdelCannonImmune(battle, source, target, dmg)) return 0;
   if (battle.combatSpeedMode === 'power' && dmg.isAttack && battle.attackPowerMultiplier > 1) {
     dmg.amount *= battle.attackPowerMultiplier;
   }
@@ -296,6 +349,7 @@ export function dealDamage(battle, source, target, dmgIn) {
  */
 export function applyHpLoss(battle, source, target, amount, dmg) {
   if (!target.alive) return 0;
+  if (kazdelCannonImmune(battle, source, target, dmg)) return 0;
   let dealt = 0;
   const hs = dmg && dmg.sourceless ? null : source; // the source hooks see (无来源: none; `credit` keeps it)
   if (target.bossPool) {
@@ -340,7 +394,7 @@ export function applyHpLoss(battle, source, target, amount, dmg) {
   if (battle._hooks.damaged) battle.emit('damaged', { source: hs, target, amount, type: dmg ? dmg.type : 'true', dmg, credit: source });
   if (target.side === 'ally' && target.skill && dmg && !dmg.noSp && dmg.type !== 'element') battle._skills.onDamaged(target);
   const dead = target.bossPool ? target.bossPool.hp <= 0 : target.hp <= 0;
-  if (dead && target.alive) battle.kill(target, source);
+  if (dead && target.alive) battle.kill(target, source, dmg);
   return dealt;
 }
 
@@ -402,6 +456,7 @@ export function elementIntake(target) {
 
 /** Element gauge accumulation + burst. Fires `elementHit` { source, target, dmg } first (mutable amount/mul, cancel). */
 export function applyElement(battle, source, target, dmg) {
+  if (kazdelCannonImmune(battle, source, target, dmg)) return 0;
   const el = dmg.element;
   if (!el || !(el in target.elem)) return 0;
   if (!hasHp(target)) return 0; // a killing blow's rider: the target is dead, nothing fills or bursts (header)
@@ -533,8 +588,22 @@ export function reduceElement(target, amount, el = null) {
 
 /** Shared recipient rule for healing selectors and the final pipeline. Operator-owned healing
  * summons are operator healing too; independent research devices retain their own source. */
+export function soulOrigin(unit) {
+  if (!unit?.kazdelSoul && !unit?.ownerUnit) return null;
+  const seen = new Set();
+  for (let u = unit; u && !seen.has(u); u = u.ownerUnit) {
+    if (u.kazdelSoul) return u;
+    seen.add(u);
+  }
+  return null;
+}
 export function canReceiveHeal(source, target, opts = {}) {
   if (!target) return false;
+  // Souls form their own healing group. Tinman's S2 is the sole explicit living-source exception.
+  const sourceSoul = soulOrigin(source), targetSoul = soulOrigin(target);
+  if (targetSoul && !sourceSoul && !opts.tags?.includes('kazdelSoulHeal')) return false;
+  if (targetSoul && opts.regen && !opts.self && !opts.tags?.includes('kazdelSoulHeal')) return false;
+  if (sourceSoul && !targetSoul) return false;
   if (target.s.flags.noOperatorHeal && source !== target) {
     const seen = new Set();
     for (let origin = source; origin && !seen.has(origin); origin = origin.ownerUnit) {

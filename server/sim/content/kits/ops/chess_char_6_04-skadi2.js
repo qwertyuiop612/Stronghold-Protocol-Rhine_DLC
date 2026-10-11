@@ -1,7 +1,9 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/chess_char_6_04-skadi2.js — 浊心斯卡蒂 (char_1012_skadi2) kit, tier 6.
 // Conventions of the tier-6 kits: ../shared/tier6.js; kit contract and rules: ../README.md.
 
 import { aggregateMods } from '../../../buffs.js';
+import { applyRedirectCut, redirectShare } from '../../../damage.js';
 import { COLS } from '../../../constants.js';
 import { bardRegen } from '../../../professions.js';
 import { startCountdown } from '../../tokens.js';
@@ -82,7 +84,7 @@ function skadi2(bb, chess, def) {
         if (unit.skill) unit.skill.addTriggerRange(() => seaborns(battle, unit));
         let n = 0;
         battle.every(0.5, () => {
-          if (!unit.canAct) return;
+          if (!live(unit)) return; // the continuous trait (including its skill conversion) survives stun
           for (let i = unit.buffs.length - 1; i >= 0; i--) if (isInspire(unit.buffs[i])) battle.removeBuff(unit, unit.buffs[i]);
           n++;
           const toks = seaborns(battle, unit);
@@ -123,12 +125,15 @@ function skadi2(bb, chess, def) {
           if (!(share > 0) || !t || t === unit || t.side !== 'ally' || t.kind === 'device' || !live(unit) || !unit.skill?.active) return;
           if (d.type === 'element' || d.type === 'elemental' || d.skadiShare || d.tags?.includes('transfer') || !inCover(battle, unit, t)) return;
           d.skadiShare = { share, tag: TAG }; // 同类效果取最高: one transfer per damage instance
-          d.mul *= 1 - share;
+          applyRedirectCut(d, share); // her share of the pre-redirect hit; the victim keeps the rest
         }, { owner: unit, priority: -20 });
         battle.on('damaged', (ctx) => {
           const x = ctx.dmg?.skadiShare;
           if (!x || x.tag !== TAG || !(ctx.amount > 0) || !live(unit)) return;
-          battle.dealDamage(ctx.source, unit, { amount: ctx.amount * x.share / Math.max(1e-6, 1 - x.share), type: 'true', canDodge: false, tags: ['transfer'] });
+          // Keep the earlier 坚守 redirect's marker. Rebuilding damage without it lets the same two effects bounce
+          // the hit forever; each existing sharing effect still gets its first application along this path.
+          battle.dealDamage(ctx.source, unit, { amount: redirectShare(ctx.amount, x.share, ctx.dmg.redirectCuts), type: 'true', canDodge: false,
+            tags: ['transfer', ...(ctx.dmg.tags?.includes('bond:stead:share') ? ['bond:stead:share'] : [])] });
         }, { owner: unit });
       }
       // module 新生代: "自身技能期间，攻击范围内的友军获得30点物理与法术伤害减免" (flat reduction per hit)
@@ -173,16 +178,16 @@ function skadi2(bb, chess, def) {
         const mCnt = num(mod.cnt, Infinity), mAtk = num(mod.atk);
         aura(battle, unit, 0.5, () => {
           const toks = seaborns(battle, unit);
-          const ops = covered(battle, unit, toks).filter((a) => a !== unit && a.kind === 'op');
+          const ops = covered(battle, unit, toks).filter((a) => a !== unit && nativeOperator(a));
           const val = ops.some((a) => ABYSSAL.has(a.def?.charId)) ? a2 : ops.length ? a1 : 0;
-          const own = battle.alliesInGrid(unit).filter((a) => a !== unit && a.kind === 'op').length;
+          const own = battle.alliesInGrid(unit).filter((a) => a !== unit && nativeOperator(a)).length;
           const total = val + (own >= mCnt ? mAtk : 0);
           const dPct = ops.length ? d1 : 0;
           if (total > 0 || dPct > 0) battle.addBuff(unit, { key: 'skadi2:predator', mods: { atkPct: total, defPct: dPct }, duration: 0.75, refresh: 'replace' });
         });
         // "我方干员部署于自身或海嗣范围内后，自身立刻获得3点技力"
         if (sp > 0) battle.on('deploy', ({ unit: u }) => {
-          if (!u || u === unit || u.kind !== 'op' || u.side !== 'ally' || !live(unit) || !unit.skill) return;
+          if (!u || u === unit || !nativeOperator(u) || u.side !== 'ally' || !live(unit) || !unit.skill) return;
           if (inCover(battle, unit, u)) unit.skill.gainSp(sp, 'talent');
         }, { owner: unit });
       } },

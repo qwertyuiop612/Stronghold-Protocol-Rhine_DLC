@@ -1,10 +1,10 @@
 {
   "name": "stronghold-protocol-rhine-dlc",
-  "version": "0.2.1-test",
+  "version": "0.2.4",
   "private": true,
-  "description": "Stronghold-Protocol-Rhine_DLC：基于 Stronghold Protocol v0.2.1 fork 的 Rhine 盟约与 DLC 扩展版",
+  "description": "明日方舟「卫戍协议：盟约」非官方同人联机网页复刻（1–4 人合作，Node.js 服务器 + 浏览器客户端）",
   "license": "GPL-3.0-or-later",
-  "homepage": "https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC#readme",
+  "homepage": "https://github.com/sganggs/Stronghold-Protocol#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC.git"
@@ -38,6 +38,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --checkJs -p jsconfig.json",
     "check:imports": "node tools/check-imports.mjs",
+    "ci": "node tools/ci.mjs",
     "package": "node tools/package.mjs",
     "package:lite": "node tools/package.mjs --lite"
   },

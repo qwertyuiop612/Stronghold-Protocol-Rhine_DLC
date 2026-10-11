@@ -15,7 +15,8 @@ test('revival restores a DIY operator from the player stock without touching the
   const slot = 'chess_char_5_diy1_a';
   const diy = { [slot]: { charId: 'char_112_siege', skillIndex: 2, uniEquipId: 'uniequip_002_siege' } };
   const seats = [0, 1].map((seat) => ({ seat, playerId: 'p_' + seat, name: 'P' + seat, isBot: false, connected: true, diy }));
-  const h = setup({ seats, seed: 11 });
+  // seed 1: the 0.2.2 DIY stock record makes this slot available with 8 copies (seed 11 no longer lists it)
+  const h = setup({ seats, seed: 1 });
   try {
     const owner = h.ps('p_0'), target = h.ps('p_1');
     grantRelic(owner, ID);
@@ -169,7 +170,10 @@ test('时光之末：并列最高选择单个盟约，空池仍直接发四名�
     }
     assert.equal(h.m.handle(owner.playerId, request()).ok, true);
     assert.equal(target.round.gainedChess, 4);
-    assert.ok(target.allChess().every((p) => p.poolCopies === 0));
+    // 0.2.4 的领取允许透支池容量（take(..., { overdraw: true })）：池空时仍发满四名，但副本继续占用库存，
+    // 于是 left 变负而 poolCopies > 0（HEAD 的旧实现是夹在 0 → 发到 poolCopies 0 的“不占池”副本）。
+    assert.ok(h.m.pool.entries.get(expected.ids[0]).left < 0, 'overdrawn pool');
+    assert.ok(target.allChess().every((p) => p.poolCopies > 0));
   } finally { h.m.dispose(); }
   const fresh = setup();
   try { assert.deepEqual(fresh.ps('p_0').relics, []); assert.deepEqual(fresh.ps('p_0').relicChessQueue, []); }

@@ -1,6 +1,6 @@
 // Room screen (同盟等待室): MAX_SEATS seat cards (avatar frame, name, ready state, AI badge, host crown),
-// host controls (difficulty picker, add/remove AI in co-op, start), invite code with copy code /
-// copy link, ready toggle and leave.
+// host controls (difficulty picker, add/remove AI and the 「AI 队友最后选择」 switch in co-op, start), invite code with
+// copy code / copy link, ready toggle and leave.
 //
 // Start rule (server/lobby.js): room.start needs every *other* human connected and ready; the
 // host's start counts as the host's ready. So 开始模拟 is enabled exactly then and sends room.start
@@ -19,6 +19,8 @@ import {
 import { toast, toastError } from '../ui/toasts.js';
 import { copyText } from '../ui/clipboard.js';
 import { GuideButton } from '../ui/guide.js';
+import { openStats } from './stats.js';
+import { SettingsButton } from '../ui/settings.js';
 import { LoadoutButton } from './loadout.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
@@ -72,6 +74,19 @@ export function roomFacts(room, myId) {
     spectators: Array.isArray(room?.spectators) ? room.spectators.filter((s) => s && typeof s === 'object') : [],
     spectating: isSpectating(room, myId),
   };
+}
+
+/**
+ * The co-op room option 「AI 队友最后选择」 (GitHub #338; room.setAiPicksLast, room.state.aiPicksLast): in the strategy and
+ * 机变 drafts every human picks before the AI teammates. null in a solo room (no AI teammates); otherwise its state (off
+ * when the server sends none) and whether this player may switch it — the host only, the others see it read-only.
+ * @param {any} room room.state payload
+ * @param {any} myId
+ * @returns {{ on: boolean, editable: boolean } | null}
+ */
+export function aiLastOption(room, myId) {
+  if (!room || room.mode === 'solo') return null;
+  return { on: room.aiPicksLast === true, editable: room.hostId != null && room.hostId === myId };
 }
 
 /** Invite link for a room code (current page URL with ?room=CODE). */
@@ -199,20 +214,35 @@ export function RhineToggle({ room, isHost, busy = false, online = true, onPick 
   const enabled = room?.rhineEnabled !== false;
   const disabled = !isHost || !!busy || !online || !!room?.inMatch || (!!room?.phase && room.phase !== PHASE.LOBBY);
   return html`<div class="rhine-setting" data-testid="rhine-toggle">
-    <span class="rhine-setting__label">${t('莱茵生命扩展')}</span>
-    <div class="rhine-setting__choices" role="group" aria-label=${t('莱茵生命扩展')}>
+    <span class="rhine-setting__label">${t('莱茵／卡兹戴尔扩展')}</span>
+    <div class="rhine-setting__choices" role="group" aria-label=${t('莱茵／卡兹戴尔扩展')}>
       ${[[true, N_('开启')], [false, N_('原版')]].map(([value, label]) => html`<button key=${label} type="button"
         class=${`rhine-setting__option${enabled === value ? ' is-active' : ''}`} disabled=${disabled}
         data-testid=${value ? 'rhine-enabled' : 'rhine-vanilla'} aria-pressed=${enabled === value ? 'true' : 'false'}
         onClick=${() => !disabled && enabled !== value && onPick(value)}>${t(label)}</button>`)}
     </div>
-    <span class="rhine-setting__desc">${enabled ? t('科研装置 · 扩展干员 · 莱茵装备') : t('官方原版干员与规则')}${isHost ? '' : t(' · 由房主选择')}</span>
+    <span class="rhine-setting__desc">${enabled ? t('莱茵科研装置与装备 · 卡兹戴尔众魂与战争巨炮') : t('官方原版干员与规则')}${isHost ? '' : t(' · 由房主选择')}</span>
   </div>`;
 }
 
 export function roomProfileReady(room, ui, cache = data) {
   return !!ui?.dataReady && ui.dataProfile === dataProfileId(room?.rhineEnabled)
     && ui.dataGeneration === cache.generation && ui.dataProfile === cache.profileId;
+}
+
+/** The 「AI 队友最后选择」 switch (co-op): the host toggles it, everybody else sees its state. */
+function AiLastToggle({ option, busy, onToggle }) {
+  if (!option) return null;
+  return html`<div class="ailast">
+    <${Tooltip} text=${t('策略与机变轮选时，所有博士先于 AI 队友选择')}>
+      <button type="button" role="switch" aria-checked=${option.on ? 'true' : 'false'}
+          class=${`dpick__opt ailast__opt${option.on ? ' is-active' : ''}`} disabled=${!option.editable || !!busy}
+          onClick=${() => option.editable && onToggle(!option.on)}>
+        <${Icon} name="check" class=${option.on ? 'is-on' : ''} />${t('AI 队友最后选择')}
+      </button>
+    <//>
+    ${option.editable ? null : html`<span class="t-dim">${t('由创建者设置')}</span>`}
+  </div>`;
 }
 
 /** Room screen component. */
@@ -263,6 +293,7 @@ export function RoomScreen() {
     if (ok) run(`kick${seat}`, () => net.request('room.kick', { seat, playerId }));
   };
   const setRhine = (enabled) => run('rhine', () => net.request('room.setRhine', { enabled }));
+  const setAiLast = (on) => run('ailast', () => net.request('room.setAiPicksLast', { on }));
   const setCombatSpeed = (speed, durationMultiplier = room.combatDurationMultiplier) => run('speed', () => net.request('room.setCombatSpeed', {
     speed, durationMultiplier, mode: settingsStore.get().combatSpeedMode,
   }));
@@ -318,6 +349,8 @@ export function RoomScreen() {
           <${PingPill} ms=${conn.ping} online=${online} />
           <${MicroLabel}>${t('当前延迟')}<//>
         </div>
+        <${Button} variant="secondary" size="sm" icon="chart" class="stats-entry" onClick=${openStats} title=${t('统计数据')} aria-label=${t('统计数据')}>${t('统计')}<//>
+        <${SettingsButton} class="room-settings" variant="secondary" label=${t('设置')} />
         <${GuideButton} class="room-guide" variant="secondary" label=${t('玩法说明')} />
       </div>
       <div class="topbar__center">
@@ -357,8 +390,9 @@ export function RoomScreen() {
     <footer class="room-bar">
       <div class="room-bar__left">
         <span class="room-bar__label">${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></span>
-        <div class="room-bar__difficulty">
+        <div class="room-bar__opts">
           <${DifficultyPicker} room=${room} isHost=${facts.isHost} busy=${busy} onPick=${setDifficulty} />
+          <${AiLastToggle} option=${aiLastOption(room, me.playerId)} busy=${busy} onToggle=${setAiLast} />
           ${coop ? html`<span class="room-bar__bans">${info.openingBanNote}<span class="t-dim"> · ${t('{n} 人（含 AI）', { n: facts.occupied.length })}</span></span>` : null}
         </div>
       </div>

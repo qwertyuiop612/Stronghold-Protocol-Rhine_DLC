@@ -53,10 +53,10 @@ test('the fork keeps its Rhine identity and the official base-game name Strongho
   // EN client data, activity_table basicInfo.act2autochess.name = "Stronghold Protocol: Alliance" (CN 卫戍协议:盟约);
   // the project used to call it "Covenant". The Chinese title stays 卫戍协议：盟约; the repository keeps its name.
   const readme = read('README.md');
-  assert.match(readme.split('\n')[0], /^# 卫戍协议：莱茵生命与 DLC 合并测试版 · Stronghold Protocol: Test$/, 'merged README title');
+  assert.match(readme.split('\n')[0], /^# Stronghold-Protocol-Rhine_DLC$/, 'merged README title');
   assert.match(readme, /mode \*Stronghold Protocol: Alliance\*/, 'README English summary');
   assert.match(read('server/http/boot.js'), /卫戍协议：盟约 · Stronghold Protocol: Alliance v/, 'boot banner');
-  assert.equal(pkg.name, 'stronghold-protocol-test', 'merged test package identity');
+  assert.equal(pkg.name, 'stronghold-protocol-rhine-dlc', 'merged test package identity');
   assert.equal(lock.name, pkg.name);
   assert.equal(lock.packages[''].name, pkg.name);
   for (const f of ['README.md', 'server/index.js', 'server/http/boot.js', 'package.json', 'package-lock.json', 'NOTICE.md', 'public/index.html', 'docs/DEPLOY.md']) {
@@ -70,7 +70,7 @@ test('GPL-3.0-or-later: LICENSE, package metadata and notices', () => {
   assert.match(license, /END OF TERMS AND CONDITIONS/);
   assert.equal(pkg.license, 'GPL-3.0-or-later');
   assert.equal(lock.packages[''].license, 'GPL-3.0-or-later');
-  assert.match(pkg.repository.url, /github\.com\/YUYUYUYUYUYUYUTOUA\/Stronghold-Protocol-Rhine/);
+  assert.match(pkg.repository.url, /github\.com\/qwertyuiop612\/Stronghold-Protocol-Rhine_DLC/);
   assert.match(read('README.md'), /github\.com\/sganggs\/Stronghold-Protocol/, 'retain upstream attribution');
   for (const f of ['NOTICE.md', 'THIRD-PARTY-NOTICES.md', 'tools/local-extract/LICENSE-Ark-Unpacker.txt']) {
     assert.ok(existsSync(join(ROOT, f)), f);

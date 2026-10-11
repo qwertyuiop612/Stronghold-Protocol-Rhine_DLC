@@ -6,6 +6,8 @@
 import { COLS } from '../constants.js';
 import { unitInfo } from '../snapshot.js';
 import { fin } from './util.js';
+import { kazdelCannonImmune } from '../damage.js';
+import { kazdelCannonOwner } from '../kazdelOrigin.js';
 
 export class BattleDeploy {
   /**
@@ -23,9 +25,12 @@ export class BattleDeploy {
     }
     const k = R0 * COLS + C0;
     const occ = this._occ[k];
-    if (occ && occ !== u && occ.alive && occ.deployed) { this.log(`tile ${R0},${C0} occupied; ${u} not deployed`); return false; }
+    const ownSoul = occ?.kazdelSoul && occ.ownerUnit === u;
+    if (occ && occ !== u && occ.alive && occ.deployed && !ownSoul) { this.log(`tile ${R0},${C0} occupied; ${u} not deployed`); return false; }
     // "倒地干员所在地块视为可部署，但所有我方单位在此处的部署行为将被阻止" (PRTS 卫戍协议/帮助 §作战阶段 单位部署)
-    if (this.downOn(R0, C0, u)) { this.log(`a knocked-out operator lies on ${R0},${C0}; ${u} not deployed`); return false; }
+    if (this.downOn(R0, C0, u.kazdelSoul ? u.ownerUnit : u)) { this.log(`a knocked-out operator lies on ${R0},${C0}; ${u} not deployed`); return false; }
+    // Only a successful return ends a soul: invalid tiles and unpaid DP must leave it fighting.
+    if (u.kind === 'op' && u.kazdelSoulUnit?.alive) this.retreat(u.kazdelSoulUnit, { reason: 'kazdelReturn', permanent: true });
     const first = u.deploySeq === 0;
     u.alive = true;
     u.deployed = true;
@@ -56,7 +61,11 @@ export class BattleDeploy {
     const sk = u.skill;
     // "自动操作具有3s冷却，在完成一次操作或作战开始时部署的单位将进入冷却" (PRTS 卫戍协议/帮助; skills.js)
     if (initial) sk.opReadyAt = this.time + this.flags.startOpCooldown;
-    if (keepSp && !sk.noSkill && sk.kind !== 'passive' && !sk.active) {
+    // keepSp (突袭 "保留技力"): the SP / charges before the jump — not for a skill that costs no SP (spCost 0, the
+    // deploy-timed skills), which reset() just re-armed as at every deployment: the retreat ended it, so its snapshot
+    // holds 0 charges, and writing that back took the charge 伊内丝 S3's deploy hook casts with (community report:
+    // 伊内丝激活突袭瞬移以后3技能被吞; those with activateOnDeploy run already, skipped by `!sk.active`)
+    if (keepSp && !sk.noSkill && sk.kind !== 'passive' && !sk.active && sk.spCost > 0) {
       sk.charges = Math.max(0, Math.min(sk.maxCharges, Math.floor(fin(keepSp.charges, 0))));
       sk.sp = Math.max(0, Math.min(sk.spCost, fin(keepSp.sp, 0)));
       if (sk.charges >= sk.maxCharges) sk.sp = sk.spCost;
@@ -71,10 +80,16 @@ export class BattleDeploy {
   }
 
   /** Mark `unit` dead (hp reached 0). Fires `kill` then `death`. */
-  kill(unit, killer = null) {
+  kill(unit, killer = null, dmg = null) {
     if (!unit || !unit.alive) return;
+    if (kazdelCannonImmune(this, killer, unit, dmg)) return;
     unit.hp = 0;
-    if (this._hooks.kill) this.emit('kill', { killer, victim: unit });
+    if (killer?.kazdelCannon || this._kazdelCannonDamageDepth > 0 || dmg?.tags?.includes('kazdelCannon')) {
+      const tags = [...(dmg?.tags ?? [])];
+      if (!tags.includes('kazdelCannon')) tags.push('kazdelCannon');
+      dmg = { ...dmg, tags, kazdelCannonOwnerId: kazdelCannonOwner(this, killer, dmg) };
+    }
+    if (this._hooks.kill) this.emit('kill', { killer, victim: unit, dmg });
     // a nested kill/retreat inside the handlers already removed it: a later handler's hp write must not stick
     if (!unit.alive) { if (!unit.bossPool) unit.hp = 0; return; }
     if (unit.hp > 0 && !unit.bossPool) { // revived by a kill handler (clamped: a handler may write any number)
@@ -82,7 +97,7 @@ export class BattleDeploy {
       return;
     }
     unit.hp = 0; // NaN / negative writes from handlers
-    this._remove(unit, 'killed', killer);
+    this._remove(unit, 'killed', killer, false, false, dmg);
   }
 
   /**
@@ -96,7 +111,8 @@ export class BattleDeploy {
     this._remove(unit, reason, null, permanent, dying);
   }
 
-  _remove(unit, reason, killer = null, permanent = false, dying = false) {
+  _remove(unit, reason, killer = null, permanent = false, dying = false, dmg = null) {
+    this._cutAttackStand(unit);
     unit.alive = false;
     unit.removeReason = reason;
     unit.deployed = false;
@@ -135,10 +151,16 @@ export class BattleDeploy {
       this._unblock(unit);
       this._enemiesDirty = true;
       if (reason === 'killed') {
+        const pp = this._pp(unit.ownerId);
         if (unit.counted) {
           this.killed++;
-          const pp = this._pp(unit.ownerId);
           if (pp) pp.killed++;
+        }
+        // the HUD capsule's numerator (DESIGN §14): only the enemies the stage itself scheduled (`inTotal`) — a split
+        // child / summon / part knocked down here is no 已解决 of the stage's own list and moves the capsule not at all
+        if (unit.inTotal) {
+          this.killedInTotal++;
+          if (pp) pp.killedInTotal++;
         }
         if (killer) killer.stats.kills++;
         if (unit.bounty && unit.bounty.coins > 0) this.addCoins(this._bountyPayee(unit, killer), unit.bounty.coins);
@@ -146,7 +168,7 @@ export class BattleDeploy {
     }
     // the reason ('killed' | 'retreat' | 'expired' | …) lets the client keep the knock-down sound for real knock-outs
     if (reason !== 'leak') this._ev(['die', unit.id, reason]);
-    if (this._hooks.death) this.emit('death', { unit, reason, killer, dying: !!dying });
+    if (this._hooks.death) this.emit('death', { unit, reason, killer, dying: !!dying, dmg });
     if (unit.removed) this._toRelease.push(unit);
   }
 
@@ -196,7 +218,7 @@ export class BattleDeploy {
     }
     const k = at ? at[0] * COLS + at[1] : unit.homeR * COLS + unit.homeC;
     const occ = this._occ[k];
-    if (occ && occ.alive && occ !== unit) return false;
+    if (occ && occ.alive && occ !== unit && !(occ.kazdelSoul && occ.ownerUnit === unit)) return false;
     if (at && this.downOn(at[0], at[1], unit)) return false;
     const ps = this.getPlayer(unit.ownerId);
     const cost = unit.base.cost;
@@ -228,7 +250,7 @@ export class BattleDeploy {
       if (!ps || ps.dp + 1e-9 < cost) continue;
       const [r, c] = this.restTile(u);
       const occ = this._occ[r * COLS + c];
-      if (occ && occ.alive && occ !== u) continue;
+      if (occ && occ.alive && occ !== u && !(occ.kazdelSoul && occ.ownerUnit === u)) continue;
       if (this.downOn(r, c, u)) continue;
       ps.dp = Math.max(0, ps.dp - cost);
       this._deploy(u, { initial: false, tile: r === u.homeR && c === u.homeC ? null : [r, c] });
@@ -252,5 +274,12 @@ export class BattleDeploy {
       if (e.counted || e.isBoss) pp.perfect = false;
     }
     if (e.counted) this.leakedCount++;
+    // the HUD capsule's leak counter (DESIGN §14): only the stage's own enemies (`inTotal`) — a leaked split child or
+    // summon still costs LP through `counted`/`leakedCount` and still breaks 完美作战, but it is no 漏掉 of the stage's
+    // own list, so the capsule's numerator does not move for it
+    if (e.inTotal) {
+      this.leakedInTotal++;
+      if (pp) pp.leakedInTotal++;
+    }
   }
 }

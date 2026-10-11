@@ -82,3 +82,11 @@ GPL-3.0-or-later); the English game texts (`data/i18n/en.json`) are official EN 
 - 对本扩展有权许可的原创绘制部分，包括新增的通用几何后备图形，可随本扩展按 GPL-3.0-or-later 使用；该许可不扩大到任何底层第三方内容、名称、标志或其他受保护元素，也不保证 AI 生成内容在所有法域均具备可主张的版权。
 
 本扩展继续保留非官方同人、素材权属及非商业使用的原项目说明。代码许可与第三方游戏内容的权利应分别理解；GPL 不授予官方游戏素材的再分发或商业利用权利。
+
+## 7. 卡兹戴尔扩展补充说明（2026-10-09）
+
+- 新增卡兹戴尔机制的源代码与原创文档沿用上述 GPL-3.0-or-later 及 Spine Runtimes 附加许可。
+- `tools/kazdel-data-source.json` 为固定版本官方角色、技能、模组与相关数据表的派生摘录，镜像版本与来源记录在文件内。这些游戏数据及随包下载的角色立绘、技能图标与 Spine 模型仍适用第2节的素材权属说明，不属于本项目可按 GPL 授权的原创代码。
+- `public/art/kazdel/bond.png` 是用户于 2026-10-10 明确提供并指定用于盟约图标替换的原始 PNG，项目保留原始字节、比例与透明度，来源及校验信息见 [`public/art/kazdel/README.md`](public/art/kazdel/README.md)。原作者、权利人及再分发许可未随文件提供；用户提供文件及项目收录不构成权属或许可的确认，该图像不属于项目代码的 GPL-3.0-or-later 授权范围。原先自行绘制的 `bond.svg` 已移除。
+
+- 2026-10-10 已批准的 `public/art/kazdel/sigil-v2.png`、`blade-v2.png` 与 `public/art/rhine/laser-v2.png`／`laser-unit-v2.png` 是内置 image_gen 使用实际装备图面参考重画的非官方扩展插画；原始生成 PNG 保存于对应 `source/v2/` 目录。游戏尺寸只裁近透明空边、等比缩放和留白，来源与提示见 [v2 记录](docs/kazdel-equipment-drill-art-v2.json)，继续适用第6节的 AI 图像及第三方内容权利边界，不标注为官方素材。

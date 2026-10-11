@@ -68,6 +68,24 @@ test('调和: +1 to core bonds with ≥ 1 real member on the board while active'
   assert.equal(s.yanShip.count, 2);
 });
 
+test('actual normal/elite 缪尔赛思 activates every available core bond at two real members; duplicates add only one', () => {
+  for (const id of gd.bondIds.filter(id => gd.bond(id).isCore && !gd.modeInactiveBonds.has(id))) {
+    const two = members(id, 2, c => !c.bonds.includes('maniShip'));
+    if (two.length < 2) continue; // 调和 itself, or a bond without enough non-harmony members
+    // 缪尔赛思 is a member of 莱茵/卡兹戴尔 itself, so there it counts as a third real member
+    const muMember = DATA.chess['chess_char_6_11_a'].bonds.includes(id);
+    const raw = two.length + (muMember ? 1 : 0);
+    for (const mu of ['chess_char_6_11_a', 'chess_char_6_11_b']) {
+      const s = computeBonds(gd, state({ board: [piece(mu), ...two.map(id => piece(id))] }));
+      assert.equal(s[id].count, raw + 1, `${id}: two operators plus ${mu}`); assert.ok(s[id].active);
+    }
+    const dup = computeBonds(gd, state({ board: [piece('chess_char_6_11_a'), piece('chess_char_6_11_b'), ...two.map(id => piece(id))] }));
+    assert.equal(dup[id].count, raw + 1, `${id}: duplicate harmony is not +2`);
+    const hand = computeBonds(gd, state({ board: two.map(id => piece(id)), hand: [piece('chess_char_6_11_a')] }));
+    assert.equal(hand[id].count, two.length, `${id}: harmony needs deployment`);
+  }
+});
+
 test('独行 (downward): active only while exactly 1 distinct 独行 operator is on the board', () => {
   const solo = members('soloShip', 2);
   assert.equal(tierFor(DATA.bonds.soloShip, 1), 1);

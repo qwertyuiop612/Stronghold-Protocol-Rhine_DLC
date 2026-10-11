@@ -254,23 +254,6 @@ const INSTALLERS = {
     });
   },
 
-  RHINE_DOROTHY_TRAP_RESEARCH(battle, list) {
-    const m = byUnit(list);
-    battle.on('trapTriggered', ({ token, owner, deploySeq }) => {
-      if (!token || token.ownerUnit !== owner || token.mem.dorothyTriggered !== deploySeq) return;
-      const arr = m.get(owner);
-      if (!arr) return;
-      for (const it of arr) {
-        const seen = it.traps ??= new WeakMap();
-        if (seen.get(token) === deploySeq) continue;
-        seen.set(token, deploySeq);
-        S.gainLayers(battle, { playerId: owner.ownerId, bonds: [it.bbStr.bond_id],
-          n: S.num(it.bb.layer), requireActive: true, source: owner, reason: 'garrison',
-          cap: S.num(it.bb.max_layer), capKey: it.capKey });
-      }
-    });
-  },
-
   act1autochess_gar_event_useskill(battle, list) {
     const m = byUnit(list);
     battle.on('skillStart', ({ unit }) => {
@@ -344,6 +327,13 @@ const INSTALLERS = {
     const m = byUnit(list);
     battle.on('deploy', ({ unit }) => {
       const arr = m.get(unit);
+      if (arr) for (const it of arr) fireGain(battle, it);
+    });
+    // Player-confirmed: 远牙's granted trait also gains on each body / substitute switch (DESIGN §28.5).
+    // Restrict this extra trigger to that trait; use its existing amounts, active-bond checks and battle cap.
+    const farTooth = byUnit(list.filter((it) => it.gid === 'garrison_108_a' || it.gid === 'garrison_108_b'));
+    if (farTooth.size) battle.on('dollSwap', ({ unit }) => {
+      const arr = farTooth.get(unit);
       if (arr) for (const it of arr) fireGain(battle, it);
     });
   },
@@ -430,7 +420,10 @@ function applyReader(battle, it) {
       else battle.removeBuff(u, key);
       break;
     case 'act1autochess_gar_eff_respawnTimeByBond':
-      if (k > 0) S.passiveBuff(battle, u, key, { redeployMul: Math.max(0.05, 1 + S.num(it.bb.respawn_time, 0) * k) });
+      // 耀骑士临光's 144: −1.5 % / −3 % per 3 卡西米尔 layers with no minimum in the blackboard (divide_num, respawn_time
+      // only) — clamped at 0 like every other redeploy multiplier, so a knock-out timer can reach 0 s (GitHub #370;
+      // until 0.2.1 a 0.05 floor kept it at 5 % of the base time from 192 layers, 96 for the elite)
+      if (k > 0) S.passiveBuff(battle, u, key, { redeployMul: Math.max(0, 1 + S.num(it.bb.respawn_time, 0) * k) });
       else battle.removeBuff(u, key);
       break;
     case 'act2autochess_gar_eff_attrByBond_add_onstart': {

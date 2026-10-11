@@ -1,3 +1,4 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/op-thumpy.js — 珊比 (char_4235_thumpy) 自选 operator kit: 6★ 本源铁卫 (重装), an owned-6★
 // pick of the tier-5 and tier-6 自选 slots; every skill, both talents, the trait and her module at every form.
 // Kit contract and the 自选 rules: ../README.md ("How to add an operator (自选)").
@@ -177,6 +178,8 @@ export default {
         },
         [S2]: {
           kind: 'duration',
+          // [ASSUMED] its glue / belt act on ground enemies only: 白铁's 铁钳号 alone does not open it (skills.js allyTargetsOk)
+          allyTargets: false,
           // the owner's rule for a skill whose area is larger than her range (her tile): cast as soon as a ground enemy she
           // can affect is on the glue's first five tiles — her tile, the front one, its two sides and the one beyond
           // (glueTiles' PRTS order), as 余 S2's x-1 (§22.10); the data's DEFAULT (重装 exception) only saw her own tile
@@ -200,6 +203,7 @@ export default {
         },
         [S3]: {
           kind: 'duration',
+          allyTargets: false,
           // likewise on the conveyor: her tile and the four ahead (the owner's larger-area rule; 余 S2 precedent)
           trigger: { rule: 'ACTIVE_RANGE', grid: [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]] },
           mods: nz({ atkPct: num(b3.atk), defPct: num(b3.def), blockCnt: num(b3.block_cnt) }),
@@ -287,7 +291,7 @@ export default {
         if (rider > 0) {
           battle.on('damaged', (c) => {
             const g = unit.mem.thumpyGlue, s = c.source, t = c.target;
-            if (!g || !up(unit) || !s || s === unit || s.side !== 'ally' || s.kind !== 'op' || c.type !== 'phys' || !(c.amount > 0)) return;
+            if (!g || !up(unit) || !s || s === unit || s.side !== 'ally' || !nativeOperator(s) || c.type !== 'phys' || !(c.amount > 0)) return;
             if (!t || t.side !== 'enemy' || t.isFlying || !hasHp(t) || !bodyInKeys(t, g.keys)) return;
             battle.dealDamage(unit, t, { type: 'element', element: 'erosion', amount: unit.s.atk * rider, tags: ['skill', 'thumpy:glue'] });
           }, { owner: unit });

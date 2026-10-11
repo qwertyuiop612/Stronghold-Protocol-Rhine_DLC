@@ -37,7 +37,8 @@
 //      tiles, where it blocks — except one whose trait reads 「可以放置于远程位」 (歌蕾蒂娅, 崖心, 见行者, any module:
 //      placeClass 'all', shared/highGround.js), which takes a 高台 whose range covers the enemy road, else the ground
 //      (owner 2026-10-04 for the 高台 preference, 2026-10-05 for who may use one). It stays a blocker in the lineup
-//      (basePositionClass). Each unit's range grid — the one it is
+//      (basePositionClass). A blocker whose range grid is its own tile only (range 0-1: 角峰, 古米, 泡泡, 折桠, 菲莱, 蛇屠箱,
+//      塞雷娅, 余) is planned on a free tile of the enemy road first: off it nothing is blocked or hit. Each unit's range grid — the one it is
 //      deployed with, rangeRec (loadoutRecord attackRangeGrid) — is rotated per direction (DESIGN §3; RIGHT is tried first
 //      and kept on ties, so symmetric ranges and melee units whose front adds nothing stay facing the gates), so
 //      ranged units turn toward the enemy path tiles they cover best and blockers toward the road; on 气流 tiles
@@ -231,7 +232,7 @@ export function bountyKillChance(m, ps, card) {
   // A drill is one locked target. Credit it conservatively only when this bounty is at least as tough as the wave.
   if (hp >= Math.max(...model.routes.map((r) => r.panelMaxHp || r.hp))) {
     const duration = route.tiles.length * tileTime + (held ? LAYOUT_PARAMS.hold : 0);
-    for (const u of units) if (u.laser) exp += rhineLaserExposure(u.vs, duration, hp);
+    for (const u of units) if (u.laser) exp += rhineLaserExposure(u.vs, duration, hp, u.rec._rhineLayers);
   }
   return 1 - Math.exp(-exp / (BOUNTY_KILL * hp));
 }
@@ -612,6 +613,11 @@ function buyScore(m, ps, id, ctx) {
   if (ctx.model && !isHealer(c)) s += ARMOR_WEIGHT * 0.6 * (armorFit(ctx.model, c) - 0.6);
   // the player's own 自选 piece (a slotted slot: its composed record carries diyFor) — AI 托管 of a human with picks
   if (c.diyFor) s += DIY_PIECE_BONUS;
+  // [ASSUMED] A soft 18-point cooperation weight (PR #407), not an official rule or a reserved card.
+  // Leave high-tier shared chess to living teammates whose opening strategy needs its faction.
+  // Humans and bots count equally; a single soft penalty still allows valuable own merges.
+  if (c.tier >= 5 && !c.isGolden && !c.diyFor && m.pool.has(base) && m.alivePlayers().some((mate) =>
+    mate !== ps && gd.bandBondIds(mate.bandId).some((b) => !gd.modeInactiveBonds.has(b) && c.bonds.includes(b)))) s -= 18;
   return s;
 }
 
@@ -858,20 +864,21 @@ export function rhineBotRecord(m, ps, piece) {
     rec.stats.bat = Math.max(RB.energyPulseInterval, RB.energyCharges / chargeRate);
   } else {
     rec.stats.atk = attack * RB.laserBaseScale; rec.stats.bat = 1; rec._rhineLaser = true;
+    rec._rhineLayers = Math.max(0, Number(ps.layers?.[RHINE_BOND]) || 0);
     rec.rangeGrid = [];
   }
   rec._botDpsId = `${piece.id}|${stage}|${rec.stats.atk}|${rec.stats.bat}`;
   return rec;
 }
 
-/** Integrated drill damage for one uninterrupted target, including its own field's post-ramp HP damage. */
-export function rhineLaserExposure(initialDps, seconds, maxHp = 0) {
+/** Integrated drill damage for one uninterrupted target, including current research and the full target's post-ramp HP damage. */
+export function rhineLaserExposure(initialDps, seconds, maxHp = 0, layers = 0) {
   const duration = Math.max(0, Number(seconds) || 0);
   const ramp = Math.min(duration, RB.laserRampSeconds);
   const after = Math.max(0, duration - RB.laserRampSeconds);
   const rampFactor = 0.5 * RB.laserRampPerSecond * ramp * ramp;
   return initialDps * (duration + rampFactor + after * RB.laserRampPerSecond * RB.laserRampSeconds)
-    + after * Math.max(0, maxHp) * RB.laserTrueHpRatio;
+    + after * Math.max(0, maxHp) * (RB.laserTrueHpRatio + Math.max(0, Number(layers) || 0) * RB.laserTrueHpRatioPerLayer);
 }
 
 /**
@@ -976,7 +983,7 @@ class Layout {
       }
       if (rt === laserTarget) {
         const duration = rt.tileTime * rt.tiles.length + (rt.dwell || 0);
-        for (const u of this.units) if (u.laser) exp += rhineLaserExposure(u.dps, duration, rt.laserMaxHp || rt.hp) / Math.max(1, rt.n);
+        for (const u of this.units) if (u.laser) exp += rhineLaserExposure(u.dps, duration, rt.laserMaxHp || rt.hp, u.rec._rhineLayers) / Math.max(1, rt.n);
       }
       total += rt.n * (1 - Math.exp(-exp / (p.kill * rt.hp)));
     }
@@ -1050,6 +1057,12 @@ export function* planLayoutSteps(m, ps, pieces, params = LAYOUT_PARAMS, { occupi
     const preferHigh = cls === 'all' && basePositionClass(r0) === 'melee';
     let bestHigh = null;
     let bestHighV = -Infinity;
+    // a blocker whose range is its own tile only (range 0-1: 角峰, 古米, 泡泡, 折桠, 菲莱, 蛇屠箱, 塞雷娅, 余) neither blocks nor
+    // hits anything off the enemy road — the official range "0-1" (excel range_table) is the one grid (0,0) — so a free road tile
+    // comes first (the kill estimate saturates in a full layout and then cannot tell the tiles apart)
+    const preferRoad = isBlocker(r0) && r0.rangeGrid?.length === 1 && r0.rangeGrid[0].every((v) => v === 0);
+    let bestRoad = null;
+    let bestRoadV = -Infinity;
     for (const [r, c] of legalTiles(map, cls)) {
       const k = tileKey(r, c);
       if (taken.has(k) || (within && !within.has(k)) || (without && without.has(k))) continue;
@@ -1065,13 +1078,15 @@ export function* planLayoutSteps(m, ps, pieces, params = LAYOUT_PARAMS, { occupi
         const v = layout.value() + noise;
         layout.units.pop();
         if (v > bestV) { bestV = v; best = [k, r, c, dir]; }
+        // (the best road tile by the same value)
+        if (preferRoad && model.ground.has(k) && v > bestRoadV) { bestRoadV = v; bestRoad = [k, r, c, dir]; }
         if (preferHigh && map.get(k) === 'ranged' && [...u.cover].some((ck) => model.ground.has(ck)) && v > bestHighV) {
           bestHighV = v;
           bestHigh = [k, r, c, dir];
         }
       }
     }
-    const pick = bestHigh || best;
+    const pick = bestHigh || bestRoad || best;
     if (!pick) continue;
     taken.add(pick[0]);
     layout.units.push(unitOf(r0, pick[0], pick[1], pick[2], pick[3], model));
@@ -1422,6 +1437,7 @@ export function botPrepBegin(m, ps) {
  */
 export function* botPrepBeginSteps(m, ps) {
   if (!ps.alive || ps.ready) return null;
+  m.autoPickPersonalChoice(ps, 'bot');
   // 1. reward offers (free)
   takeOffers(m, ps);
   yield;
@@ -1459,6 +1475,7 @@ export function* botPrepEndSteps(m, ps, job = null) {
   if (freeSlot(ps.hand) < 0) freeHandSlot(m, ps);
   // what the next prep's bench shed may judge by value: what is owned now (later gains wait for a placement step)
   rememberOwned(ps);
+  m.autoPickPersonalChoice(ps, 'bot');
   tryDo(() => ps.setReady(true));
 }
 
@@ -1914,8 +1931,8 @@ const isBountyArt = (gd, itemId) => { const rec = gd.item(itemId); return !!rec 
 
 /**
  * Use an Art: 画卷 copies the operator on its tile (its range is the tile + the one in front) — the most valuable
- * deployed operator, with a free hand slot for the copy; 教鞭 / “神秘顾客” add a bounty to the next battle (one the engine
- * draws, not chosen) — only after a perfect battle with LP to spare, else the Art stays in the hand for a later round
+ * deployed operator, with a free hand slot for the copy; 教鞭 offers a scored personal bounty choice, “神秘顾客” adds a
+ * random bounty — only after a perfect battle with LP to spare, else the Art stays in the hand for a later round
  * (destroying 教鞭 gives nothing; a full hand at the prep end: freeHandSlot).
  */
 function useArt(m, ps, item, ctx) {
@@ -1932,7 +1949,10 @@ function useArt(m, ps, item, ctx) {
   if (keys.includes('trap_create_self_choice')) {
     if (!lastPerfect(m, ps) || ps.lp < 10) return; // kept
     const [key] = [...ps.board.keys()];
-    if (key) { const [r, c] = parseKey(key); tryDo(() => ps.useArt(item.uid, r, c)); }
+    if (key) {
+      const [r, c] = parseKey(key);
+      if (tryDo(() => ps.useArt(item.uid, r, c))) m.autoPickPersonalChoice(ps, 'bot');
+    }
     return;
   }
   const [key] = [...ps.board.keys()];

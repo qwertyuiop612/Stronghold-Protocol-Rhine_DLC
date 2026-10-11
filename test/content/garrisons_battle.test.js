@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { getData } from '../../server/data.js';
+import { KAZDEL_GARRISON_KEYS } from '../../shared/kazdel.js';
 
 const D = getData({ log: { warn() {}, error() {}, info() {} } });
 const GR = (gid) => D.garrisons[gid];
@@ -465,6 +466,33 @@ test('ADD_BOND 耀骑士临光 145 / 160 (real chess): self + front get 144 (red
   }
 });
 
+test('respawnTimeByBond 144 has no 5% floor (#370): redeployMul is max(0, 1 + respawn_time * steps)', () => {
+  for (const [gid, rt] of [['garrison_144_a', -0.015], ['garrison_144_b', -0.03]]) {
+    assert.equal(GR(gid).bb.respawn_time, rt);
+    assert.deepEqual(Object.keys(GR(gid).bb).sort(), ['divide_num', 'respawn_time']);
+    // 96 / 192 layers: the old 0.05 floor bound the elite / the normal form (raw 0.04); 300: below zero
+    for (const layers of [9, 96, 192, 300]) {
+      const k = Math.floor(layers / 3);
+      const want = Math.max(0, 1 + rt * k);
+      const h = battle({
+        units: [{ id: 'op', g: [gid], row: 10, col: 4, o: { stats: { respawnTime: 100 } } }],
+        bonds: { kazimierzShip: B(layers) },
+      });
+      const u = h.unit('op');
+      approx(u.findBuff(`gar:${gid}`).mods.redeployMul, want, `${gid} @ ${layers}`);
+      h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
+      assert.equal(u.alive, false);
+      approx(u.respawnAt - u.deathAt, 100 * want, `${gid} timer @ ${layers}`);
+      if (want === 0) {
+        h.step(2);
+        assert.ok(u.alive && u.deployed, `${gid} @ ${layers}: a 0 s timer brings it straight back`);
+        assert.equal(h.b.errorCount, 0);
+      }
+    }
+    cover(gid);
+  }
+});
+
 // ---------------------------------------------------------------------------------------------------------------------
 // 魔王
 
@@ -704,18 +732,19 @@ test('Rhine Astgenne: first activation grants each active bond once, including a
   }
 });
 
-test('Rhine Dorothy: distinct physical activations use the owner cap and ignore repeated trap events', () => {
+test('Rhine Dorothy: retired trap events never award research; attack trait is dispatched by Rhine content', () => {
   for (const suffix of ['a', 'b']) {
-    const gid = `garrison_rhine_dorothy_${suffix}`, n = suffix === 'b' ? 4 : 2;
+    const gid = `garrison_rhine_dorothy_${suffix}`;
+    assert.equal(GR(gid).effectKey, 'RHINE_DOROTHY_ATTACK');
+    assert.equal(GR(gid).bb.atk_per_layer, suffix === 'b' ? 2 : 1);
     const h = battle({ units: [{ id: 'doro', g: [gid], row: 10, col: 4 }], bonds: { rhineShip: B() } });
     const owner = h.unit('doro'), token = { ownerUnit: owner, mem: {} };
     for (let seq = 1; seq <= 20; seq++) {
       token.mem.dorothyTriggered = seq;
       h.b.emit('trapTriggered', { owner, token, deploySeq: seq });
       h.b.emit('trapTriggered', { owner, token, deploySeq: seq });
-      assert.equal(gains(h).rhineShip, Math.min(seq * n, 12 * n));
     }
-    cover(gid);
+    assert.equal(gains(h).rhineShip ?? 0, 0); cover(gid);
   }
 });
 
@@ -723,7 +752,10 @@ test('coverage: every IN_BATTLE garrison id of a visible chess (and every id the
   // These traits are dispatched by content/rhine.js; their real normal / elite records and formulas are
   // covered in rhine.test.js alongside the devices they read, rather than the legacy garrison dispatcher.
   const rhine = /^garrison_rhine_(mayer|saria|ifrit)_[ab]$/;
-  const missing = [...VISIBLE_IDS].filter((g) => !COVER.has(g) && !rhine.test(g)).sort();
+  // Kazdel's actual normal/elite records, literal bonuses, death caps and soul rules are exercised by
+  // kazdel.test.js. They belong to content/kazdel.js rather than this legacy dispatcher.
+  const kazdel = new Set(Object.values(KAZDEL_GARRISON_KEYS));
+  const missing = [...VISIBLE_IDS].filter((g) => !COVER.has(g) && !rhine.test(g) && !kazdel.has(GR(g).effectKey)).sort();
   assert.deepEqual(missing, []);
   assert.ok(VISIBLE_IDS.size >= 100, `${VISIBLE_IDS.size} ids`);
 });

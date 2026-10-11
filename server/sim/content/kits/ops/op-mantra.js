@@ -1,3 +1,4 @@
+import { nativeOperator } from '../shared/nativeIdentity.js';
 // server/sim/content/kits/ops/op-mantra.js — 真言 (char_4204_mantra) 自选 operator kit: 6★ 本源术师 (术师), an owned-6★ pick of
 // the tier-5 and tier-6 自选 slots; every skill, both talents, the trait and the module (PRI-X) at every form.
 // Kit contract and the 自选 rules: ../README.md ("How to add an operator (自选)").
@@ -46,6 +47,7 @@ import { hasHp } from '../../../damage.js';
 import { canTargetEnemy, enemyStealthed } from '../../../targeting.js';
 import { bodyInKeys } from '../../../body.js';
 import { COLS, PALSY_MAX } from '../../../constants.js';
+import { hypot } from '../../../detmath.js';
 
 const S1 = 'skchr_mantra_1';
 const S2 = 'skchr_mantra_2';
@@ -91,7 +93,7 @@ function nearestFoe(battle, unit, x, y, r, skip) {
   let best = null, bd = Infinity;
   for (const e of battle.enemiesInRadius(x, y, r)) {
     if (skip.has(e) || !canTargetEnemy(unit, e, ANY)) continue;
-    const d = Math.hypot(e.x - x, e.y - y);
+    const d = hypot(e.x - x, e.y - y);
     if (d < bd - 1e-9 || (Math.abs(d - bd) <= 1e-9 && best && e.spawnSeq < best.spawnSeq)) { bd = d; best = e; }
   }
   return best;
@@ -307,7 +309,7 @@ export default {
         // 【麻痹付与】 when another operator on her range starts a skill
         battle.on('skillStart', (ctx) => {
           const u = ctx.unit;
-          if (u === unit || !u || u.kind !== 'op' || !s3On(unit) || !unit.rangeKeySet?.has(u.tileR * COLS + u.tileC)) return;
+          if (u === unit || !u || !nativeOperator(u) || !s3On(unit) || !unit.rangeKeySet?.has(u.tileR * COLS + u.tileC)) return;
           grant(battle, unit);
         }, { owner: unit });
       },

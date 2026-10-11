@@ -166,7 +166,14 @@ describe('Rhine grid ranges, charge gauge and pulse cues in Chromium', { skip: e
       assert.equal(area.persistent, true);
       assert.equal(area.pulse, 0, 'restoring the continuous slow does not replay a bind');
       assert.equal(area.stoppedField, false, 'inactive UnitInfo must not restore a stale field after reconnect');
-      await page.waitForFunction('window.__demo.view.debug.fx.tileFlashes.some(f => f.key === "rhineEcology:703" && f.t > 5)', { timeout: 10000 });
+      // Exercise six seconds of the real FX lifetime directly: headless frame rates must not determine expiry.
+      const retained = await page.evaluate(() => {
+        const fx = window.__demo.view.debug.fx;
+        for (let i = 0; i < 180; i++) fx._updateTileFlashes(1 / 30);
+        const field = fx.tileFlashes.find(f => f.key === 'rhineEcology:703');
+        return { alive: !!field, elapsed: field?.t, persistent: field?.dur === Infinity };
+      });
+      assert.equal(retained.alive, true); assert.ok(retained.elapsed > 5); assert.equal(retained.persistent, true);
       await page.screenshot({ path: path.join(OUT, 'rhine-ecology-reconnect.png') });
       await page.evaluate(() => window.__demo.view.debug.fx.simFx('rhineEcology', 5, 10, { source: 703, stage: 2, continuous: true, active: false }));
       await page.waitForFunction('window.__demo.view.debug.views.get(703).info.researchActive === false && !window.__demo.view.debug.fx.tileFlashes.some(f => f.key === "rhineEcology:703")');
@@ -176,21 +183,25 @@ describe('Rhine grid ranges, charge gauge and pulse cues in Chromium', { skip: e
     } finally { await page.close(); }
   });
 
-  test('laser card exposes the nine-member gate, one level, decoded local SVG and global selection cells', async () => {
+  test('laser card exposes the nine-member gate, one level, decoded local PNG and global attack without a local range overlay', async () => {
     const { page, problems } = await open('dev/game-mock.html?phase=PREP&variant=rhineRange&researchDevice=laser&rhineCount=9&board=2d&shot=1',
       'window.__SP_VIEW__?.raw?.debug?.views.get("p:902")?._pic?.shown === "img"');
     try {
       const card = await page.$eval('[data-research="laser"]', el => ({ text: el.innerText, progress: !!el.querySelector('.rhine-card__progress'), next: !!el.querySelector('.rhine-card__next'), image: el.querySelector('img').naturalWidth }));
       assert.match(card.text, /单级.*9莱茵生命/); assert.equal(card.progress, false); assert.equal(card.next, false); assert.ok(card.image > 0);
       const art = await page.evaluate(async () => {
-        const r = await fetch('/art/rhine/laser.svg');
+        const r = await fetch('/art/rhine/laser-unit-v2.png');
         return { ok: r.ok, type: r.headers.get('content-type'), lamps: window.__SP_VIEW__.raw.debug.views.get('p:902').researchActor.lights.length };
       });
-      assert.equal(art.ok, true); assert.match(art.type, /image\/svg\+xml/); assert.equal(art.lamps, 1);
+      assert.equal(art.ok, true); assert.match(art.type, /image\/png/); assert.equal(art.lamps, 1);
       const p = await page.evaluate(() => window.__SP_VIEW__.tileScreen(10, 6)); await page.mouse.click(p.x, p.y);
-      await page.waitForFunction('window.__SP_VIEW__.raw.debug.tiles.highlights.get("selRange")?.tiles.length === 44');
+      await page.waitForFunction(() => document.querySelector('.dpanel--token')?.textContent.includes('全场攻击')
+        && !window.__SP_VIEW__.raw.debug.tiles.highlights.has('selRange'));
+      const detail = await page.$eval('.dpanel--token', el => el.innerText);
+      assert.match(detail, /全场攻击/);
+      assert.match(detail, /完整共享最大生命值/);
       await page.waitForSelector('.pbanner--overlay', { hidden: true });
-      await page.screenshot({ path: path.join(OUT, 'rhine-laser-global-grid.png') });
+      await page.screenshot({ path: path.join(OUT, 'rhine-laser-global-attack.png') });
       await page.goto(`${EXTERNAL_BASE || `http://127.0.0.1:${srv.port}`}/dev/game-mock.html?phase=PREP&variant=rhine&rhineCount=6&board=2d&shot=1`);
       await page.waitForSelector('[data-research="laser"].is-locked');
       const locked = await page.$eval('[data-research="laser"]', el => ({ text: el.innerText, disabled: el.querySelector('.rhine-card__select').disabled }));
