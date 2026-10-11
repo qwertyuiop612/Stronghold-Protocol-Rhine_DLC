@@ -28,7 +28,7 @@
 - 魂灵完整继承本体所选原生技能、全部原生天赋和模组行为，独立技力、弹药及召唤物；不继承装备触发或活体产层特质。舍身刻印、众魂战刃及同构装备组合见[卡兹戴尔说明](docs/KAZDEL.md)。采用批准的装备／钻机v2图片与用户原徽记。
 - 普通／困难／深渊基础核心 BAN 数调整为5，趣味为2，训练为0；五、六人席位减免继续保留。新增魂灵模型表现、格子预警、炮击冲击与充能条。
 
-完整机制见 [莱茵扩展说明](docs/RHINE.md)和[卡兹戴尔说明](docs/KAZDEL.md)，修改范围和验证边界见 [扩展变更记录](docs/RHINE-CHANGES.md)。Windows 玩家可直接下载 [扩展免安装整合包](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/releases/latest)，完整解压后双击 **`启动莱茵科研版.bat`**；无需安装 Node.js 或 Git。已有玩家关闭服务后运行 **`联网更新.bat`**。上游原版整合包不包含本扩展。扩展问题请在 [本 fork 的 Issues](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/issues) 反馈。
+完整机制见 [莱茵扩展说明](docs/RHINE.md)和[卡兹戴尔说明](docs/KAZDEL.md)，修改范围和验证边界见 [扩展变更记录](docs/RHINE-CHANGES.md)。Windows 玩家可直接下载 [扩展免安装整合包](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/releases/latest)（Windows 便携整合包由莱茵项目发布，本仓库是整合两条线的源码 fork），完整解压后双击 **`启动莱茵科研版.bat`**；无需安装 Node.js 或 Git。已有玩家关闭服务后运行 **`联网更新.bat`**。上游原版整合包不包含本扩展。扩展问题请在 [本 fork 的 Issues](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/issues) 反馈。
 
 以下保留原项目介绍、声明与致谢，并对本 fork 的安装方式作相应说明。
 
@@ -97,7 +97,7 @@ English summary: [below](#english).
 
 ### 本扩展：Windows 免安装整合包（推荐）
 
-1. 到 [本扩展 Releases](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/releases/latest) 下载 **`Stronghold-Protocol-Rhine-v0.2.2-rhine.3-Windows-x64.zip`**。不要选择 GitHub 自动生成的 `Source code` 下载项，它不包含运行环境和素材。
+1. 到 [莱茵项目的 Releases](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/releases/latest) 下载 **`Stronghold-Protocol-Rhine-v0.2.2-rhine.3-Windows-x64.zip`**。不要选择 GitHub 自动生成的 `Source code` 下载项，它不包含运行环境和素材。
 2. **完整解压到新文件夹**，双击 **`启动莱茵科研版.bat`**。包内已包含官方 Node.js 24、运行依赖和游戏素材，首次启动也无需下载安装。
 3. 浏览器会自动打开游戏；保持启动窗口开启。朋友只需访问房主分享的游戏网址，不必各自下载整合包。
 
@@ -108,8 +108,8 @@ English summary: [below](#english).
 安装 Node.js 22 或 24（LTS）与 Git 后运行：
 
 ```bash
-git clone --branch codex/rhine-upstream-021 https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine.git
-cd Stronghold-Protocol-Rhine
+git clone https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC.git
+cd Stronghold-Protocol-Rhine_DLC
 npm ci             # 按锁文件安装依赖，postinstall 会准备浏览器依赖
 npm run setup      # 检查环境，下载原版及莱茵干员资源，可中断后续传
 npm start          # 启动服务器：http://localhost:3000
@@ -288,7 +288,7 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 
 ## 贡献
 
-欢迎在 [本 fork 的 Issues](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/issues) 反馈扩展 bug 或改进建议，也欢迎提交 Pull Request。莱茵扩展是自定义规则，请不要将其专有问题直接报给上游；如问题能在未修改的上游版本复现，再按上游贡献要求提交最小复现：
+欢迎在 [本 fork 的 Issues](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/issues) 反馈扩展 bug 或改进建议，也欢迎提交 Pull Request。莱茵扩展是自定义规则，请不要将其专有问题直接报给上游；如问题能在未修改的上游版本复现，再按上游贡献要求提交最小复现：
 
 - 准备环境、运行测试、忠实原则和提交约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 - 提交前请运行 `node --test`，并同步更新相关文档；文档使用简体中文，代码与注释使用英文。
@@ -302,7 +302,7 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 
 An **unofficial, non-commercial fan remake** of Arknights' seasonal auto-chess tower-defense mode *Stronghold Protocol: Alliance*, played in the browser: solo, or 1–6 player co-op (AI teammates can fill seats). Combat is simulated in each player's browser, so a low-power PC can host.
 
-- **Fork:** this unofficial Rhine expansion is maintained by [YUYUYUYUYUYUYUTOUA](https://github.com/YUYUYUYUYUYUYUTOUA), based on [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) **v0.2.4** (`bc50cac0`), merged with the Rhine expansion **v0.2.2-rhine.3** (bundle `523cca24`) and the DLC line (superlimit difficulty, collectibles, host combat-speed control). Synced on 2026-10-11; the per-file merge scope, verification numbers and remaining issues are in [docs/RHINE-DLC-SYNC-0.2.4.md](docs/RHINE-DLC-SYNC-0.2.4.md). It is not an upstream or official game release; report expansion issues to this fork.
+- **Fork:** this unofficial Rhine + DLC integration fork is maintained at [qwertyuiop612/Stronghold-Protocol-Rhine_DLC](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC), based on [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) **v0.2.4** (`bc50cac0`), merged with the Rhine expansion **v0.2.2-rhine.3** (bundle `523cca24`) and the DLC line (superlimit difficulty, collectibles, host combat-speed control). Synced on 2026-10-11; the per-file merge scope, verification numbers and remaining issues are in [docs/RHINE-DLC-SYNC-0.2.4.md](docs/RHINE-DLC-SYNC-0.2.4.md). It is not an upstream or official game release; report expansion issues to this fork. The Windows portable bundle is published by the Rhine project.
 - **Run this expansion:** clone this fork, install Node.js 22 or 24, then run `npm ci`, `npm run setup`, and `npm start`. Setup includes the Rhine resource plan; `node tools/fetch-rhine-assets.mjs` can supplement an existing asset download. The [upstream all-in-one bundle](https://github.com/sganggs/Stronghold-Protocol/releases/latest) contains the original game only, not this expansion. The official 3D board needs a local Arknights client to extract; otherwise the 2D board is used.
 - **Play with friends:** create a co-op room and share the 4-letter key or the `?room=KEY` link. On a LAN, use the address printed at start; otherwise use a virtual-LAN tool, a tunnel or a VPS — see [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Disclaimer:** not affiliated with or endorsed by Hypergryph or Yostar. All Arknights names, art, audio, text and data are © their respective owners and are **not** covered by this project's GPL licence. For study and personal non-commercial use only — no selling, paid distribution, paid servers or monetisation of any kind. Content will be removed on request of the rights holders. Provided "as is", without warranty.
