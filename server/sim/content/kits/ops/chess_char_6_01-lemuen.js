@@ -43,7 +43,7 @@ function ensureWanted(battle) {
   battle.every(0.25, () => {
     const lems = activeLem();
     for (const u of W.sources.keys()) if (!lems.includes(u)) W.sources.delete(u);
-    const lat = battle.allyUnits.filter((a) => live(a) && a.kind === 'op' && hasBond(a, 'lateranoShip'));
+    const lat = battle.allyUnits.filter((a) => live(a) && nativeOperator(a) && hasBond(a, 'lateranoShip'));
     for (const u of lems) {
       let state = W.sources.get(u);
       if (!state) W.sources.set(u, state = { time: new WeakMap(), marks: new Set() });

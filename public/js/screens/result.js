@@ -3,7 +3,7 @@
 // plus 返回同盟.
 //
 // Expected m.result (free-form in DESIGN §8.2; fields read tolerantly, see gameLogic.normalizeResult):
-//   { victory, roundsPassed, lastRound?, hiddenCleared?, bossId?, hiddenBossId?, difficulty?, modeId?, durationMs?,
+//   { victory, roundsPassed, lastRound?, hiddenCleared?, bossId?, hiddenBossId?, difficulty?, difficultyLevel?, modeId?, durationMs?,
 //     players: [{ playerId, seat, name, isBot, alive, lp, bandId, roundsPassed?,
 //                 title: 'comment_1' | { id, name? } | null,
 //                 lineup: [{ id /* chessId, golden id if elite */, golden?, tier?, items?: [itemId],

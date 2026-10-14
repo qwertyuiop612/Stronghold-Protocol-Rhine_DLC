@@ -154,10 +154,13 @@ for (const clientCombat of [false, true]) {
       const m = h.m;
       h.toPrep(14);
       ids.forEach((pid, i) => { h.ps(pid).lp = 10 * (i + 1); });
-      assert.deepEqual(m.bossWaves.map((w) => w.players), pairs);
+      const groups = m.bossWaves.map((w) => w.players);
+      const lowest = (group) => group.slice().sort((a, b) => h.ps(a).seat - h.ps(b).seat)[0];
+      assert.deepEqual(groups.map((g) => g.length), [2, 2, 2], 'all six seats are paired');
+      assert.deepEqual(groups.flat().slice().sort(), ids.slice().sort(), 'every seat lands on exactly one field');
       h.drive(() => m.phase === PHASE.FINAL_ASSAULT);
       assert.equal(m.teamLp, 210);
-      assert.deepEqual(m.fields.map((f) => [f.fieldId, f.players]), [['b1', pairs[0]], ['b2', pairs[1]], ['b3', pairs[2]]]);
+      assert.deepEqual(m.fields.map((f) => [f.fieldId, f.players]), [['b1', groups[0]], ['b2', groups[1]], ['b3', groups[2]]]);
       const opts = m.fields.map((f) => clientCombat ? f.spec : f.battle.opts);
       assert.deepEqual(opts.map((o) => o.players.map((p) => p.side)), [['L', 'R'], ['L', 'R'], ['L', 'R']]);
       assert.ok(opts.every((o) => !/_s$/.test(o.waveId)), 'all six survivors use paired boss templates');
@@ -165,9 +168,10 @@ for (const clientCombat of [false, true]) {
       assert.equal(m.bossPool.maxHp, bossPoolHp(m.gd, m.bossId, 6));
       assert.ok(opts.every((o) => o.flags.layerGainsEnabled === false));
       if (clientCombat) {
-        assert.deepEqual(m.fields.map((f) => f.authority), ['p_0', 'p_2', 'p_4']);
-        assert.equal(h.lastTo('p_5', 'b.start').fieldId, 'b3');
-        assert.equal(h.lastTo('p_5', 'b.start').authoritative, false, 'sixth player is the paired display replica');
+        assert.deepEqual(m.fields.map((f) => f.authority), groups.map(lowest), 'the lowest seat of each pair runs the field');
+        const replica = groups[2].find((pid) => pid !== lowest(groups[2]));
+        assert.equal(h.lastTo(replica, 'b.start').fieldId, 'b3');
+        assert.equal(h.lastTo(replica, 'b.start').authoritative, false, 'the non-leading seat of a pair is the display replica');
       }
       const result = h.runToEnd();
       assert.equal(result.victory, true);
@@ -199,15 +203,16 @@ for (const clientCombat of [false, true]) {
       ids.forEach((pid, i) => { const p = h.ps(pid); p.bondCountBonus.yanShip = 3; p.layers.yanShip = i === 5 ? 1 : 240; p.recompute(); });
       h.drive(() => m.phase === PHASE.FINAL_ASSAULT);
       assert.equal(m.hiddenLayerSum, 1201, 'the first five reach the threshold; the sixth crosses it');
+      const groups = m.bossWaves.map((w) => w.players);
       h.toPrep(15);
       assert.equal(m.hiddenReached, true);
-      assert.deepEqual(m.bossWaves.map((w) => w.players), pairs);
+      assert.deepEqual(m.bossWaves.map((w) => w.players), groups, 'the Hidden Core keeps the Final Assault pairs');
       const teamLp = m.teamLp;
       h.drive(() => m.phase === PHASE.HIDDEN_CORE);
-      assert.deepEqual(m.fields.map((f) => f.players), pairs);
+      assert.deepEqual(m.fields.map((f) => f.players), groups);
       assert.equal(m.teamLp, teamLp);
       assert.equal(m.bossPool.maxHp, 2 * bossPoolHp(new GameData(DATA, m.modeId, 4), m.hiddenBossId, 4));
-      if (clientCombat) assert.equal(h.lastTo('p_5', 'b.start').fieldId, 'b3');
+      if (clientCombat) assert.equal(h.lastTo(groups[2][1], 'b.start').fieldId, 'b3');
       const result = h.runToEnd();
       assert.equal(result.hiddenCleared, true);
       assert.equal(result.roundsPassed, 15);
@@ -248,8 +253,12 @@ test('sixth-player report keeps its own eliminated round, lineup and stats along
   } finally { close(h); }
 });
 
-test('six-player pairing sorts seats; a departed teammate leaves the sixth survivor in a singleton field', () => {
+test('six-player pairing shuffles once; a departed teammate leaves the carried pair and the leftovers re-pair', () => {
   const alive = ids.map((playerId, seat) => ({ playerId, seat })).reverse();
-  assert.deepEqual(pairPlayers(alive).map((g) => g.map((p) => p.playerId)), pairs);
-  assert.deepEqual(pairPlayers(alive.filter((p) => p.playerId !== 'p_1')).map((g) => g.map((p) => p.playerId)), [['p_0', 'p_2'], ['p_3', 'p_4'], ['p_5']]);
+  // the seeded shuffle decides the first pairing; this stand-in keeps the seat order so the assertions stay readable
+  const rng = { shuffle: (a) => a.slice().sort((x, y) => x.seat - y.seat) };
+  assert.deepEqual(pairPlayers(alive, rng).map((g) => g.map((p) => p.playerId)), pairs);
+  const left = alive.filter((p) => p.playerId !== 'p_1');
+  assert.deepEqual(pairPlayers(left, rng, pairs).map((g) => g.map((p) => p.playerId)), [['p_2', 'p_3'], ['p_4', 'p_5'], ['p_0']],
+    'the two intact pairs stay; the bereaved seat waits as a singleton');
 });

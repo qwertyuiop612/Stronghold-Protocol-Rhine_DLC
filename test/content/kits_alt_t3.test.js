@@ -53,7 +53,7 @@ test('skills map: every selected alternate is authored; eagerly built specs use 
     const eager = Object.keys(kit.skills ?? {});
     assert.ok(eager.every((sid) => r.skills.some(s => s.skillId === sid)), `${id} only legal skill keys (expansion kits may also key their default)`);
     const buildsAllRecords = KITS[r.chessId] === TIER3_KITS[r.chessId];
-    if (buildsAllRecords) assert.deepEqual(eager.slice().sort(), alts.slice().sort(), `${id} all eager keys`);
+    if (buildsAllRecords) assert.deepEqual(eager.slice().sort(), (id.startsWith('chess_rem_') ? r.skills.map(s => s.skillId) : alts).slice().sort(), `${id} all eager keys`);
     for (const sid of alts) {
       const dS = LD(id, sid);
       assert.equal(skillSpecSource(dS, KITS), 'skills', `${id} ${sid}`);

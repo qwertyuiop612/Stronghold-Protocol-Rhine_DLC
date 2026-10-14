@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { applyKazdelData, validateKazdelData, KAZDEL_ADDITIONS, KAZDEL_EXISTING, WISDEL_TOKEN, kazdelGarrison } from '../tools/kazdel-data.mjs';
+import { applyRemData } from '../tools/rem-data.mjs';
 import { applyRhineData } from '../tools/rhine-data.mjs';
 import { composeStats, loadoutRecord, resolveRecordLoadout } from '../shared/loadoutRecord.js';
 import { stripPotential } from '../shared/potential.js';
@@ -15,12 +16,12 @@ const files = Object.fromEntries(await Promise.all(names.map(async n => [n, awai
 const source = await read('tools/kazdel-data-source');
 const vanilla = { chess: await read('data/vanilla/chess'), garrisons: await read('data/vanilla/garrisons'), config: await read('data/vanilla/config') };
 
-test('Kazdel data: 11 distinct members, approved tiers and 3/6 main-faction thresholds', () => {
+test('Kazdel data: 10 distinct members, approved tiers and 3/6/9 main-faction thresholds', () => {
   const bond = files.bonds[KAZDEL_BOND];
   assert.deepEqual(validateKazdelData(files), []);
-  assert.deepEqual(bond.thresholds, [3, 6]);
+  assert.deepEqual(bond.thresholds, [3, 6, 9]);
   assert.equal(bond.isCore, true);
-  assert.equal(bond.visibleMembers.length, 11);
+  assert.equal(bond.visibleMembers.length, 10);
   assert.deepEqual(new Set(bond.visibleMembers.map(id => files.chess[id].charId)), new Set(Object.values(KAZDEL_CHARACTERS)));
   for (const spec of KAZDEL_ADDITIONS) for (const suffix of ['a', 'b']) {
     const c = files.chess[`chess_kazdel_${spec.key}_${suffix}`];
@@ -32,24 +33,23 @@ test('Kazdel data: 11 distinct members, approved tiers and 3/6 main-faction thre
     assert.equal(c.tier, spec.tier); assert.deepEqual(c.bonds, spec.bonds);
     assert.equal(c.visible, true); assert.equal(c.isHidden, false);
   }
-  for (const [count, stage] of [[2, 0], [3, 1], [5, 1], [6, 2], [8, 2], [9, 2], [11, 2]]) assert.equal(kazdelStage({ active: count >= 3, count }), stage);
+  for (const [count, stage] of [[2, 0], [3, 1], [5, 1], [6, 2], [8, 2], [9, 3], [11, 3]]) assert.equal(kazdelStage({ active: count >= 3, count }), stage);
 });
 
 test('Kazdel data: soul and cannon formulas are shared with no hidden expiry or dummy population token', () => {
-  assert.deepEqual(KAZDEL_BALANCE, { thresholds: [3, 6], bodyHpPerLayer: 10, soulHpRatio: .6, soulHpPerLayer: 10,
+  assert.deepEqual(KAZDEL_BALANCE, { thresholds: [3, 6, 9], bodyHpPerLayer: 10, soulHpRatio: .6, soulHpPerLayer: 10,
     soulAttackRatio: .8, soulAttackPerLayer: 3, soulsPerPiecePerBattle: null });
   assert.deepEqual(KAZDEL_CANNON, { capacity: 15, chargePerSec: 1, chargePerLayer: .005, deathCharge: 3,
     minInterval: 3, warningDuration: 2, damageBase: 800, damagePerLayer: 15, radius: 2, friendlyFireStage: 2, friendlyFireRatio: 1 });
   assert.match(files.bonds[KAZDEL_BOND].desc, /无时间限制/);
-  assert.match(files.bonds[KAZDEL_BOND].desc, /预警计入间隔/);
-  assert.match(files.bonds[KAZDEL_BOND].desc, /亡魂始终免疫/);
-  assert.match(files.bonds[KAZDEL_BOND].desc, /不获得死亡产层与充能/);
+  assert.match(files.bonds[KAZDEL_BOND].desc, /预警2秒且计入间隔/);
+  assert.match(files.bonds[KAZDEL_BOND].desc, /其他玩家友军与亡魂免疫/);
+  assert.match(files.bonds[KAZDEL_BOND].desc, /不产层或充能/);
   assert.equal(files.tokens.token_kazdel_cannon, undefined);
 });
 
 test('Kazdel data: ten ordinary/elite trait blackboards match the approved effects', () => {
   const expect = {
-    ascalon: [{ slow: .2, interval: 3, layer: 1 }, { slow: .3, interval: 3, layer: 2 }],
     vigna: [{ layer: 2 }, { layer: 4 }], odda: [{ layer: 1 }, { layer: 2 }],
     meteorite: [{ damage_bonus: .2 }, { damage_bonus: .4 }], tinman: [{ aspd: 15, radius: 1 }, { aspd: 30, radius: 1 }],
     paprika: [{ heal_bonus: .25 }, { heal_bonus: .5 }], hoederer: [{ layer: 6 }, { layer: 10 }],
@@ -109,7 +109,7 @@ test('Kazdel data: all general modules, first-module defaults, no-module fallbac
       const selected = loadoutRecord(c, resolveRecordLoadout(c, { moduleId: m.uniEquipId }));
       assert.deepEqual(selected.stats, composeStats(c.statsBase, m.attr));
     }
-    if (['hoederer', 'logos', 'wisdel', 'ascalon'].includes(spec.key)) for (const suffix of ['a', 'b']) {
+    if (['hoederer', 'logos', 'wisdel'].includes(spec.key)) for (const suffix of ['a', 'b']) {
       const form = files.chess[`chess_kazdel_${spec.key}_${suffix}`];
       const native = files.backups.units[spec.charId].forms[Object.values(form.status).join('/')];
       assert.deepEqual(form.statsBase || form.stats, native.stats);
@@ -164,6 +164,7 @@ test('Kazdel data: offline overlay and the full Rhine→Kazdel chain are byte-fo
 test('Kazdel data: the preserved official snapshot rebuilds the complete expansion tables offline', async () => {
   const rebuilt = Object.fromEntries(await Promise.all(names.map(async n => [n, await read(`data/vanilla/${n}`)])));
   await applyRhineData(rebuilt); await applyKazdelData(rebuilt, source);
+  await applyRemData(rebuilt);
   for (const n of names) assert.deepEqual(rebuilt[n], files[n], `${n} from the untouched official snapshot`);
 });
 
@@ -199,4 +200,21 @@ test('Kazdel data: all mapped native art resolves to installed files', {
   for (const path of await kazdelArtPaths()) {
     const bytes = await readFile(new URL(`../public${path}`, import.meta.url)); assert.ok(bytes.length > 0, path);
   }
+});
+
+test('retired custom Ascalon is removed even when regenerating an old overlay; native DIY is preserved', async () => {
+  const rebuilt = structuredClone(files);
+  for (const grade of ['a', 'b']) {
+    const id = `chess_kazdel_ascalon_${grade}`;
+    rebuilt.chess[id] = { ...structuredClone(files.chess[`chess_kazdel_hoederer_${grade}`]), chessId: id };
+    rebuilt.garrisons[`garrison_kazdel_ascalon_${grade}`] = { owners: [id] };
+  }
+  await applyKazdelData(rebuilt, source);
+  for (const grade of ['a', 'b']) {
+    assert.equal(rebuilt.chess[`chess_kazdel_ascalon_${grade}`], undefined);
+    assert.equal(rebuilt.garrisons[`garrison_kazdel_ascalon_${grade}`], undefined);
+  }
+  assert.ok(rebuilt.backups.units.char_4132_ascln, 'upstream self-selected operator remains supported');
+  for (const b of Object.values(rebuilt.bonds)) assert.ok(!b.members.some(id => id.startsWith('chess_kazdel_ascalon')));
+  assert.deepEqual(validateKazdelData(rebuilt), []);
 });

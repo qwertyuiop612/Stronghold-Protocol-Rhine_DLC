@@ -147,8 +147,8 @@
   font-weight: 700;
 }
 .seat__bot-label .icon { width: .16rem; height: .16rem; }
-.seat__who { display: flex; align-items: center; gap: .08rem; max-width: 100%; }
-.seat__name { font-size: calc(.26 * var(--t)); font-weight: 700; max-width: 3rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seat__who { display: flex; align-items: center; justify-content: center; gap: .08rem; width: 100%; min-width: 0; }
+.seat__name { font-size: calc(.26 * var(--t)); font-weight: 700; max-width: 3rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .seat__you { flex: none; padding: .01rem .07rem; background: var(--mint-500); color: var(--text-on-mint); font-size: calc(.13 * var(--t)); font-weight: 700; }
 .seat__foot {
   align-self: stretch;
@@ -223,6 +223,7 @@
 /* ---- spectator seats (观战席, community report #26) -------------------------------------------------------------- */
 .specbar {
   flex: none;
+  margin-top: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -253,6 +254,8 @@
 .room-bar {
   position: relative;
   flex: none;
+  /* Capped co-op seats can leave free space in tall windows. Keep the actions at the bottom. */
+  margin-top: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
@@ -262,6 +265,7 @@
   background: linear-gradient(0deg, rgba(7, 9, 8, .96), rgba(10, 13, 12, .7));
   border-top: 1px solid var(--line);
 }
+.specbar + .room-bar { margin-top: 0; }
 .room-bar::before {
   content: '';
   position: absolute;
@@ -272,6 +276,8 @@
   background: linear-gradient(90deg, var(--mint-700), transparent 30%, transparent 70%, var(--mint-700));
 }
 .room-bar__left { display: flex; align-items: center; gap: .22rem; min-width: 0; }
+.room-bar__difficulty { display: flex; flex-direction: column; gap: .08rem; min-width: 0; }
+.room-bar__bans { font-size: calc(.12 * var(--t)); color: var(--text-lo); line-height: 1.5; }
 .room-bar__label { display: flex; flex-direction: column; font-size: calc(.17 * var(--t)); font-weight: 700; color: var(--text-md); line-height: 1.35; }
 .room-bar__center { display: flex; flex-direction: column; align-items: center; gap: .06rem; }
 .room-bar__right { justify-self: end; display: flex; align-items: center; gap: .16rem; }
@@ -334,7 +340,7 @@
   .rhine-setting__desc { font-size: calc(.12 * var(--t)); }
   .seats:not(.seats--solo) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(2.8rem, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
     align-content: start;
     gap: .14rem;
     padding: .18rem .3rem;
@@ -358,4 +364,8 @@
   .dpick__opt { gap: .04rem; padding: 0 .1rem; font-size: calc(.15 * var(--t)); }
   .room-bar .btn--xl { min-width: 2rem; }
   .room-bar__bans { font-size: max(calc(.12 * var(--t)), 8px); }
+}
+
+@media (max-width: 767px) and (max-height: 400px) {
+  .seats:not(.seats--solo) .seat__art .avatar { --av: .7rem; }
 }

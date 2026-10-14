@@ -50,6 +50,15 @@ async function verifyApprovedArt(directory) {
     assert.equal(await sha(path.join(directory, relative)), expected, relative);
   }
 }
+async function verifyRemOriginal(directory) {
+  if (!request.remOriginal) return;
+  assert.equal(request.remOriginal.path, 'public/assets/bond/rem.png');
+  assert.equal(request.remOriginal.bytes, 21152);
+  assert.equal(request.remOriginal.sha256, '3089f0cb87a7c85b1d12eb1bf6aff6e1dd8ed1d2ae6caaf2cda359b2658c546e');
+  const file = path.join(directory, request.remOriginal.path);
+  assert.equal(fs.statSync(file).size, request.remOriginal.bytes);
+  assert.equal(await sha(file), request.remOriginal.sha256);
+}
 const progress = message => console.log(`${new Date().toISOString()} ${message}`);
 function extract(archive, destination) {
   assert.equal(fs.existsSync(destination), false, destination);
@@ -232,16 +241,35 @@ async function main() {
       "import fs from 'node:fs'; import {fetchExtensionVoices} from './tools/assets/extension-voices.mjs'; import {rhineArtInput} from './tools/assets/rhine-plan.mjs'; import {kazdelArtInput} from './tools/assets/kazdel-plan.mjs'; const expected=JSON.parse(fs.readFileSync('data/assets.json')); const actual=structuredClone(expected); await fetchExtensionVoices(process.cwd(),kazdelArtInput(rhineArtInput()),actual); const {default:assert}=await import('node:assert/strict'); assert.deepEqual(actual,expected,'Rebuilt extension voices must exactly match tagged metadata.');"], { cwd: source });
     progress('New extension voice assets downloaded and checked against the tagged manifest.');
   }
+  if (request.remOriginal) {
+    const manifestBefore = await sha(path.join(source, 'data/assets.json'));
+    command(bundledNode, ['tools/fetch-rem-assets.mjs', '--units'], { cwd: source });
+    command(bundledNode, ['tools/fetch-rem-assets.mjs'], { cwd: source });
+    assert.equal(await sha(path.join(source, 'data/assets.json')), manifestBefore,
+      'Downloaded Rem assets must resolve to the exact tagged manifest.');
+    await verifyRemOriginal(source);
+    progress('New Rem models and exact original logo downloaded; tagged manifest unchanged.');
+  }
   const { buildBundle } = await import(pathToFileURL(path.join(source, 'tools/build-rhine-bundle.mjs')));
   const built = await buildBundle({ source, out: path.join(root, 'stage'), runtimeDir: runtime,
     runtimeVersion: request.runtimeVersion, runtimeSourceUrl: runtimeBase + runtimeArchiveName, runtimeSha256: runtimeSha });
   assert.equal(built.manifest.sourceCommit, request.sourceCommit);
   assert.equal(built.manifest.sourceDirty, false);
   await verifyApprovedArt(built.destination);
+  await verifyRemOriginal(built.destination);
   progress(`Built ${built.manifest.fileCount} files from ${request.sourceCommit}; running native Windows regression.`);
   const node = path.join(built.destination, 'runtime/node/node.exe');
   const tests = runTests(node, built.destination, [
-    'test/content/kazdel.test.js', 'test/content/kazdel_ascalon.test.js', 'test/content/kazdel_kits.test.js', 'test/content/op_wisdel.test.js',
+    'test/content/rem.test.js', 'test/content/rem-traits.test.js', 'test/content/rem_native_kits.test.js',
+    'test/content/rem-pizza-fx.test.js', 'test/rem_data.test.js', 'test/match/rem-rally.test.js',
+    'test/match/rem-price.test.js', 'test/match/kazdel-unite.test.js', 'test/content/rhine_magallan.test.js',
+    'test/tools/rem-asset-plan.test.js',
+    'test/content/community-round29.test.js', 'test/content/echo-counter-023.test.js',
+    'test/content/op_clemnt.test.js', 'test/content/new-modules-023.test.js',
+    'test/content/lemuen-wanted-023.test.js', 'test/content/necras-trigger-023.test.js', 'test/content/heal-triggers-023.test.js',
+    'test/match/shared-stock.test.js', 'test/match/rhine-upstream024.test.js',
+    'test/match/setup-reroll.test.js', 'test/match/setup-reroll-ws.test.js',
+    'test/content/kazdel.test.js', 'test/content/kazdel_kits.test.js', 'test/content/op_wisdel.test.js',
     'test/content/kazdel_soul_skills.test.js', 'test/content/kazdel_equipment.test.js', 'test/kazdel_equipment_data.test.js',
     'test/content/reactive-origin.test.js', 'test/content/rhine.test.js', 'test/match/rhineResearch.test.js',
     'test/match/rhine-client-layers.test.js', 'test/content/garrisons_battle.test.js',
@@ -251,7 +279,7 @@ async function main() {
     'test/rhine-bundle-launch.test.js',
     'test/extension-potential.test.js', 'test/room-rhine-profile.test.js', 'test/vanilla-data.test.js',
     'test/match/potential.test.js', 'test/sim/potential-battle.test.js', 'test/ui/inspect-range.test.js',
-    'test/match/kazdel-client-layers.test.js', 'test/match/six-player.test.js',
+    'test/match/kazdel-client-layers.test.js', 'test/match/six-player.test.js', 'test/match/six-player-round-beacons.test.js',
     'test/protocol-seats.test.js', 'test/rhine-update-boot.test.js', 'test/ui/kazdel.test.js',
   ], path.join(root, 'packaged-tests.log'));
   let browserTests = null;
@@ -262,10 +290,24 @@ async function main() {
     const browserOutput = path.join(built.destination, 'test/e2e/out');
     assert.equal(fs.existsSync(browserOutput), false);
     browserTests = {
+      remSimulation: runTests(node, built.destination, ['test/sim/rem.browser.test.js', 'test/sim/rhine.browser.test.js'],
+        path.join(root, 'browser-rem-sim.log'), { concurrency: 1, env: { SIM_E2E: '1', CHROME_PATH: edge } }),
+      remRenderer: runTests(node, built.destination, ['test/render/rem-art.browser.test.js'],
+        path.join(root, 'browser-rem-render.log'), { concurrency: 1, env: { RENDER_E2E: '1', CHROME_PATH: edge } }),
+      remRally: runTests(node, built.destination, ['test/ui/rem-rally.browser.test.js'],
+        path.join(root, 'browser-rem-rally.log'), { concurrency: 1, env: { SP_E2E: '1', CHROME_PATH: edge } }),
       kazdelSimulation: runTests(node, built.destination, ['test/sim/kazdel.browser.test.js', 'test/sim/reactive-origin.browser.test.js'],
         path.join(root, 'browser-kazdel-sim.log'), { concurrency: 1, env: { SIM_E2E: '1', CHROME_PATH: edge } }),
       renderer: runTests(node, built.destination, ['test/render/kazdel.browser.test.js', 'test/render/rhineDevices.browser.test.js', 'test/ui/kazdel-icon.browser.test.js'],
-        path.join(root, 'browser-render.log'), { concurrency: 1, env: { RENDER_E2E: '1', CHROME_PATH: edge } }),
+        path.join(root, 'browser-render.log'), { concurrency: 1, timeout: 600000, env: { RENDER_E2E: '1', CHROME_PATH: edge } }),
+      rhineOperators: runTests(node, built.destination, ['test/render/rhineOperators.browser.test.js'],
+        path.join(root, 'browser-rhine-operators.log'), { concurrency: 1, timeout: 600000, env: { RENDER_E2E: '1', CHROME_PATH: edge } }),
+      upstreamRenderer: runTests(node, built.destination, ['test/render/held-pose.browser.test.js', 'test/render/recovery.browser.test.js'],
+        path.join(root, 'browser-upstream-render.log'), { concurrency: 1, timeout: 600000, env: { RENDER_E2E: '1', CHROME_PATH: edge } }),
+      upstreamUi: runTests(node, built.destination, ['test/ui/followup-023.e2e.test.js', 'test/ui/data-profile.browser.test.js'],
+        path.join(root, 'browser-upstream-ui.log'), { concurrency: 1, timeout: 600000, env: { SP_E2E: '1', CHROME_PATH: edge } }),
+      sixSeatUi: runTests(node, built.destination, ['test/ui/six-player-layout.e2e.test.js', 'test/ui/six-player-balance.e2e.test.js'],
+        path.join(root, 'browser-six-seat.log'), { concurrency: 1, timeout: 600000, env: { SP_E2E: '1', CHROME_PATH: edge, SP_E2E_SWIFTSHADER: '1' } }),
       statsLandscape: runTests(node, built.destination, ['test/ui/stats.e2e.test.js'], path.join(root, 'browser-stats.log'),
         { concurrency: 1, args: ['--test-name-pattern=phone in landscape'], env: { SP_E2E: '1', CHROME_PATH: edge } }),
     };
@@ -298,6 +340,7 @@ async function main() {
   const unpacked = path.join(root, 'unpacked-verification/Stronghold-Protocol-Rhine');
   const verified = await verifyTree(unpacked);
   await verifyApprovedArt(unpacked);
+  await verifyRemOriginal(unpacked);
   assert.deepEqual(verified, built.manifest);
   progress('Compressed package passed full file-manifest verification; preparing updater toolkit.');
   const toolDirectory = path.join(root, 'Rhine-Update-Tool-Windows'); fs.mkdirSync(toolDirectory);
@@ -356,6 +399,7 @@ async function main() {
   fs.writeFileSync(path.join(assets, 'UPDATE-TOOL-SHA256.txt'), `${toolSha}  ${toolName}\n`);
   const report = { ...request.sourceValidation, createdAt: new Date().toISOString(), sourceCommit: request.sourceCommit,
     approvedArt: request.approvedArt || {},
+    remOriginal: request.remOriginal || null,
     archive: { name: archiveName, bytes: fs.statSync(archive).size, sha256: archiveSha, payloadFilesVerified: verified.fileCount, zipFilesVerified: verified.fileCount + 1 },
     updateToolkit: { name: toolName, bytes: fs.statSync(toolZip).size, sha256: toolSha, sourceCommit: request.sourceCommit, verifiedFiles: toolManifest.files.length + 1 },
     updateChecks,
@@ -363,6 +407,7 @@ async function main() {
       httpArtifactsVerified: Object.keys(smoke.checks[0].artifacts).length, runtimeArchiveSha256: runtimeSha },
     automation: { commit: process.env.GITHUB_SHA, run: `${process.env.GITHUB_SERVER_URL}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}` },
     limitations: [
+      ...(request.sourceValidation?.limitations || []),
       'Manual browser/BAT launch and balance evaluation were not run; automated native Windows service, browser and launcher checks are recorded separately.',
     ] };
   fs.writeFileSync(path.join(assets, 'RELEASE-VALIDATION.json'), JSON.stringify(report, null, 2) + '\n');
@@ -410,7 +455,7 @@ try {
   try { draftFailure = process.argv[2] === 'publish' && api(`releases/${request.draftReleaseId}`).draft === true; } catch { /* Preserve the original failure. */ }
   if (draftFailure) {
     const logs = {};
-    for (const name of ['packaged-tests.log', 'browser-render.log', 'browser-stats.log', 'browser-kazdel-sim.log']) {
+    for (const name of ['browser-rem-sim.log', 'browser-rem-render.log', 'browser-rem-rally.log', 'packaged-tests.log', 'browser-render.log', 'browser-stats.log', 'browser-kazdel-sim.log', 'browser-upstream-render.log', 'browser-upstream-ui.log', 'browser-rhine-operators.log', 'browser-six-seat.log']) {
       const file = path.join(root, name);
       if (fs.existsSync(file)) logs[name] = fs.readFileSync(file, 'utf8').slice(-48000);
     }

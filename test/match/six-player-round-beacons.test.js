@@ -284,3 +284,22 @@ test('a full R14 recipient keeps the immediate elite gift pending and receives i
     h.invariants();
   } finally { h.m.dispose(); }
 });
+
+for (const rhine of [true, false]) test(`${rhine ? 'Rhine' : 'vanilla'} milestone beacons are independent of exhausted ordinary stock`, () => {
+  const h = makeMatch({ humans: 6, data: getDataProfile(rhine, { log: QUIET }), rhineEnabled: rhine, fake: true }).start();
+  try {
+    h.toPrep(1);
+    const owner = h.ps('p_0'), pool = h.m.itemPool, cap = pool.cap(BEACON);
+    for (let i = 0; i < cap; i++) assert.ok(owner.acquireItem(BEACON, { source: 'buy' }));
+    assert.equal(owner.acquireItem(BEACON, { source: 'sixPlayerBeacon' }), null, 'wrong round cannot bypass stock');
+    h.m.startRound(10);
+    for (const ps of h.m.order) assert.equal(beacons(ps).filter(p => p.meta.sixPlayerBeaconRound === 10).length, 1);
+    assert.equal(pool.held(BEACON), cap);
+    assert.equal(owner.acquireItem(BEACON, { source: 'buy' }), null);
+    h.ps('p_1').eliminate(10);
+    assert.equal(pool.left(BEACON), 0, 'removing a system supply does not release ordinary stock');
+    owner.eliminate(10);
+    assert.equal(pool.left(BEACON), cap, 'ordinary owned stock still returns');
+    h.invariants();
+  } finally { h.m.dispose(); }
+});

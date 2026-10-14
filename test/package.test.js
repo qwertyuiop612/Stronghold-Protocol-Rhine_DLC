@@ -11,8 +11,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  FOLDER, PLAYER_ASSET_INPUTS, REFUSE, RUNTIME_RESEARCH, entryProblems, isRefused, packageOutIsUnsafe, plan, resolveSpecifier, scanFiles,
-  selectTracked,
+  FOLDER, PLAYER_ASSET_INPUTS, REFUSE, RUNTIME_RESEARCH, entryProblems, isRefused, packageOutIsUnsafe, plan, playerPackageJson,
+  rewritePlayerDoc, resolveSpecifier, scanFiles, selectTracked,
 } from '../tools/package.mjs';
 
 // a fake home path, built at run time so the repository never contains one (the local push guard scans every patch)
@@ -59,7 +59,7 @@ test('selection: runtime files in; tests, maintainer tools, other docs, dev page
     'docs/research/07-assets.json', 'docs/KAZDEL.md', ...PLAYER_ASSET_INPUTS, 'CHANGELOG.md']) {
     assert.ok(keep.includes(f), `keeps ${f}`);
   }
-  assert.equal(keep.length, 38, keep.join(' '));
+  assert.equal(keep.length, 39, keep.join(' '));
   assert.equal(drop.length, 40, drop.join(' '));
   assert.ok(!keep.some((f) => drop.includes(f)));
 });
@@ -253,7 +253,7 @@ test('full and lite builds retain expansion asset inputs: shipped plans load and
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-package-expansion-out-'));
   try {
     // Keep the production plan modules and their data unchanged: static import checks alone miss readFileSync URLs.
-    const inputs = [...PLAYER_ASSET_INPUTS, 'tools/assets/kazdel-plan.mjs', 'tools/assets/rhine-plan.mjs',
+    const inputs = [...PLAYER_ASSET_INPUTS, 'tools/assets/kazdel-plan.mjs', 'tools/assets/rhine-plan.mjs', 'tools/assets/rem-plan.mjs',
       'tools/assets/sources.mjs', 'shared/kazdel.js', 'shared/rhineResearch.js', 'shared/i18n.js', 'shared/i18nPacks.js'];
     for (const rel of inputs) put(rel, fs.readFileSync(path.join(ROOT, rel)));
     const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
@@ -264,13 +264,18 @@ test('full and lite builds retain expansion asset inputs: shipped plans load and
       import assert from 'node:assert/strict';
       import { kazdelArtInput } from './tools/assets/kazdel-plan.mjs';
       import { rhineArtInput } from './tools/assets/rhine-plan.mjs';
+      import { remArtInput, REM_ENEMY_ART } from './tools/assets/rem-plan.mjs';
       const kazdel = kazdelArtInput({ assets07: { operators: {} }, ops03: { chess: [] } });
-      assert.equal(Object.keys(kazdel.assets07.operators).length, 11);
+      assert.equal(Object.keys(kazdel.assets07.operators).length, 10);
       assert.equal(kazdel.assets07.operators.char_4131_odda.name, '奥达');
       assert.equal(kazdel.assets07.operators.char_4131_odda.skills.length, 2);
       const rhine = rhineArtInput({ operators: {} }, { chess: [] });
       assert.equal(rhine.assets07.operators.char_242_otter.name, '梅尔');
       assert.equal(rhine.assets07.operators.char_242_otter.skills.length, 2);
+      const rem = remArtInput({ assets07: { operators: {} }, ops03: { chess: [] } });
+      assert.equal(Object.keys(rem.assets07.operators).length, 7);
+      assert.equal(rem.assets07.operators.char_4237_jcinta.name, '嘉辛塔');
+      assert.equal(Object.keys(REM_ENEMY_ART).length, 8);
     `;
     for (const lite of [false, true]) {
       const p = plan(dir, { lite, allowDirty: true, env: ENV });
@@ -345,6 +350,40 @@ test('content packs ship: every committed pack of both layouts, never one only o
       ['qab', 'lang', { ui: '/packs/qab/ui.json' }],
     ]);
     assert.ok(!fs.existsSync(path.join(stage, 'packs/local')), 'a pack only on this machine is not in the zip');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test('the stage drops dishonest npm scripts and rewrites unshipped doc links', { skip: !hasZipTool && 'no zip / tar' }, () => {
+  const { dir, put } = fakeCheckout();
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-package-out-'));
+  const readme = '# r\n\n[design](docs/DESIGN.md)\n[play](docs/PLAYING.md)\n[rel](../../releases/latest)\n![shot](docs/img/x.jpg)\n';
+  try {
+    put('README.md', readme);
+    put('docs/PLAYING.md', '# p\n\n[idx](research/00-INDEX.md)\n[home](../README.md#操作)\n');
+    put('docs/DEPLOY.md', '# d\n\n[packs](PACKS.md)\n[win](WINDOWS.md)\n[notice](../NOTICE.md)\n');
+    const r = runTool(['--root', dir, '--out', out, '--no-install', '--allow-dirty', '--lite', '--keep-stage']);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const stage = path.join(out, `${FOLDER}-v9.9.9-lite`, FOLDER);
+    const stagedPkg = JSON.parse(fs.readFileSync(path.join(stage, 'package.json'), 'utf8'));
+    assert.deepEqual(Object.keys(stagedPkg.scripts).sort(), ['assets', 'doctor', 'launch', 'postinstall', 'setup', 'start', 'vendor']);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).scripts.test, 'node --test');
+    const host = 'https://github.com/sganggs/Stronghold-Protocol';
+    const got = fs.readFileSync(path.join(stage, 'README.md'), 'utf8');
+    assert.equal(got, `# r\n\n[design](${host}/blob/v9.9.9/docs/DESIGN.md)\n[play](docs/PLAYING.md)\n[rel](${host}/releases/latest)\n![shot](${host}/raw/v9.9.9/docs/img/x.jpg)\n`);
+    assert.equal(fs.readFileSync(path.join(dir, 'README.md'), 'utf8'), readme, 'the git checkout keeps its relative links');
+    const playing = fs.readFileSync(path.join(stage, 'docs/PLAYING.md'), 'utf8');
+    assert.match(playing, new RegExp(`\\(${host}/blob/v9.9.9/docs/research/00-INDEX.md\\)`));
+    assert.match(playing, /\(\.\.\/README\.md#操作\)/);
+    const deploy = fs.readFileSync(path.join(stage, 'docs/DEPLOY.md'), 'utf8');
+    assert.match(deploy, new RegExp(`\\(${host}/blob/v9.9.9/docs/PACKS.md\\)`));
+    assert.match(deploy, new RegExp(`\\(${host}/blob/v9.9.9/docs/WINDOWS.md\\)`));
+    assert.match(deploy, /\(\.\.\/NOTICE\.md\)/);
+    const shipped = new Set(plan(dir, { lite: true, allowDirty: true, scan: false, measure: false }).tracked);
+    assert.equal(rewritePlayerDoc(readme, 'README.md', shipped, '9.9.9'), got);
+    assert.equal(playerPackageJson(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')), shipped).scripts.test, undefined);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(out, { recursive: true, force: true });

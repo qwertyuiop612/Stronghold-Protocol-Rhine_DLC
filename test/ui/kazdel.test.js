@@ -23,12 +23,13 @@ test('cannon progress validates malformed packets without confusing owners or ex
 test('HUD differentiates owner-only full friendly fire and an accessible paused warning',()=>{
   assert.equal(KazdelCannonHud({states:[]}),null);
   assert.match(cannonModeText(),/100%/);
-  assert.equal(cannonStates([{...state,stage:3}]).length,0);
+  assert.equal(cannonStates([{...state,stage:3}]).length,1);
+  assert.equal(cannonStates([{...state,stage:4}]).length,0);
   const vnode=KazdelCannonHud({states:[state,{...state,ownerId:'p2',stage:2,warning:{x:6,y:10,until:10}}],gameTime:9.5,players:[{playerId:'p2',name:'队友'}]});
   const bars=nodes(vnode).filter(n=>n.props?.role==='progressbar');assert.equal(bars.length,2);
   assert.equal(bars[0].props['aria-valuenow'],7.5);assert.equal(bars[0].props['aria-valuemax'],15);
   assert.match(text(vnode),/自身干员/);assert.match(text(vnode),/0.5秒/);assert.match(text(vnode),/队友/);
-  assert.equal(KazdelCannonHud({states:[{...state,stage:3}],gameTime:12}),null);
+  assert.match(text(KazdelCannonHud({states:[{...state,stage:3}],gameTime:12})),/自身干员/);
 });
 
 test('normal battle HUD includes the resolved counter; Kazdel follows authoritative game time and state',()=>{
@@ -37,11 +38,11 @@ test('normal battle HUD includes the resolved counter; Kazdel follows authoritat
   assert.equal(hud.gameTime,8.25);assert.equal(hud.kazdel[0].charge,7.5);
 });
 
-test('all eleven roster members resolve normally, while souls show donor art/name and no editable owner piece',async()=>{
+test('all ten roster members resolve normally, while souls show donor art/name and no editable owner piece',async()=>{
   const oldFetch=globalThis.fetch;
   globalThis.fetch=async url=>{try{const body=readFileSync(new URL(`../../data/${String(url).split('/').pop()}`,import.meta.url),'utf8');return {ok:true,status:200,json:async()=>JSON.parse(body)};}catch{return {ok:false,status:404};}};
   try{
-    await data.loadAll('chess','tokens','assets','backups');const roster=kazdelRoster(data.get('chess'));assert.equal(roster.length,11);
+    await data.loadAll('chess','tokens','assets','backups');const roster=kazdelRoster(data.get('chess'));assert.equal(roster.length,10);
     for(const c of roster)assert.equal(resolveDetail({kind:'chess',id:c.chessId},new Map()).chess.charId,c.charId);
     const unit={id:91,uid:1,side:'ally',kind:'token',defId:'token_kazdel_soul',kazdelSoul:true,soulOf:11,name:'红豆 · 众魂',avatar:'char_290_vigna',maxHp:2345};
     const detail=resolveDetail({kind:'unit',unit},new Map([[1,{piece:{kind:'chess',id:roster[0].chessId}}]]));

@@ -9,7 +9,7 @@ import { settleRelics, activeReverseLp, consumeRelicLpLoss, consumeRelicShield, 
 import { damageRanking } from '../../../shared/damageRanking.js';
 import { msg } from '../../../shared/i18n.js';
 import { PHASE, GEO } from '../../../shared/constants.js';
-import { deriveSeed } from '../../sim/rng.js';
+import { createRng, deriveSeed } from '../../sim/rng.js';
 import { buildBossWave, bountySpawns } from '../waves.js';
 import { pairPlayers, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS } from '../finalAssault.js';
 import { FieldRunner, HeadlessPacer, syntheticResult, BOSS_SILENCE_MS, CATCHUP_TICKS_PER_INTERVAL } from '../fields.js';
@@ -69,7 +69,8 @@ export class MatchBoss {
       },
     });
     this.bossPool = pool;
-    const groups = pairPlayers(alive);
+    const groups = pairPlayers(alive, createRng(deriveSeed(this.seed, 'boss-pairs')), this.bossPairs);
+    this.bossPairs = groups.map(g => g.map(p => p.playerId));
     const reuse = this.bossWaves && this.bossWaves.length === groups.length && this.bossWaves.every((w, i) => w.players.join() === groups[i].map((p) => p.playerId).join());
     this.fields = groups.map((g, i) => {
       const solo = this.isSolo || g.length === 1;

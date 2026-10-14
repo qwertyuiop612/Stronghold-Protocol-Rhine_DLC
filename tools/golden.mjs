@@ -727,9 +727,10 @@ export function matchScenarios() {
   // The measured shared-stock changes leave the original seeds without a fielded DIY/stand-in operator. Keep those
   // original outcomes, and add companion seeds that still exercise the complete shop → deployment → battle path.
   out.push({ id: 'coop2-NORMAL-1-coverage-standins', mode: 'coop', difficulty: 'NORMAL', bots: 1, seed: 1, human: { notOwned: MATCH_NOT_OWNED } });
-  // This fork's larger roster (284 vs 258 chess) moves the AI's shop rolls and lineup choices once more: seed 5 — the one
-  // upstream measured — draws 推进之王 but never improves its full board with it, while seed 20 fields it from round 7.
-  out.push({ id: 'coop2-NORMAL-20-coverage-diy', mode: 'coop', difficulty: 'NORMAL', bots: 1, seed: 20, human: { diy: MATCH_DIY, shopLevel: 5 } });
+  // This fork's larger roster (308 vs 258 chess after the 雷姆必拓/0.2.6 merge) moves the AI's shop rolls and lineup
+  // choices once more: seeds 5 and 20 — the ones the earlier rounds measured — draw 推进之王 but never improve their full
+  // board with it, while seed 68 fields it from round 3 through 5.
+  out.push({ id: 'coop2-NORMAL-68-coverage-diy', mode: 'coop', difficulty: 'NORMAL', bots: 1, seed: 68, human: { diy: MATCH_DIY, shopLevel: 5 } });
   const humanAbout = (h) => (h.notOwned ? ` + 1 human seat (AI 托管) without ${h.notOwned.length} operators (补位 stand-ins)`
     : ` + 1 human seat (AI 托管) with ${Object.keys(h.diy || {}).length} 自选 picks${h.shopLevel ? ` and its 调度中心 at level ${h.shopLevel} from the first prep` : ''}`);
   return out.map((m) => ({ ...m, family: 'matches', kind: 'match', about: `${m.mode} ${m.difficulty}, ${m.bots} bot seat(s)${m.human ? humanAbout(m.human) : ''}, seed ${m.seed}${m.clientCombat === false ? ', server-run combat' : ''}${m.boost ? `, LP ${m.boost.lp} and ${m.boost.layers} layers per bond from the first prep` : ''}` }));
@@ -1037,7 +1038,7 @@ const ABOUT = {
  * fields (one of them a Hidden Core), six matches (solo 标准 / 绝境, co-op 2 / 4, the boosted Hidden Core run, the 补位
  * match) and the normal-record stand-in battles.
  */
-const FAST_MATCHES = new Set(['solo-FUNNY-1', 'solo-HARD-1', 'coop2-NORMAL-3', 'coop4-ABYSS-7', 'solo-HARD-9-boosted', 'coop2-NORMAL-14-standins', `coop2-NORMAL-${MATCH_DIY_SEED}-diy`, 'coop2-NORMAL-1-coverage-standins', 'coop2-NORMAL-20-coverage-diy']);
+const FAST_MATCHES = new Set(['solo-FUNNY-1', 'solo-HARD-1', 'coop2-NORMAL-3', 'coop4-ABYSS-7', 'solo-HARD-9-boosted', 'coop2-NORMAL-14-standins', `coop2-NORMAL-${MATCH_DIY_SEED}-diy`, 'coop2-NORMAL-1-coverage-standins', 'coop2-NORMAL-68-coverage-diy']);
 const FAST_FIELDS = new Set(['boss-boss_1-pair', 'boss-boss_4-solo', 'boss-boss_7-pair', 'hidden-boss_9-pair', 'unite-1', 'unite-2']);
 export function isFast(sc) {
   if (sc.family === 'matches') return FAST_MATCHES.has(sc.id);

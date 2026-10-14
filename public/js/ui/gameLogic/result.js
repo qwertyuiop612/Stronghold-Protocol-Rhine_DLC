@@ -2,6 +2,7 @@
 
 import { int, isObj, sortedPlayers } from './shared.js';
 import { t } from '../../../../shared/i18n.js';
+import { normalizeDifficultyLevel } from '../../../../shared/difficulty.js';
 
 
 // ---- result -----------------------------------------------------------------------------------------------------------
@@ -50,6 +51,8 @@ export function normalizeResult(res, pub) {
     // older payloads without it: a clear implies it was reached)
     hiddenReached: typeof r.hiddenReached === 'boolean' ? (r.hiddenReached || !!r.hiddenCleared) : !!r.hiddenCleared,
     difficulty: r.difficulty || pub?.difficulty || null,
+    // Preserve the settlement's level (including 0); older payloads fall back to the last public state.
+    difficultyLevel: normalizeDifficultyLevel(Number.isInteger(r.difficultyLevel) ? r.difficultyLevel : pub?.difficultyLevel),
     modeId: r.modeId || pub?.modeId || null,
     bossId: r.bossId ?? pub?.bossId ?? null,
     hiddenBossId: r.hiddenBossId ?? pub?.hiddenBossId ?? null,

@@ -14,7 +14,6 @@
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, baseDifficulty, normalizeDifficultyLevel, ERR } from '../../../shared/constants.js';
-import { DifficultyLevelPicker } from '../ui/difficultyLevel.js';
 import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
@@ -263,7 +262,7 @@ export function LobbyScreen() {
     const d = loadPref('lobby.difficulty', 'FUNNY');
     return DIFFICULTIES.includes(d) ? d : 'FUNNY';
   });
-  const [difficultyLevel, setDifficultyLevel] = useState(() => normalizeDifficultyLevel(loadPref('lobby.difficultyLevel', 0)));
+  const [difficultyLevel] = useState(() => normalizeDifficultyLevel(loadPref('lobby.difficultyLevel', 0)));
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
@@ -276,7 +275,6 @@ export function LobbyScreen() {
 
   const pickMode = (m) => { setRoomMode(m); savePref('lobby.mode', m); };
   const pickDifficulty = (d) => { setDifficulty(d); savePref('lobby.difficulty', d); };
-  const pickLevel = (n) => { setDifficultyLevel(n); savePref('lobby.difficultyLevel', n); };
 
   const run = async (kind, fn) => {
     if (inFlight.current) return;
@@ -320,7 +318,7 @@ export function LobbyScreen() {
     store.set((s) => ({ session: { ...s.session, entered: false } }));
   };
 
-  return html`<div class=${`screen lobby-screen${difficulty === 'ASCENSION' ? ' has-level' : ''}`}>
+  return html`<div class="screen lobby-screen">
     <header class="topbar">
       <div class="topbar__left">
         <${Button} variant="ghost" size="sm" icon="chevronLeft" onClick=${backToTitle} title=${t('返回标题')}>${t('返回')}<//>
@@ -374,8 +372,7 @@ export function LobbyScreen() {
               : html`<span class="t-dim">${t('向同伴索取 {ROOM_CODE_LEN} 位同盟密钥，或直接打开邀请链接', { ROOM_CODE_LEN })}</span>`}
           </div>
         <//>
-        ${difficulty === 'ASCENSION' ? null : html`<${TipsPanel} />`}
-        ${difficulty === 'ASCENSION' ? html`<${DifficultyLevelPicker} value=${difficultyLevel} onChange=${pickLevel} disabled=${!!busy} />` : null}
+        <${TipsPanel} />
       </section>
 
       <section class="lobby-right">

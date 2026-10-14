@@ -62,8 +62,8 @@ test('matchInfoModel: the two greyed kinds, the briefing order, banned operators
   assert.equal(m.stateOf('sargonShip'), 'drawn');
   assert.equal(m.stateOf('yanShip'), null);
   // bondOrder, then identifier: 调和 (bondOrder 1) leads the add-on row as in the official briefing
-  assert.deepEqual(m.core.map((b) => b.name), ['炎', '萨尔贡', '维多利亚', '谢拉格', '拉特兰', '阿戈尔', '叙拉古', '卡西米尔', '莱茵生命', '卡兹戴尔'],
-    'the eight upstream core bonds keep their order, followed by Rhine and Kazdel');
+  assert.deepEqual(m.core.map((b) => b.name), ['炎', '萨尔贡', '维多利亚', '谢拉格', '拉特兰', '阿戈尔', '叙拉古', '卡西米尔', '莱茵生命', '卡兹戴尔', '雷姆必拓'],
+    'the eight upstream core bonds keep their order, followed by Rhine, Kazdel and Rem');
   assert.equal(m.addon[0].name, '调和');
   assert.equal(m.core.length + m.addon.length, Object.keys(DATA.bonds).length, 'every bond, once');
   assert.ok(m.core.every((b) => b.isCore) && m.addon.every((b) => !b.isCore));
@@ -107,6 +107,18 @@ test('MatchBondRow: greyed by state (✕ disc), the banned-member badge, the red
   assert.equal(badge('deputShip'), undefined);
   assert.equal(tipOf('deputShip').props.text, '助力');
   assert.equal(disc('deputShip').props.tier, DATA.bonds.deputShip.thresholds.length);
+  // the box beside the tip: one line per banned member (avatar, name, its bonds with this one highlighted); none ⇒ null
+  const aside = tipOf('preciShip').props.aside;
+  const ops = [...walk(aside)].filter((v) => hasClass(v, 'brief-bantip__op'));
+  const bannedPreci = DATA.bonds.preciShip.visibleMembers.filter((id) => PUB.bannedChess.includes(id));
+  assert.deepEqual(ops.map((v) => v.props['data-chess']), bannedPreci);
+  for (const op of ops) {
+    const c = DATA.chess[op.props['data-chess']];
+    assert.ok([...walk(op)].some((v) => v.type === UnitThumb && v.props.id === c.chessId));
+    assert.match(textOf(op), new RegExp('^' + c.name));
+    assert.ok([...walk(op)].some((v) => hasClass(v, 'is-this') && textOf(v) === '精准'));
+  }
+  assert.equal(tipOf('deputShip').props.aside, null);
 });
 
 test('MatchLegend: the grey and the badge; "或本模式禁用" only when the mode switches bonds off', () => {
@@ -209,4 +221,17 @@ test('the briefing, the strategy draft and the in-game 本局信息 tab all read
   assert.match(drawer, /import \{ matchInfoModel, DiyBannedLine \} from '\.\/matchInfo\.js';/);
   assert.match(drawer, /matchInfoModel\(pub, \{\s*bonds: data\.list\('bonds'\), chess: \(id\) => data\.lookup\('chess', id\), mode: data\.get\('config'\)\?\.modes\?\.\[pub\?\.modeId\],/);
   assert.doesNotMatch(drawer, /bannedPerBond|disabledBondSets/, 'the drawer derives nothing on its own');
+});
+
+test('matchInfoModel: all eleven Rem fixed members appear once in the correct banned tier and bond count', () => {
+  const names = ['jcinta', 'glider', 'aprl', 'warmy', 'tmslot', 'savage', 'asbest', 'thumpy', 'ray'];
+  const ids = [...names.map(name => `chess_rem_${name}_a`), 'chess_char_3_02_a', 'chess_char_4_14_a'];
+  const m = matchInfoModel({ ...PUB, bannedChess: ids }, SRC('mode_multi_hard'));
+  assert.equal(m.perBond.get('remShip'), 11);
+  assert.equal(m.banned.length, 11);
+  assert.deepEqual([...m.banned].sort(), [...ids].sort());
+  assert.deepEqual(m.banned.map(id => data.lookup('chess', id).tier), [1,1,2,2,3,3,4,4,5,5,6]);
+  assert.equal(m.core.filter(b => b.name === '雷姆必拓').length, 1);
+  const block = BannedOperators({ model: m });
+  assert.deepEqual([...walk(block)].filter(v => v.type === UnitThumb).map(v => v.props.id), m.banned);
 });

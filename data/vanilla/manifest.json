@@ -36,13 +36,13 @@
     },
     {
       "path": "choices.json",
-      "size": 124363,
-      "sha256": "995a9d2a5e3aaf7bbf00df017a2796dcee12f27b1d8c04c33d637e4130eeae35"
+      "size": 124486,
+      "sha256": "c49f998503cf0a50cd2e71c71b03aac6b83e3e987eb767d20361ed344b5c6769"
     },
     {
       "path": "config.json",
-      "size": 63770,
-      "sha256": "eebbbbeb434b440f138bd1d35dcf2d69b0f2f5b90859583cf98422677e4d2f12"
+      "size": 63745,
+      "sha256": "a673cc270833eaf75128d66327e4ce50720f1086bbfb0b8b00dac5ea111fd2b8"
     },
     {
       "path": "effects.json",

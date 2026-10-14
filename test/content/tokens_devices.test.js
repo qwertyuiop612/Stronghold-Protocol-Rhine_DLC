@@ -444,7 +444,26 @@ test('every token of data/tokens.json spawns with data defaults and runs without
   const o = h.unit('test_owner');
   const tiles = [];
   for (let r = 9; r <= 12; r++) for (let c = 3; c <= 9; c++) tiles.push([r, c]);
+  assert.ok(tiles.length >= ids.filter(id => !/^token_10005_mgllan_drone[123]$/.test(id) && id !== 'token_10034_ray_sndbst').length, 'the shared fixture has a legal tile for every centrally managed token');
   for (const id of ids) {
+    // Fixed native summoners install their own token kits rather than the central generic token registry.
+    const drone = /^token_10005_mgllan_drone([123])$/.exec(id);
+    if (drone || id === 'token_10034_ray_sndbst') {
+      const native = makeBattle({ units: [
+        { uid: 'owner', chessId: drone ? 'chess_rhine_magallan_a' : 'chess_rem_ray_a', skillIndex: drone ? Number(drone[1]) - 1 : 2, row: 10, col: 4 },
+        { uid: 'nativeToken', kind: 'token', tokenId: id, ownerUid: 'owner', row: 10, col: 5 },
+      ], autoFinish: false, timeLimit: 20 });
+      native.step();
+      const token = native.unit('nativeToken');
+      assert.ok(token.alive && token.deployed, `${id} native deployment`);
+      assert.equal(token.ownerUnit, native.unit('owner'));
+      assert.notEqual(token.kit.generic, true, `${id} native token kit`);
+      assert.ok(token.s.flags.noHeal, `${id} native no-healing rule`);
+      native.run(10);
+      assert.deepEqual(native.b.errors, []);
+      checkInvariants(native.b);
+      continue;
+    }
     const [r, c] = tiles.shift();
     const t = h.b.spawnToken(raw[id].kind === 'mapChar' ? 'p1' : o, id, r, c);
     assert.ok(t, `${id} spawned`);
@@ -511,6 +530,7 @@ test('band map characters: spawnMapChar puts 预备干员-医疗 at its stage sl
   assert.ok(med);
   assert.deepEqual([med.tileR, med.tileC], [10, 2]);
   const gu = h.unit('test_guard');
+  assert.ok(med.aggroSeq > gu.aggroSeq, 'an ad-hoc map character keeps ordinary summon priority');
   gu.hp = 5000;
   h.run(4);
   assert.ok(gu.hp > 5000, 'healed');
@@ -518,6 +538,7 @@ test('band map characters: spawnMapChar puts 预备干员-医疗 at its stage sl
   h.step();
   const touch = spawnMapChar(h.b, 'p1', TOKEN_IDS.touch);
   assert.ok(touch);
+  assert.ok(touch.aggroSeq > gu.aggroSeq, 'an ad-hoc Touch also keeps ordinary summon priority');
   touch.skill.activate('test', { free: true });
   gu.hp = 3000;
   h.run(4);

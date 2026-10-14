@@ -60,6 +60,8 @@ export class Unit {
     this.buffs = [];
     this._dirty = true;
     this._s = null;
+    this._hpScaling = false;
+    this._statsHp = null;
     this.hp = this.base.maxHp;
     this.alive = true;
     this.deployed = false;
@@ -77,7 +79,7 @@ export class Unit {
     this.deathAt = -Infinity;
     this.respawnAt = Infinity;
     this.deploySeq = 0;         // deployment counter; also the identity of one deployment (content: `seq === u.deploySeq`)
-    this.aggroSeq = 0;          // 仇恨 order (the later the more attacked): = deploySeq, except summons of the initial deployment
+    this.aggroSeq = 0;          // 仇恨 order: usually deploySeq; initial summons and prepared map characters are exceptions
     this.spawnSeq = 0;
     this.elem = { burn: 0, neural: 0, necrosis: 0, apoptosis: 0, erosion: 0 };
     this.burstPending = null;   // { [element]: true } while that element's burst resolves (damage.js burstLocked)
@@ -122,7 +124,7 @@ export class Unit {
 
   /** Aggregated stats (lazy). */
   get s() {
-    if (this._dirty) this._recalc();
+    if (this._dirty || (this._hpScaling && this.hp !== this._statsHp)) this._recalc();
     return this._s;
   }
 
@@ -139,9 +141,13 @@ export class Unit {
     const bHp = fin(b.maxHp, 1) > 0 ? fin(b.maxHp, 1) : 1;
     // Kazdel's layer HP is added once after ordinary percentage bonuses (owner decision, 2026-10-09).
     const maxHp = Math.max(1, fin((bHp + a('hpFlat')) * Math.max(0, 1 + a('hpPct')) * m('hpMul') * cm.hp + a('hpFinal'), bHp));
+    // PRTS No.126/127: max bonus at 30% HP. [ASSUMED] Linear between 100% and 30%; natural SP only.
+    // Use the previous max: a max-HP change preserves the HP ratio at the end of this calculation.
+    const lowHp = clamp((1 - this.hp / prevMax) / 0.7, 0, 1);
+    this._hpScaling = !!(a('lowHpAtkPct') || a('lowHpSpRecoveryFlat'));
     // PRTS 游戏数据基础 属性基本公式 A_f = F_t[(A + D_p)(1 + D_t) + F_p]: `atkFinal` is the 最终加算 (FINAL_ADDITION) —
     // added after the percentages, inside the Πmul (阿戈尔's devoured base ATK, DESIGN §24.7)
-    const atk = Math.max(0, fin(((b.atk + a('atkFlat')) * Math.max(0, 1 + a('atkPct')) + a('atkFinal')) * m('atkMul') * cm.atk, fin(b.atk, 0)));
+    const atk = Math.max(0, fin(((b.atk + a('atkFlat')) * Math.max(0, 1 + a('atkPct') + a('lowHpAtkPct') * lowHp) + a('atkFinal')) * m('atkMul') * cm.atk, fin(b.atk, 0)));
     let def = Math.max(0, fin((b.def + a('defFlat')) * Math.max(0, 1 + a('defPct')) * m('defMul') * cm.def, fin(b.def, 0)));
     let res = clamp(fin((b.res + a('resFlat')) * m('resMul'), fin(b.res, 0)), 0, 100);
     // 收藏品在普通属性聚合后兑换，每次从未兑换属性重算，技能变化和再部署均不累加。
@@ -189,7 +195,7 @@ export class Unit {
       healingDealtMul: m('healingDealtMul'),
       healingTakenMul: m('healingTakenMul'),
       atkScaleMul: m('atkScaleMul'),
-      spRecovery: Math.max(0, fin((b.spRecovery + a('spRecoveryFlat')) * m('spRecoveryMul'), 0)),
+      spRecovery: Math.max(0, fin((b.spRecovery + a('spRecoveryFlat') + a('lowHpSpRecoveryFlat') * lowHp) * m('spRecoveryMul'), 0)),
       spCostFlat: a('spCostFlat'),
       redeployMul: m('redeployMul'),
       hpRegen: fin(b.hpRecoveryPerSec + a('hpRegen') + a('hpRegenRatio') * maxHp, 0),
@@ -202,6 +208,7 @@ export class Unit {
     if (this.alive && prevMax > 0 && Math.abs(prevMax - maxHp) > 1e-9) {
       this.hp = clamp(fin(this.hp * (maxHp / prevMax), maxHp), 0, maxHp);
     }
+    this._statsHp = this.hp;
   }
 
   /** Current flags object (stun/freeze/sleep/…) */

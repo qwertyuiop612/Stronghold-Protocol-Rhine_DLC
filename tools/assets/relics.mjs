@@ -26,6 +26,10 @@ export async function prepareCustomRelicIcons(assetsRoot) {
 }
 
 export const RELIC_ICON_FILES = Object.freeze({
+  "relic_125": "rogue_6_relic_fight_13.png", // 液体化肥，No.125，核对于 2026-10-14
+  "relic_126": "rogue_6_relic_fight_14.png", // 热辣可可，No.126
+  "relic_127": "rogue_6_relic_fight_15.png", // 止痛片，No.127
+  "relic_172": "rogue_6_relic_hand_6.png", // 护愈之手，No.172，核对于 2026-10-13
   "relic_233": "rogue_6_relic_legacy_94.png", // “时光之末”，No.233，核对于 2026-10-05
   "relic_003": "rogue_6_relic_legacy_24.png", // 橙味风暴
   "relic_002": "rogue_6_relic_legacy_23.png", // 凉拌海草

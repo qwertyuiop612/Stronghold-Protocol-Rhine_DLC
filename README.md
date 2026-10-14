@@ -2,16 +2,16 @@
 
 > 本项目使用 AI 辅助进行代码分析、功能开发、测试与文档整理。本项目是 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) 的 fork，并整合了莱茵生命与 DLC 扩展；内容为非官方同人复刻与扩展，未经《明日方舟》及相关权利方授权。
 
-当前合并版本：**v0.2.4-test** —— 上游基础 **v0.2.4**（`bc50cac0`）＋ 莱茵生命 **v0.2.2-rhine.3**（bundle `523cca24`）＋ DLC 扩展（超限难度、收藏品、房主战斗倍速）。
+当前合并版本：**v0.2.6-test** —— 上游基础 **v0.2.6**（`488db49f`）＋ 莱茵生命 **v0.2.4-rhine.5**（bundle `b159e574`）＋ DLC 扩展（超限难度、收藏品、房主战斗倍速，`3fd0be02`）。
 
-本仓库是基于上游 **v0.2.4** 的 fork 合并测试版：上游 0.2.4 的全部改动已逐文件并入，同时合入莱茵生命／卡兹戴尔扩展（**v0.2.2-rhine.3**，含科研装置、众魂、战争巨炮与舍身装备）与 DLC 超限难度、收藏品和房主战斗倍速；两侧冲突一律按「保留扩展规则、采纳上游机制」逐处解决。它由 Rhine 与 DLC 两条功能线合并生成，不代表上游作者或《明日方舟》官方。本次同步的逐文件范围、验证数字与剩余问题见 [同步报告](docs/RHINE-DLC-SYNC-0.2.4.md)。
+本仓库是基于上游 **v0.2.6** 的 fork 合并测试版：上游 0.2.5 与 0.2.6 的全部改动已逐文件并入，同时合入莱茵生命／卡兹戴尔扩展（**v0.2.4-rhine.5**，含科研装置、众魂、战争巨炮、舍身装备与雷姆必拓援军）与 DLC 超限难度协议体系、收藏品、低血线缩放和房主战斗倍速；两侧冲突一律按「保留扩展规则、采纳上游机制」逐处解决。它由 Rhine 与 DLC 两条功能线合并生成，不代表上游作者或《明日方舟》官方。本次同步的逐文件范围、验证数字与剩余问题见 [同步报告](docs/RHINE-DLC-SYNC-0.2.6.md)。
 扩展代码沿用 **GPL-3.0-or-later**，并保留原有 Spine Runtimes 组合分发附加许可；[LICENSE](LICENSE)、[NOTICE.md](NOTICE.md) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 原文保留。游戏数据、官方阵营标识及其他游戏素材的权属不因此改变，不应将本仓库全部美术视为 GPL 内容。
 
 ### 本扩展新增内容
 
-- 本次同步上游 0.2.4：共享卡池与装备库存（合作局库存翻倍、装备池可透支）、突袭复活选敌、克莱门莎、浊心斯卡蒂与坚守等规则修正、联机首领战突袭可跳到空半场、第 10／12／14 回合六席信标供给、按技能的攻击与命中音效、重刷本局投票，以及 0.2.3 之后玩家与 GitHub 上反馈的修复；详见 [CHANGELOG.md](CHANGELOG.md) 与[同步报告](docs/RHINE-DLC-SYNC-0.2.4.md)。
+- 本次同步上游 0.2.5／0.2.6：3D 官方场景（`node tools/setup.mjs --scenes`）、设置新增「官方伤害数字」与「弹药数量」、标题页脚项目仓库链接、首领配对随机与最终攻势洗牌、维什戴尔魂灵之影落点修正、开服流量优化（WebSocket 消息压缩、素材地址带内容哈希长期缓存、brotli、教程图改 WebP）、官方场景光照改回官方值、每回合开始重播干员入场动画，以及 0.2.5 发布后反馈的规则与渲染修复；上一轮同步已并入 0.2.4 的共享卡池与装备库存、突袭复活选敌、克莱门莎、六席信标供给等改动；详见 [CHANGELOG.md](CHANGELOG.md) 与[同步报告](docs/RHINE-DLC-SYNC-0.2.6.md)。
 - 扩展干员支持低潜能与练度选择，默认仍为满潜能、精英2 Lv.60；自选同名干员与扩展特质分开处理。
-- DLC 战线：**超限模拟**（沿用终极模拟条件，可选 0–20 级战场协议）、**收藏品**三选一奖励与本地图鉴、房主的**战斗倍速**控制（x1–x5，可选「攻速」或「攻击力」两种等价算法，另有战斗时长增幅 x1–x5）。
+- DLC 战线：**超限模拟**（沿用终极模拟条件，可选 0–20 级战场协议，附可查阅的协议说明与难度选择器交互）、**收藏品**三选一奖励与本地图鉴（含护愈之手、低血线增益与原创藏品）、房主的**战斗倍速**控制（x1–x5，可选「攻速」或「攻击力」两种等价算法，另有战斗时长增幅 x1–x5）。
 
 - 六人同房合作：真人与 AI 共用六个席位；五人开场少 BAN 一个核心盟约、六人少两个，最终攻势支持五人 2＋2＋1、六人 2＋2＋2 分组；详见 [多人版说明](docs/MULTIPLAYER.md)。
 - 六人局最终攻势与隐秘核心共享 BOSS 血量为同规则四人局的 200%，其他属性不变；第 10、12、14 回合每位存活玩家各获得一个信标，第 14 回合奖励信标使用后立即转赠，10、12 回合仍在下个休整期送达。
@@ -24,7 +24,7 @@
 - 莱茵实验终端、联合研究主机的普通／精锐装备、套装效果、合成和转职路径，以及新绘制的装置／装备图标与动态。
 - 装置放置预览、整格范围、充能条、攻击反馈和突破后范围变化；联机同步、机器人选择及相关测试。
 - 卡兹戴尔 3 / 6 人盟约：3人本体每次真正倒地产生死魂灵，6人解锁21格场外巨炮，仅对所属玩家活体友军造成100%炮伤，其他玩家与魂灵免疫；9名以上仍按六档。众魂层数提高本体生命、魂灵生命与攻击；魂灵免疫炮击及衍生伤害，持续到死亡、本体复活或战斗结束。
-- 卡兹戴尔十一名成员：红豆、奥达、陨星、锡人、明椒、赫德雷、伊内丝、泥岩、逻各斯、维什戴尔、阿斯卡纶及其技能、普通模组与特质。医疗魂灵治疗魂灵，锡人二技能也可以给魂灵回血；魔王保持原有设计。
+- 卡兹戴尔十名成员：红豆、奥达、陨星、锡人、明椒、赫德雷、伊内丝、泥岩、逻各斯、维什戴尔及其技能、普通模组与特质。医疗魂灵治疗魂灵，锡人二技能也可以给魂灵回血；魔王保持原有设计。
 - 魂灵完整继承本体所选原生技能、全部原生天赋和模组行为，独立技力、弹药及召唤物；不继承装备触发或活体产层特质。舍身刻印、众魂战刃及同构装备组合见[卡兹戴尔说明](docs/KAZDEL.md)。采用批准的装备／钻机v2图片与用户原徽记。
 - 普通／困难／深渊基础核心 BAN 数调整为5，趣味为2，训练为0；五、六人席位减免继续保留。新增魂灵模型表现、格子预警、炮击冲击与充能条。
 
@@ -34,8 +34,8 @@
 
 《明日方舟》季节性自走棋塔防玩法「卫戍协议：盟约」的**非官方同人复刻**：浏览器即开即玩，单人或 1–6 人联机合作。
 
-![version](https://img.shields.io/badge/version-0.2.4-2ea44f)
-![upstream base](https://img.shields.io/badge/upstream%20base-0.2.4-blue)
+![version](https://img.shields.io/badge/version-0.2.6-2ea44f)
+![upstream base](https://img.shields.io/badge/upstream%20base-0.2.6-blue)
 ![license](https://img.shields.io/badge/code%20license-GPL--3.0--or--later-blue)
 ![node](https://img.shields.io/badge/node-22%20%7C%2024-339933)
 
@@ -70,7 +70,7 @@ English summary: [below](#english).
 
 - **独立模拟**（单人）与**同盟模拟**（1–6 人**合作**，没有 PvP；空位可以加 AI 队友）。
 - 服务器是一个 Node.js 程序，**战斗在各玩家的浏览器里模拟**（和官方一样），服务器只管经济与回合，一台低功耗小主机就能开服。
-- 当前版本 0.2.4：按官方补齐共享卡池与装备库存，修正突袭复活选敌、克莱门莎、浊心斯卡蒂与坚守等规则，联机首领战突袭可以跳到空半场，并修复了 0.2.3 发布后玩家和 GitHub 上反馈的问题，详见 [CHANGELOG.md](CHANGELOG.md)。仍有少数规则按推断实现，与官方不一致的地方欢迎在 Issue 里反馈。
+- 当前版本 0.2.6：减轻开服电脑的流量（静音时不下载背景音乐、WebSocket 消息压缩、素材地址带内容哈希长期缓存、brotli 压缩、教程图改用 WebP），官方场景光照改回官方值，每回合开始重播干员入场动画，新增「弹药数量」选项，并修复了单位多时模型被裁切、留下残影等 0.2.5 发布后反馈的问题，详见 [CHANGELOG.md](CHANGELOG.md)。仍有少数规则按推断实现，与官方不一致的地方欢迎在 Issue 里反馈。
 
 ## 原版功能一览
 
@@ -89,7 +89,7 @@ English summary: [below](#english).
 - **最终攻势与隐秘核心**：两人共享一个战场，全队共同削减同一条领袖血条；10 个敌方领袖，巨型领袖约 5×3 格的受击范围，以及官方的限伤规则。
 - **结算称号**：卫戍之星、不朽盟约、坚若磐石等 6 个称号。
 - **断线重连**：同盟模拟断线后 10 分钟内重新打开页面即可回到原座位，掉线期间按原阵容自动作战，也可以「暂离」交给 AI 托管；独立模拟 24 小时内可以回来继续（同一个浏览器）。
-- **交互细节**：漏怪时顶栏的目标生命值实时减少（结算时确定）；点选、拖放和配发装备都按地上的方格；购买、升级和机变选卡都需要点两次确认；只有一名玩家时除作战外不计时。
+- **交互细节**：漏怪时顶栏用红字 + 「−N」标记待扣的目标生命值（结算时才扣除）；点选、拖放和配发装备都按地上的方格；购买、升级和机变选卡都需要点两次确认；只有一名玩家时除作战外不计时。
 - **画面与声音**：真实 Spine 小人、官方 BGM 与音效、表情（6 套 × 6 个）、作战特效；可选的官方 3D 棋盘（需要从本机客户端提取贴图）。
 - **手机与电脑**：触摸拖拽、长按查看详情，推荐横屏；设置里可以调低画质。
 
@@ -97,7 +97,7 @@ English summary: [below](#english).
 
 ### 本扩展：Windows 免安装整合包（推荐）
 
-1. 到 [莱茵项目的 Releases](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/releases/latest) 下载 **`Stronghold-Protocol-Rhine-v0.2.2-rhine.3-Windows-x64.zip`**。不要选择 GitHub 自动生成的 `Source code` 下载项，它不包含运行环境和素材。
+1. 到 [莱茵项目的 Releases](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/releases/latest) 下载 **`Stronghold-Protocol-Rhine-v0.2.4-rhine.5-Windows-x64.zip`**。不要选择 GitHub 自动生成的 `Source code` 下载项，它不包含运行环境和素材。
 2. **完整解压到新文件夹**，双击 **`启动莱茵科研版.bat`**。包内已包含官方 Node.js 24、运行依赖和游戏素材，首次启动也无需下载安装。
 3. 浏览器会自动打开游戏；保持启动窗口开启。朋友只需访问房主分享的游戏网址，不必各自下载整合包。
 
@@ -145,7 +145,7 @@ npm start          # 启动服务器：http://localhost:3000
 
 | 项目 | 要求 |
 |---|---|
-| 开服的电脑 | Windows / macOS / Linux，Node.js 22 或 24（LTS）；磁盘约 700–850 MB（素材、依赖与本地提取贴图：完整包解压后约 710 MB）；内存空闲约 100 MB，每局再加几 MB |
+| 开服的电脑 | Windows / macOS / Linux，Node.js 22 或 24（LTS）；磁盘约 700–850 MB（素材、依赖与本地提取贴图：完整包解压后约 790 MB）；内存空闲约 100 MB，每局再加几 MB |
 | 玩家 | 支持 WebGL 的现代浏览器（Chrome / Edge / Firefox / Safari 最新版），电脑、手机或平板（横屏） |
 | 网络 | 首次进入游戏时，每位玩家要从开服的电脑下载几十 MB 素材（之后走浏览器缓存）；对局中流量很小 |
 
@@ -165,6 +165,7 @@ npm start          # 启动服务器：http://localhost:3000
 | `DEBUG` | 空 | 设为任意值输出详细日志 |
 | `SP_NO_BROWSER` | 空 | 设为 `1` 时启动脚本不自动打开浏览器 |
 | `SP_BOT_EMOTES` | 空 | AI 队友的对局表情回应（战斗、整备、合成、联防、收礼时即刻的 `m.emote` 广播）；设为 `0` 时整体关闭 |
+| `SP_ASSET_INDEX` | 空 | 素材地址带内容哈希、浏览器长期缓存（0.2.6 起默认开启，哈希存在 `.cache/asset-hashes.json`）；设为 `0` 时关闭，素材清单原样下发 |
 
 设置方式：macOS / Linux `PORT=8080 npm start`；PowerShell `$env:PORT=8080; npm start`；cmd `set "PORT=8080" && npm start`。健康检查：`GET /healthz`。
 
@@ -223,7 +224,8 @@ npm start          # 启动服务器：http://localhost:3000
 | [docs/KAZDEL.md](docs/KAZDEL.md) | 卡兹戴尔扩展：盟约、魂灵、巨炮与舍身装备 |
 | [docs/COLLECTIBLES.md](docs/COLLECTIBLES.md) | DLC 收藏品：三选一奖励规则、掉落与进度、护盾与本地图鉴 |
 | [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md) | 多人版说明：六席、BAN 减免、最终攻势分组与信标供给 |
-| [docs/RHINE-DLC-SYNC-0.2.4.md](docs/RHINE-DLC-SYNC-0.2.4.md) | 本次同步报告：上游 v0.2.4 与莱茵 v0.2.2-rhine.3 的合并范围、验证数字、剩余问题与踩坑 |
+| [docs/RHINE-DLC-SYNC-0.2.6.md](docs/RHINE-DLC-SYNC-0.2.6.md) | 本次同步报告：上游 v0.2.6、莱茵 v0.2.4-rhine.5 与 DLC 战线的合并范围、验证数字、剩余问题与踩坑 |
+| [docs/RHINE-DLC-SYNC-0.2.4.md](docs/RHINE-DLC-SYNC-0.2.4.md) | 上一轮同步报告：上游 v0.2.4 与莱茵 v0.2.2-rhine.3 的合并范围、验证数字、剩余问题与踩坑 |
 | [docs/PLAYING.md](docs/PLAYING.md) | 玩法指南：流程、经济、招募与晋升、摆阵、联防、盟约、最终攻势、结算称号 |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | 部署指南：Windows 开服与开机自启、防火墙、组网 / 隧道、反向代理与 HTTPS、Docker、systemd、排错 |
 | [docs/WINDOWS.md](docs/WINDOWS.md) | Windows 便携包：怎么打一份「零安装」包（`scripts/make-windows-bundle.mjs`）、包里放了什么、授权注意事项 |
@@ -254,7 +256,8 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 - 性能测试：`/dev/battle-perf.html` 在浏览器里跑一场真实战斗（对局用的战斗运行器、模拟和渲染），实时显示帧率与逐帧耗时；在手机上打开后点击「开始测量（10 秒）」，生成的报告可以复制后附在反馈中。用到的战斗来自 `node tools/capture-specs.mjs` 从固定种子的机器人对局里截取的数据（`public/dev/perf/`）。
 - 只重构、不改玩法的提交不能改变 `test/golden/*.json`；有意改变玩法时运行 `npm run golden:update`，检查差异后随改动一起提交（见 [test/golden/README.md](test/golden/README.md)）。
 - GitHub Actions（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 与 Windows、Node 22 / 24 上运行 `npm ci`、`node --test` 和服务器冒烟测试。
-- 2026-10-11 本地全量测试记录：6859 项，6820 通过、1 失败、38 项条件跳过（原始数据缓存或可选浏览器环境），这是合并上游 0.2.4 与莱茵 v0.2.2-rhine.3 之后的数字；唯一失败是本机计时抖动的战斗性能基准（单跑通过，移植前基线同样失败）。同批 `tsc --noEmit`、ESLint（0 error）、`tools/check-imports.mjs`、i18n 严格检查（1579/1579）与服务器冒烟（首页 200、`SERVER OK`）均通过。此记录不等同于完整人工多人实机验收，也不预先代表 GitHub Actions 已运行通过。
+- 2026-10-14 本地全量测试记录：7410 项，7357 通过、3 失败、50 项条件跳过（原始数据缓存或可选浏览器环境），这是合并上游 v0.2.6 与莱茵 v0.2.4-rhine.5 之后的数字；3 个失败都是高并发下的本机计时抖动（`test/lobby.test.js` 的 socket 限流 2 项与 `test/sim/robustness.test.js` 的重型首领战场基准，两者单跑 103/103、35/35 全通过，移植前基线在同样负载下也失败）。同批 `tsc --noEmit`、ESLint（0 error）、`tools/check-imports.mjs`、i18n 严格检查与服务器冒烟（首页 200、`SERVER OK`）均通过。同批 `tsc --noEmit`（0 error）、ESLint（0 error / 152 warning）、`tools/check-imports.mjs`（3 条 allowed note）、i18n 严格检查（en 1611/1611）、`node tools/ci.mjs --only setup,smoke,imports,typecheck` 与服务器冒烟（`/healthz` ok、app 0.2.6、首页 200）均通过。此记录不等同于完整人工多人实机验收，也不预先代表 GitHub Actions 已运行通过。
+- 2026-10-11 本地全量测试记录（上一轮）：6859 项，6820 通过、1 失败、38 项条件跳过，合并上游 0.2.4 与莱茵 v0.2.2-rhine.3 之后的数字。
 
 ## 项目结构
 
@@ -302,7 +305,7 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 
 An **unofficial, non-commercial fan remake** of Arknights' seasonal auto-chess tower-defense mode *Stronghold Protocol: Alliance*, played in the browser: solo, or 1–6 player co-op (AI teammates can fill seats). Combat is simulated in each player's browser, so a low-power PC can host.
 
-- **Fork:** this unofficial Rhine + DLC integration fork is maintained at [qwertyuiop612/Stronghold-Protocol-Rhine_DLC](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC), based on [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) **v0.2.4** (`bc50cac0`), merged with the Rhine expansion **v0.2.2-rhine.3** (bundle `523cca24`) and the DLC line (superlimit difficulty, collectibles, host combat-speed control). Synced on 2026-10-11; the per-file merge scope, verification numbers and remaining issues are in [docs/RHINE-DLC-SYNC-0.2.4.md](docs/RHINE-DLC-SYNC-0.2.4.md). It is not an upstream or official game release; report expansion issues to this fork. The Windows portable bundle is published by the Rhine project.
+- **Fork:** this unofficial Rhine + DLC integration fork is maintained at [qwertyuiop612/Stronghold-Protocol-Rhine_DLC](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC), based on [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) **v0.2.6** (`488db49f`), merged with the Rhine expansion **v0.2.4-rhine.5** (bundle `b159e574`) and the DLC line (`3fd0be02`: superlimit difficulty protocol, collectibles, low-HP scaling, host combat-speed control). Synced on 2026-10-14; the per-file merge scope, verification numbers and remaining issues are in [docs/RHINE-DLC-SYNC-0.2.6.md](docs/RHINE-DLC-SYNC-0.2.6.md). It is not an upstream or official game release; report expansion issues to this fork. The Windows portable bundle is published by the Rhine project.
 - **Run this expansion:** clone this fork, install Node.js 22 or 24, then run `npm ci`, `npm run setup`, and `npm start`. Setup includes the Rhine resource plan; `node tools/fetch-rhine-assets.mjs` can supplement an existing asset download. The [upstream all-in-one bundle](https://github.com/sganggs/Stronghold-Protocol/releases/latest) contains the original game only, not this expansion. The official 3D board needs a local Arknights client to extract; otherwise the 2D board is used.
 - **Play with friends:** create a co-op room and share the 4-letter key or the `?room=KEY` link. On a LAN, use the address printed at start; otherwise use a virtual-LAN tool, a tunnel or a VPS — see [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Disclaimer:** not affiliated with or endorsed by Hypergryph or Yostar. All Arknights names, art, audio, text and data are © their respective owners and are **not** covered by this project's GPL licence. For study and personal non-commercial use only — no selling, paid distribution, paid servers or monetisation of any kind. Content will be removed on request of the rights holders. Provided "as is", without warranty.

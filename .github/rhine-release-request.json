@@ -1,114 +1,84 @@
 {
-  "tag": "v0.2.2-rhine.2",
-  "sourceCommit": "f4e2235e562c9a98d382a8b060e9e739d3b83769",
-  "previousTag": "v0.2.2-rhine.1",
-  "previousArchiveName": "Stronghold-Protocol-Rhine-v0.2.2-rhine.1-Windows-x64.zip",
-  "previousArchiveSha256": "99c4f9173d2929eaef62af5801028669f7a87331fe955f86b3c1fb162dbe67bf",
+  "tag": "v0.2.4-rhine.4",
+  "sourceCommit": "19af32342edaf50c7c434700b9d3142f3be0eb24",
+  "previousTag": "v0.2.4-rhine.3",
+  "previousArchiveName": "Stronghold-Protocol-Rhine-v0.2.4-rhine.3-Windows-x64.zip",
+  "previousArchiveSha256": "ffea11496c280148ada2b4bf1a738b977bb4bba776124766a4204f73c15a58df",
   "runtimeVersion": "v24.21.0",
   "prepareOnly": false,
-  "releaseNotes": "本次正式更新：卡兹戴尔炮击友伤修复与三阶阿斯卡纶。\n\n- 六人档炮击保留误伤风味，只对炮击所属玩家的活体友军造成半额真伤（400 + 7.5 × 众魂层数）；敌方仍为 800 + 15 × 层数。共享战场中其他玩家的干员受到保护，同步与延迟衍生伤害保留炮击归属。\n- 九人档仅伤敌方、魂灵免疫、误伤及其衍生死亡不产层或充能保持不变。\n- 新增三阶阿斯卡纶，仅卡兹戴尔主盟约。本体范围额外减速 20%／30%，每 3 秒有效留怪 +1／2 层；多个目标不倍增，同名每玩家取最强有效来源，无目标暂停，魂灵不继承。\n\n更新方式：结束对局并关闭服务后，在原安装目录运行「联网更新.bat」或「更新旧版.bat」。旧配置与私人文件保留；有本地源码冲突时工具会停止而不是覆盖。首次安装下载完整 Windows x64 ZIP，解压到新目录运行「启动莱茵科研版.bat」。服务器由用户自行更新。\n\n验收：包内官方 Node.js 24 的 Windows 回归、Edge 渲染及卡兹戴尔跨端仿真、HTTP／WebSocket、全部文件清单、旧包升级／重复更新／回滚、上传后重新下载 SHA256 核对通过后才公开发布。实际数量见 RELEASE-VALIDATION.json；SHA256SUMS.txt 对应完整包，UPDATE-TOOL-SHA256.txt 对应独立更新工具。\n\n已知限制：完整 CI 并非全绿。随机战斗 96 的玛恩纳与「余音」反伤链超过 32 层；已在未修改的 509a666c 基线用两者最小场景复现，触发深度保护后跳过递归处理器。本次不混入该既有机制的修复。未进行真人多人平衡试玩或人工 BAT 点击验收。\n\n基于 sganggs/Stronghold-Protocol v0.2.2 的非官方、非商业莱茵／卡兹戴尔扩展，不代表上游作者或《明日方舟》官方；素材与第三方声明随包保留。\n\nCI 补充：Windows Node 22 另有在线更新测试进程异常退出（3221226505），上一正式基线 CI 亦出现相同错误；四组 CI 的服务冒烟因前置失败跳过。包内 Node 24 的独立更新与服务验收结果另见附件。",
+  "releaseName": "v0.2.4-rhine.4 · 雷姆必拓援军与莱茵调整",
+  "releaseNotes": "新增雷姆必拓援军玩法，并整合本批莱茵／卡兹戴尔调整。\n\n- 雷姆必拓 11 名固定成员、3／6／9 档援军、所属玩家独立集结点与特质；援军和车辆可穿过友军，落点仍互斥，敌军照常阻挡。新增原生技能、模型和战斗表现。\n- 九档卡兹戴尔自身原始干员可产魂；炮击只影响所属玩家活体，队友与魂灵免疫，误伤及衍生死亡不产资源。保留当前已批准的自身100%伤害规则。\n- 莱茵科研调整梅尔共享预算、白面鸮按不同莱茵档位计算，固定四阶麦哲伦及其无人机；防止重复产层反馈。\n- 雷姆图标使用已验收的原始透明 PNG，固定提交下载来源，空目录实网校验字节数与 SHA256。完整安装包包含图标及本批模型。\n\n首次安装下载新的 Windows x64 ZIP，解压到新目录运行「启动莱茵科研版.bat」。旧版请结束对局并关闭服务，在原安装目录运行「联网更新.bat」；私人配置保留，源码冲突会停止更新。保留旧发行版，未部署服务器。\n\n包内运行时为官方 Node24.21.0。只有原生 Windows 包内回归、浏览器、HTTP/WebSocket、上一正式包升级、私人配置、重复更新、回滚和上传后附件校验通过才公开；实际结果见 RELEASE-VALIDATION.json。普通 CI 的 Windows Node22 仍有基线更新测试进程崩溃（3221226505），不声称所有 CI 全绿，未扩大范围修复该问题。没有真人多人平衡试玩或人工 BAT 点击验收。\n\n非官方、非商业扩展，不代表上游作者或《明日方舟》官方；素材与第三方声明随包保留。",
   "upstreamResources": {
     "repository": "sganggs/Stronghold-Protocol",
-    "tag": "v0.2.2",
-    "commit": "62eb113419123d9a3a63606107bbf85230c5dd2f",
-    "archiveName": "Stronghold-Protocol-v0.2.2.zip",
-    "sha256": "7a4342af163cae9972a7bc73081f152702092d9e8aec4d3938cf1a9cc9cfc31e"
+    "tag": "v0.2.4",
+    "commit": "bc50cac01ff447eff3ab6c35f69d934bbc23b48f",
+    "archiveName": "Stronghold-Protocol-v0.2.4.zip",
+    "sha256": "0ec5781b8ac04e9134d07c82b03911eefbfc3f840dd090e92a115b5a89d39f72"
+  },
+  "approvedArt": {
+    "public/art/kazdel/bond.png": "89f121f7b472917ac8da7b46c55011426a0343be4ac0824a288302a8e1a4d201",
+    "public/art/kazdel/sigil-v2.png": "b2963e1ac0686fb34fb35d127f785fbcac2c49d5e3b62ddbd4875afaed4be8aa",
+    "public/art/kazdel/blade-v2.png": "efb4a69c233e80b8a80cc9b6dd3c186a1267a066a58454669b96ebe13b6a8901",
+    "public/art/rhine/laser-v2.png": "c0e347854abbe73057185fe6c4c8d356141b34617d308462dcd2d6559962a265",
+    "public/art/rhine/laser-unit-v2.png": "ce32bbb5567d268cb1eed127c9b3bdd45a9e48416314947ac080f7de3495db8e"
+  },
+  "remOriginal": {
+    "path": "public/assets/bond/rem.png",
+    "bytes": 21152,
+    "sha256": "3089f0cb87a7c85b1d12eb1bf6aff6e1dd8ed1d2ae6caaf2cda359b2658c546e",
+    "sourceCommit": "13df9cfd5f607a07ce4b1fa766439c3b012657cb"
   },
   "sourceValidation": {
-    "version": "v0.2.2-rhine.2",
-    "sourceCommit": "f4e2235e562c9a98d382a8b060e9e739d3b83769",
-    "validatedGameplayCommit": "f53c489f83899c1c0fc9c8e35a7d05a5d3d00370",
-    "basedOn": {
-      "tag": "v0.2.2",
-      "commit": "62eb113419123d9a3a63606107bbf85230c5dd2f"
+    "gameplayCommit": "40d6543f3b3bc2e52ea043fe9df9aaad41840d84",
+    "logoSourceCommit": "7c78680115d9949eb45417606dc92f0eda627b5c",
+    "localFullSerialCi": {
+      "tests": 6869,
+      "pass": 6818,
+      "fail": 0,
+      "skipped": 51,
+      "fileConcurrency": 1,
+      "allStaticStages": "passed"
     },
-    "tests": {
-      "kazdelCombined": {
-        "pass": 65,
-        "fail": 0,
-        "skipped": 1
-      },
-      "runtime": {
-        "pass": 43,
-        "fail": 0
-      },
-      "browserNodeParity": {
-        "pass": 1,
-        "scenarios": 8,
-        "fail": 0
-      },
-      "golden": {
-        "matched": 283,
-        "changed": 0
-      },
-      "releasePreflight": {
-        "pass": 85,
-        "fail": 0
-      },
-      "updaterAndBundle": {
-        "pass": 59,
-        "fail": 0,
-        "skipped": 4
-      },
-      "releaseBootstrapGuards": {
-        "pass": 4,
-        "fail": 0,
-        "cases": [
-          "create missing draft",
-          "reuse existing published release",
-          "reject forbidden lookup",
-          "reject tag mismatch"
-        ]
-      }
+    "priorParallelCi": {
+      "fail": 1,
+      "reason": "heavy boss performance 521.3us exceeded500us; unchanged full serial run passed267.4us"
     },
-    "checks": {
-      "lintErrors": 0,
-      "lintWarnings": 141,
-      "typecheck": "passed",
-      "importBoundaries": "exit 0 with 3 existing nodeData.js diagnostics",
-      "strictI18n": "4 packs each 1244/1244"
+    "golden": {
+      "matched": 287,
+      "changed": 0,
+      "regenerated": true
     },
-    "ci": {
-      "run": "https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/actions/runs/38044784271",
-      "status": "not green; baseline reflection recursion reproduced independently",
-      "ubuntuNode22": {
-        "pass": 6247,
-        "fail": 1,
-        "skipped": 68
-      },
-      "ubuntuNode24": {
-        "pass": 6247,
-        "fail": 1,
-        "skipped": 68
-      },
-      "windowsNode24": {
-        "pass": 6258,
-        "fail": 1,
-        "skipped": 57
-      },
-      "windowsNode22": {
-        "pass": 6235,
-        "fail": 2,
-        "skipped": 57,
-        "additionalFailure": "rhine-online-update.test.js process exit 3221226505; same signature on baseline CI 37981682978"
-      },
-      "tooling": "passed",
-      "smoke": "all four jobs skipped after test failure; separate packaged smoke is required"
+    "logoCleanNetwork": {
+      "http": 200,
+      "bytes": 21152,
+      "cacheHits": 0,
+      "digestMatched": true,
+      "resourceAndDocsTests": 69,
+      "packageAndDownloadTests": 133,
+      "fail": 0
     },
-    "knownIssues": [
-      {
-        "name": "Mlynar / Echo recursive reflection",
-        "test": "test/sim/fuzz.test.js battle 96",
-        "baseline": "509a666cc76e61e689c7ffbd3eb36e2d9de35088",
-        "reproducedWithoutNewContent": true,
-        "effect": "depth-32 guard skips recursive hit/damaged handlers",
-        "fixed": false
-      }
-    ],
-    "localLimitations": [
-      "No manual multiplayer balance trial or manual BAT launch.",
-      "Initial Linux full-suite failure counts and retest scope are documented in docs/KAZDEL-VALIDATION.md."
+    "i18n": {
+      "packs": 4,
+      "messagesPerPack": 1277,
+      "missing": 0,
+      "errors": 0
+    },
+    "sourceCi": {
+      "run": 38525225483,
+      "conclusion": "four jobs passed; Windows Node22 updater process exit3221226505 matches baseline",
+      "logoCorrectionRun": 38528337760,
+      "logoCorrectionStatusAtRequest": "in progress; not represented as passed"
+    },
+    "releaseToolTests": {
+      "tests": 87,
+      "pass": 75,
+      "fail": 0,
+      "skipped": 12,
+      "note": "Windows-only cases skipped locally; native package run executes them"
+    },
+    "limitations": [
+      "Windows Node22 full CI retains the baseline rhine-online-update.test.js process crash3221226505; no root cause claim. Distributed runtime Node24.21.0 requires separate native package/update checks.",
+      "No human multiplayer balance playtest or manual BAT clicking."
     ]
-  },
-  "draftReleaseId": 408881289
+  }
 }

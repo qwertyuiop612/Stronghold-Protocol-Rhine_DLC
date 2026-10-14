@@ -15,6 +15,8 @@ const buff = (b, u, key, mods, duration, flags) => b.addBuff(u, { key: `asc:${ke
 export function guardDifficultyDamage(b, source, target, amount, dmg) {
   const rules = b.difficulty;
   if (target.side !== 'enemy' || !(amount > 0) || !rules?.level) return amount;
+  // A normal-HP enemy may retain its gift when knocked out into a hit-count form.
+  if (rules.lastGift && (target.s.flags.hitCount || target.s.flags.hitCountArts)) b.removeBuff(target, 'asc:gift');
   let first = false;
   if (rules.firstHitImmune && !target.difficultyFirstHitUsed) {
     target.difficultyFirstHitUsed = true;
@@ -102,7 +104,8 @@ export function installDifficulty(b) {
             { type: 'arts', amount: u.base.atk * P.embers.damage, canDodge: false, tags: ['asc:embers'] });
         });
       }
-      if (rules.lastGift) for (const e of b.enemiesInRadius(u.x, u.y, P.lastGift.radius, true)) if (liveEnemy(e)) {
+      // Use the damage pipeline's current flags: temporary hit-count forms are excluded too.
+      if (rules.lastGift) for (const e of b.enemiesInRadius(u.x, u.y, P.lastGift.radius, true)) if (liveEnemy(e) && !e.s.flags.hitCount && !e.s.flags.hitCountArts) {
         b.addBuff(e, { key: 'asc:gift', shieldHits: 1, duration: P.lastGift.duration, visible: true });
         fx(b, 'shield', e);
       }

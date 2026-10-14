@@ -3,12 +3,14 @@ import { KAZDEL_BOND as BOND, KAZDEL_BALANCE as B, KAZDEL_CANNON as C, KAZDEL_GA
 import { gainLayers, garrisonRecord, isMember } from './support/index.js';
 import { createSoul, refreshSoul } from './kazdel/souls.js';
 import { cannonSource, tickCannon } from './kazdel/cannon.js';
-import { tickAscalon } from './kazdel/ascalon.js';
 import { kazdelEquipmentDamage } from './items/battle.js';
 
 const present = u => !!u?.alive && u.deployed && !u.hidden && !u.removed;
 const soulOrBody = u => present(u) || present(u?.kazdelSoulUnit);
 const member = (battle, u) => u.kind === 'op' && isMember(battle, u, BOND);
+// Nine members widen soul eligibility only; membership passives and death resources stay unchanged.
+const soulEligible = (battle, s, u) => s.stage > 0 && u.kind === 'op' && s.originals.includes(u)
+  && (s.stage >= 3 || member(battle, u));
 const layersOf = s => s.stage ? Math.max(0, Number(s.ps.bonds[BOND]?.layers) || 0) : 0;
 
 export function kazdelTrait(unit, key) {
@@ -78,7 +80,6 @@ export function install(battle) {
   }));
   if (!states.some(s => s.stage || s.originals.some(u => Object.keys(G).some(k => kazdelTrait(u, k))))) return;
   const byOwner = new Map(states.map(s => [s.ps.playerId, s]));
-  const ascalonStates = states.filter(s => s.originals.some(u => kazdelTrait(u, 'ascalon')));
   battle._kazdelView = () => states.filter(s => s.stage).map(s => ({ ownerId: s.ps.playerId, stage: s.stage,
     layers: layersOf(s), charge: s.charge, maxCharge: C.capacity, rate: C.chargePerSec + C.chargePerLayer * layersOf(s),
     warning: s.warning ? { ...s.warning } : null, lastFireAt: Number.isFinite(s.lastFireAt) ? s.lastFireAt : null }));
@@ -86,13 +87,24 @@ export function install(battle) {
     const w = bestAura(s, 'wisdel');
     if (w) for (const soul of s.souls) if (present(soul)) soul.mem.kazdelNextAttackBonus = w.bb.next_attack_bonus;
   };
-  battle.on('battleStart', () => { for (const s of states) updatePassives(battle, s, states); }, { priority: -100 });
+  battle.on('battleStart', () => {
+    // Unite initially deploys then forcibly withdraws down bodies. Restore only after
+    // that setup, so it cannot be mistaken for a real revival and delete the soul.
+    if (battle.kind === 'unite') for (const s of states) for (const u of s.originals) {
+      const carry = u.carry?.kazdelSoul;
+      if (!soulEligible(battle, s, u) || !u.carry?.down || u.alive || u.removed || u.kazdelSoulUnit?.alive
+        || !carry || !Number.isFinite(carry.hpPct) || carry.hpPct <= 0 || carry.hpPct > 1
+        || !Number.isFinite(carry.sp) || carry.sp < 0 || carry.sp > 1e5) continue;
+      const soul = createSoul(battle, u, layersOf(s), kazdelTrait, carry);
+      if (soul) s.souls.push(soul);
+    }
+    for (const s of states) updatePassives(battle, s, states);
+  }, { priority: -100 });
   battle.on('deploy', ({ unit }) => {
     const s = byOwner.get(unit.ownerId);
     if (s && unit.kind === 'op') updateWisdelAttack(battle, s, unit);
   }, { priority: -100 });
   battle.on('tick', ({ dt }) => {
-    if (ascalonStates.length) tickAscalon(battle, ascalonStates, dt, kazdelTrait);
     for (const s of states) { updatePassives(battle, s, states); tickCannon(battle, s, dt, layersOf(s), onFire); }
   }, { priority: -50 });
   // Track actual positive body damage, then count distinct enemies that really die; soul damage never feeds Odda.
@@ -120,9 +132,9 @@ export function install(battle) {
       return;
     }
     const s = byOwner.get(u.ownerId);
-    if (!s || !member(battle, u)) return;
-    if (!dmg?.tags?.includes('kazdelCannon')) qualifiedDeath(battle, s, u);
-    if (s.stage) {
+    if (!s || !s.originals.includes(u) || u.kind !== 'op') return;
+    if (member(battle, u) && !dmg?.tags?.includes('kazdelCannon')) qualifiedDeath(battle, s, u);
+    if (soulEligible(battle, s, u)) {
       const soul = createSoul(battle, u, layersOf(s), kazdelTrait);
       if (soul) s.souls.push(soul);
     }

@@ -37,18 +37,37 @@
 .level-effects__rule.is-active .level-effects__threshold { color: #ff3156; }
 .level-effects__rule.is-active .icon { color: var(--mint-400); }
 .level-effects__note { display: block; margin-top: .08rem; font-size: calc(.11 * var(--t)); line-height: 1.5; color: var(--text-lo); }
-.lobby-left > .level-picker { margin-top: .2rem; }
-.lobby-screen.has-level .mode-card { min-height: 2.8rem; gap: .12rem; padding-top: .22rem; padding-bottom: .2rem; }
-.lobby-screen.has-level .mode-card__icon { width: .6rem; height: .6rem; }
-.lobby-screen.has-level .mode-card__icon .icon { width: .32rem; height: .32rem; }
 .lobby-screen .diff-list { gap: .1rem; }
 .lobby-screen .diff-card { padding-top: .12rem; padding-bottom: .12rem; }
 .lobby-screen .create-box { margin-top: .22rem; }
-.solo-brief > .level-picker { margin-top: auto; padding: .12rem .16rem; gap: .16rem; grid-template-columns: 1.4rem minmax(0, 1fr); }
-.room-screen.has-level .seats--solo { grid-template-rows: minmax(0, 6.6rem); }
+/* Each difficulty number and its effect share one scroll-snap row in solo and co-op rooms. */
+.level-picker--integrated { display: flex; flex-direction: column; min-height: 0; padding: 0; gap: .14rem; border: 0; background: none; }
+.solo-brief > .level-picker--integrated { flex: 1; margin-top: .12rem; }
+.level-picker--integrated .level-effects__head { flex: none; justify-content: flex-end; margin: 0; }
+.level-picker--integrated .level-effects__head b { font-size: calc(.16 * var(--t)); }
+.level-picker--integrated .level-wheel__frame { flex: 1; min-height: 0; height: auto; border: 0; }
+.level-picker--integrated .level-wheel__frame::after { inset: calc(100% / 3) 0; }
+.level-picker--integrated .level-wheel__marker { top: 50%; transform: translateY(-50%); }
+.level-picker--integrated .level-wheel { --level-row-height: 1.4rem; padding: var(--level-row-height) 0; }
+.level-picker--integrated .level-wheel__row { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: center; gap: .3rem; height: var(--level-row-height); padding: .08rem .1rem; line-height: 1.4; text-align: left; color: var(--text-dim); font-weight: 400; text-shadow: none; transition: none; }
+.level-wheel__number { text-align: center; font-size: calc(.68 * var(--t)); font-weight: 700; line-height: 1; }
+.level-wheel__effect { min-width: 0; display: flex; flex-direction: column; gap: .05rem; }
+.level-wheel__effect strong { font-size: calc(.22 * var(--t)); font-weight: 700; }
+.level-wheel__effect > span { font-size: calc(.15 * var(--t)); }
+.level-rule__help { display: inline; margin-left: .04rem; color: var(--amber); cursor: help; white-space: nowrap; }
+.level-rule__help:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+.level-picker--integrated .level-wheel__row.is-active { color: #995d68; }
+.level-picker--integrated .level-wheel__row.is-selected { color: #ff3156; }
+.level-picker--integrated .is-selected .level-wheel__number { text-shadow: 0 0 .2rem rgba(255, 49, 86, .2); }
+.level-picker--integrated .is-selected .level-wheel__effect strong { color: var(--text-hi); }
+.level-picker--integrated .is-selected .level-wheel__effect > span { color: var(--text-md); }
+.room-screen.has-level .seats--solo { grid-template-columns: 3.8rem minmax(0, 9.6rem); grid-template-rows: minmax(0, 6.6rem); }
 .room-level { flex: none; width: min(12rem, calc(100% - 1.2rem)); margin: 0 auto .24rem; }
-.room-level .level-picker { grid-template-columns: 1.8rem minmax(0, 1fr); }
-.room-screen.has-level .seats:not(.seats--solo) { grid-template-rows: minmax(0, 4.2rem); padding-top: .24rem; padding-bottom: .24rem; }
+.room-level .level-picker--integrated { height: 3.4rem; }
+.room-screen.has-level .seats:not(.seats--solo) { grid-template-rows: minmax(0, 1fr); max-height: 4.68rem; padding-top: .24rem; padding-bottom: .24rem; }
+/* The seats shrink while the level picker is open. The avatar keeps the room screen's own sizing
+   (room.css `.seat__art .avatar`, with its short-viewport media queries) — no container queries
+   (test/client-static.test.js forbids @container / container-type / @layer in public/css). */
 .room-screen.has-level .seats:not(.seats--solo) .seat__art { min-height: 0; }
 .room-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
 .room-bar .dpick__opt { padding: 0 .16rem; }

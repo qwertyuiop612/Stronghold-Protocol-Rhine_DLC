@@ -1,3 +1,4 @@
+import { getDataProfile } from '../../server/data.js';
 // AI player (server/match/bot.js): field model, layout planner, rehearsal, buying / leveling / bench management.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -38,9 +39,9 @@ test('user: Given a saturated layout, When placing a self-range defender, Then p
 });
 
 test('self-range blockers (range 0-1, only their own tile) fill the free enemy-road tiles before any other tile, on every stage and seed', () => {
-  // official range_table "0-1": the one grid (0,0) — 角峰 古米 泡泡 折桠 菲莱 蛇屠箱 塞雷娅 余
+  // official range_table "0-1": the one grid (0,0) — 角峰 古米 泡泡 折桠 菲莱 蛇屠箱 塞雷娅 余 石棉 珊比
   const guards = Object.values(DATA.chess).filter((c) => c && !c.isGolden && c.rangeGrid && c.rangeGrid.length === 1 && c.rangeGrid[0].every((v) => v === 0));
-  assert.equal(guards.length, 8);
+  assert.equal(guards.length, 10);
   const stages = new Set();
   for (let seed = 1; seed <= 40; seed++) {
     const h = makeMatch({ mode: 'solo', seed }).start().toPrep();
@@ -192,7 +193,8 @@ test('rehearsal runs in bounded slices between scheduler callbacks and plays exa
 test('the prep routine itself (shop, lineup, layout planning) runs in bounded slices and plays exactly like the one-shot run', () => {
   const seats = [0, 1].map((i) => ({ seat: i, playerId: `ai_${i}`, name: `AI${i}`, isBot: true, connected: true }));
   // Exercise a full candidate pool so BAN rotation cannot remove the planning work this test measures.
-  const data = { ...DATA, config: { ...DATA.config, bans: { ...DATA.config.bans, NORMAL: { core: 0, addon: 0 } } } };
+  const vanilla = getDataProfile(false);
+  const data = { ...vanilla, config: { ...vanilla.config, bans: { ...vanilla.config.bans, NORMAL: { core: 0, addon: 0 } } } };
   const run = (botSliceMs) => {
     const h = makeMatch({ mode: 'coop', difficulty: 'NORMAL', data, seats, seed: 13, fake: true, botRehearsal: 3, botSliceMs }).start();
     const m = h.m;

@@ -9,6 +9,63 @@ import { makeMatch } from './harness.js';
 import { attachAudit } from '../../server/match/audit.js';
 import { makeBattle, chessRec } from '../helpers/battleHarness.js';
 
+test('液体化肥、热辣可可、止痛片：按品质进入候选，合法领取后下场生效', () => {
+  for (const [id, tier, round] of [['relic_125', 2, 1], ['relic_126', 3, 4], ['relic_127', 2, 1]]) {
+    const h = makeMatch({ mode: 'solo', fake: true }).start();
+    try {
+      h.toPrep(round);
+      const ps = h.ps('p_0');
+      ps.relics = RELICS.filter((r) => r.id !== id).map((r) => ({ id: r.id, round: 1 }));
+      assert.equal(getRelic(id).tier, tier);
+      const offer = settleRelics(ps, { perfect: true, leaked: [] }, { completed: true });
+      assert.deepEqual(offer.options, [id]);
+      assert.equal(ps.battleInput().relics.includes(id), false);
+      assert.equal(selectRelic(ps, offer.id, 0).id, id);
+      assert.equal(selectRelic(ps, offer.id, 0), null);
+      // Leave the other owned IDs out of this mechanism check; the input itself comes from a legal claim.
+      const input = ps.battleInput();
+      const next = makeBattle({ players: [{ ...input, relics: input.relics.filter((r) => r === id), units: [
+        { uid: 1, kind: 'chess', chessId: 'low_guard', row: 10, col: 4 },
+      ] }], defs: { chess: { low_guard: chessRec({ id: 'low_guard', skill: null,
+        stats: { maxHp: 2000, atk: 500 } }) } }, autoFinish: false });
+      next.step();
+      const u = next.unit(1);
+      u.hp = 600;
+      if (id === 'relic_125') {
+        next.b.emit('attack', { attacker: u });
+        assert.equal(u.hp, 550); assert.equal(u.findBuff('relic:125:barrier').shield, 100);
+      } else if (id === 'relic_126') assert.equal(u.s.atk, 1250);
+      else assert.equal(u.s.spRecovery, 3);
+      assert.deepEqual(next.b.errors, []);
+    } finally { h.m.dispose(); }
+  }
+});
+
+test('护愈之手：史诗候选可合法领取，下场战斗生效且不重复领取', () => {
+  const h = makeMatch({ mode: 'solo', fake: true }).start();
+  try {
+    h.toPrep(7);
+    const ps = h.ps('p_0');
+    ps.relics = RELICS.filter((r) => r.id !== 'relic_172').map((r) => ({ id: r.id, round: 1 }));
+    assert.equal(getRelic('relic_172').tier, 4);
+    const offer = settleRelics(ps, { perfect: true, leaked: [] }, { completed: true });
+    assert.deepEqual(offer.options, ['relic_172']);
+    assert.equal(ps.battleInput().relics.includes('relic_172'), false);
+    assert.equal(selectRelic(ps, offer.id, 0).id, 'relic_172');
+    assert.equal(selectRelic(ps, offer.id, 0), null);
+    const battle = makeBattle({ players: [{ ...ps.battleInput(), units: [
+      { uid: 1, kind: 'chess', chessId: 'hand_medic', row: 10, col: 4 },
+    ] }], defs: { chess: { hand_medic: chessRec({ id: 'hand_medic', profession: 'MEDIC', skill: null,
+      rangeGrid: [[0, 0]], stats: { maxHp: 2000 } }) } }, autoFinish: false });
+    battle.step();
+    const u = battle.unit(1);
+    assert.equal(battle.b.applyStatus(u, 'stun', { duration: 3 }), false);
+    battle.b.heal(u, u, 100);
+    assert.ok(u.findBuff('overheal')?.shield > 0);
+    assert.deepEqual(battle.b.errors, []);
+  } finally { h.m.dispose(); }
+});
+
 test('原创收藏品：实际奖励池抽取与领取后下一场战斗生效', () => {
   for (const id of ['relic_154', 'relic_155']) {
     const h = makeMatch({ mode: 'solo', fake: true }).start();
@@ -37,7 +94,7 @@ test('原创收藏品：实际奖励池抽取与领取后下一场战斗生效',
 });
 
 test('collection: every tier is populated, early pools cannot run out during ordinary play, definitions are immutable', () => {
-  assert.equal(RELICS.length, 46);
+  assert.equal(RELICS.length, 50);
   assert.equal(new Set(RELICS.map((r) => r.id)).size, RELICS.length);
   assert.ok(RELICS.filter((r) => r.tier === 1).length >= 9);
   for (const { tier } of RELIC_TIERS) assert.ok(RELICS.some((r) => r.tier === tier));
@@ -89,6 +146,7 @@ test('balance: duplicate IDs, forged payloads, profession and position add witho
   const all = RELICS.map((r) => r.id);
   const mods = relicModifiers(all, 'WARRIOR', 'MELEE');
   const expected = { atkPct: 1.23, hpPct: 1.4, defPct: 1.22, aspd: 35, spRecoveryFlat: 0.75, hpRegen: 100, hpRegenRatio: 0.02, dodgePhys: 0.22, dodgeArts: 0.27, physDealtMul: 1.6, artsDealtMul: 1.6, healingTakenMul: 1.1, artsTakenMul: 0.1, physTakenMul: 0.1, defResClear: 1 };
+  Object.assign(expected, { lowHpAtkPct: 1.5, lowHpSpRecoveryFlat: 2 });
   assert.deepEqual(Object.keys(mods).sort(), Object.keys(expected).sort());
   for (const [key, value] of Object.entries(expected)) assert.ok(Math.abs(mods[key] - value) < 1e-9, key);
   assert.deepEqual(relicModifiers(['relic_003', 'relic_003', 'unknown', { id: 'unknown', mods: { atkPct: 999 } }]), { atkPct: 0.08 });

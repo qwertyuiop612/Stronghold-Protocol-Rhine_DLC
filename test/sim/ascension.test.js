@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Battle } from '../../server/sim/Battle.js';
-import { DataSource } from '../../server/sim/simdata.js';
+import { DataSource, getDefaultSource } from '../../server/sim/simdata.js';
 import { SkillRuntime } from '../../server/sim/skills.js';
 import { canTargetEnemy } from '../../server/sim/targeting.js';
 import { UF } from '../../shared/constants.js';
@@ -14,8 +14,8 @@ const data = new DataSource({ chess: { test_chess_a: chessRec({ skill: null }) }
   enemy_elite: enemyRec({ hp: 1001, atk: 100, speed: 0, rank: 'ELITE' }),
   enemy_boss: enemyRec({ hp: 1001, atk: 100, speed: 0, rank: 'BOSS' }),
 } });
-function field(level, key = 'enemy_test') {
-  const b = new Battle({ difficultyLevel: level, stage, data, content: 'none', autoFinish: false,
+function field(level, key = 'enemy_test', options = {}) {
+  const b = new Battle({ difficultyLevel: level, stage, data: options.data ?? data, content: options.content ?? 'none', autoFinish: false,
     flags: { startOpCooldown: 0 }, timeLimit: 90, seed: 31, logger: { warn() {}, error() {} },
     players: [{ playerId: 'p1', units: [2, 3].map((col, i) => ({ chessId: 'test_chess_a', row: 10, col, uid: i + 1 })) }] });
   b.start();
@@ -144,6 +144,74 @@ test('09: a death gives neighbors one temporary shield, with no stacking or leak
   const leaked = b.spawnEnemy('enemy_test', { pos: [9, 10.5] });
   b.leak(leaked);
   assert.equal(e.findBuff('asc:gift'), null);
+});
+
+test('09: hit-count recipients are excluded by their active damage flags, including at higher levels', () => {
+  for (const level of [9, 20]) for (const flag of ['hitCount', 'hitCountArts']) {
+    const { b, e, a } = field(level);
+    const counted = b.spawnEnemy('enemy_test', { pos: [9, 10.5] });
+    b.addBuff(counted, { key: 'test:counted', persist: true, flags: { [flag]: true } });
+    const fallen = b.spawnEnemy('enemy_test', { pos: [9, 11] });
+    b.drainEvents();
+    b.kill(fallen, a);
+    assert.equal(e.findBuff('asc:gift').shieldHits, 1, 'ordinary neighbors still receive the gift');
+    assert.equal(counted.findBuff('asc:gift'), null, `${flag} at level ${level}`);
+    assert.ok(!b.drainEvents().some(ev => ev[0] === 'fx' && ev[1] === 'shield' && ev[4].id === counted.id));
+    b.kill(e, a);
+    assert.equal(hit(b, a, counted), 0, 'the separate first-hit barrier still applies');
+    assert.equal(hit(b, a, counted), 1, 'the next eligible hit needs no extra gift-shield hit');
+  }
+});
+
+test('09: all fourteen real hit-count objects, including Arts-only teaware, cannot receive death gifts', () => {
+  const fullData = new DataSource(data.raw, getDefaultSource());
+  const keys = ['enemy_1196_msfyin', 'enemy_1198_msfshu', 'enemy_1200_msfjin', 'enemy_1202_msfzhi',
+    'enemy_1204_msfhu', 'enemy_1208_msfji', 'enemy_1210_msfden'].flatMap(key => [key, `${key}_2`]);
+  for (const key of keys) {
+    const { b, e, a } = field(9, 'enemy_test', { data: fullData, content: 'full' });
+    const counted = b.spawnEnemy(key, { pos: [9, 10.5] });
+    assert.ok(counted.s.flags.hitCount || counted.s.flags.hitCountArts, key);
+    b.kill(e, a);
+    assert.equal(counted.findBuff('asc:gift'), null, key);
+    const hp = counted.hp;
+    assert.equal(hit(b, a, counted), 0, 'the separate first-hit barrier still applies');
+    assert.equal(hit(b, a, counted), 1, key);
+    assert.equal(counted.hp, hp - 1, key);
+    assert.deepEqual(b.errors, []);
+  }
+});
+
+test('09: temporary ember and regeneration forms are excluded only while their hit-count mechanic is active', () => {
+  const fullData = new DataSource(data.raw, getDefaultSource());
+  for (const key of ['enemy_1288_duskls', 'enemy_1288_duskls_2', 'enemy_1292_duskld', 'enemy_9010_acpupp']) {
+    const { b, e, a } = field(9, 'enemy_test', { data: fullData, content: 'full' });
+    const changing = b.spawnEnemy(key, { pos: [9, 10.5] });
+    changing.base.moveSpeed = 0;
+    changing.markDirty();
+    b.kill(e, a);
+    const previousGift = changing.findBuff('asc:gift');
+    assert.equal(previousGift.shieldHits, 1, `${key}: normal form can receive a gift`);
+    b.kill(changing, a);
+    assert.ok(changing.alive && changing.s.flags.hitCount, `${key}: knocked out into hit-count form`);
+    const fallen = b.spawnEnemy('enemy_test', { pos: [9, 10] });
+    b.kill(fallen, a);
+    assert.equal(changing.findBuff('asc:gift'), previousGift, `${key}: no new gift during rebirth`);
+    run(b, 1.1);
+    changing.x = 10.5; changing.y = 9;
+    const second = b.spawnEnemy('enemy_test', { pos: [9, 10] });
+    b.kill(second, a);
+    assert.equal(changing.findBuff('asc:gift'), previousGift, `${key}: no new gift in the active hit-count form`);
+    assert.equal(hit(b, a, changing), 0, 'the separate first-hit barrier still applies');
+    assert.equal(changing.findBuff('asc:gift'), null, 'the pre-transition gift is discarded before absorption');
+    assert.equal(hit(b, a, changing), 1, `${key}: the old gift cannot block a hit-count loss`);
+    run(b, changing.def.raw.talents.bb['Revive[Trigger].interval']);
+    assert.ok(!changing.s.flags.hitCount, `${key}: returned to normal form`);
+    changing.x = 10.5; changing.y = 9;
+    const third = b.spawnEnemy('enemy_test', { pos: [9, 10] });
+    b.kill(third, a);
+    assert.equal(changing.findBuff('asc:gift').shieldHits, 1, `${key}: normal form receives gifts again`);
+    assert.deepEqual(b.errors, []);
+  }
 });
 
 test('10: armor rotates on the game clock; late spawns inherit the current phase', () => {

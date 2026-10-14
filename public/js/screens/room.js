@@ -283,7 +283,7 @@ export function RoomScreen() {
   const addBot = () => run('add', () => net.request('room.addBot', {}));
   const removeBot = (seat) => run(`rm${seat}`, () => net.request('room.removeBot', { seat }));
   const setDifficulty = (difficulty, difficultyLevel = room.difficultyLevel ?? 0) => run('diff', () => net.request('room.setDifficulty', { difficulty, difficultyLevel }));
-  const levelPicker = room.difficulty === 'ASCENSION' ? html`<${DifficultyLevelPicker} value=${room.difficultyLevel}
+  const levelPicker = room.difficulty === 'ASCENSION' ? html`<${DifficultyLevelPicker} value=${room.difficultyLevel} minimal=${true}
     onChange=${(n) => setDifficulty('ASCENSION', n)} disabled=${!!busy || !online} readOnly=${!facts.isHost} />` : null;
   // the host removes a human before the match (community report #17): asked first; the player may join again. The
   // confirmed player's id goes along: if they left and someone else took the seat meanwhile, the server refuses it.
@@ -374,13 +374,13 @@ export function RoomScreen() {
       ${coop ? null : html`<aside class="solo-brief brackets">
         <${MicroLabel} tone="mint">BRIEFING<//>
         <h2>${DIFFICULTY_NAMES[room.difficulty] ? t(DIFFICULTY_NAMES[room.difficulty]) : ''}<span class="num t-dim"> ${info.code}</span></h2>
-        <p>${info.desc}</p>
+        ${room.difficulty === 'ASCENSION' ? null : html`<p>${info.desc}</p>
         <ul>
           ${info.effects.map((e) => html`<li key=${e}>${e}</li>`)}
           <li>${info.openingBanNote}</li>
           <li>${t('共')} <b class="num">${info.rounds}</b> ${tc('rounds', '回合')}${info.hidden ? t('，满足条件时进入隐秘核心') : ''}</li>
           <li>${t('独立模拟中休整期与机变阶段不限时')}</li>
-        </ul>
+        </ul>`}
         ${levelPicker}
       </aside>`}
     </main>

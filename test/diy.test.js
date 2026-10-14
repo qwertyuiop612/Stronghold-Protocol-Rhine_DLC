@@ -47,7 +47,7 @@ test('diyPool: tier 5 = 15 prototypes + 72 owned 6★, tier 6 = 9 + 72; no prese
   const EXPANSION = new Set(['char_134_ifrit', 'char_416_zumama', 'char_1035_wisdel', 'char_4048_doroth',
     'char_4088_hodrer', 'char_4132_ascln', 'char_4133_logos']);
   const baseRoster = new Set(Object.values(chess)
-    .filter((c) => c.charId && !c.isDiy && !EXPANSION.has(c.charId) && !String(c.chessId).startsWith('chess_rhine_'))
+    .filter((c) => c.charId && !c.isDiy && !c.extension && !EXPANSION.has(c.charId) && !String(c.chessId).startsWith('chess_rhine_'))
     .map((c) => c.charId));
   for (const id of p5) assert.ok(!baseRoster.has(id) && !COLLAB.includes(id), id);
   assert.deepEqual(diyPool(4, { data: DATA }), [], 'no 自选 slot at tier 4');

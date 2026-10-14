@@ -1,6 +1,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const enabled = process.env.RENDER_E2E === '1' && existsSync(CHROME);
@@ -14,7 +15,7 @@ describe('renderer recovery after transient resource failures', { skip: !enabled
     srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true, MatchClass: RecoveryMatch, seedFn: () => 123 });
     const P = (await import('puppeteer-core')).default;
     browser = await P.launch({ executablePath: CHROME, headless: true,
-      args: ['--no-first-run', '--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+      args: ['--no-first-run', ...(process.platform === 'darwin' ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] : [])] });
     mkdirSync(new URL('../e2e/out/', import.meta.url), { recursive: true });
   });
   after(async () => { await browser?.close(); await srv?.close(); });
@@ -137,13 +138,21 @@ describe('renderer recovery after transient resource failures', { skip: !enabled
       await page.setViewport({ width: 1280, height: 720 });
       await page.goto(`http://127.0.0.1:${srv.port}/dev/render-demo.html?scene=prep&stage=act2autochess_m01&board=3d&panel=0`);
       await page.waitForFunction(() => window.__demo?.ready, { timeout: 30000 });
+      if (resource === 'atlas') {
+        // Demo readiness does not await all optional art. Finish the deliberately failed attempt before recovery.
+        assert.equal(await page.evaluate(async () => {
+          const { loadBoardPack } = await import('/js/render/board3d/load.js');
+          const { assets } = await import('/js/assets.js');
+          return await loadBoardPack(assets) === null;
+        }), true);
+      }
       assert.equal(await page.evaluate(() => window.__demo.stats().board3d.on), false);
       const before = requests; failing = false;
       await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
       await page.waitForFunction(() => window.__demo.stats().board3d.on, { timeout: 15000 });
       assert.ok(requests > before, 'the failed resource is actually requested again');
       assert.equal(await page.evaluate(() => window.__demo.view.debug.app.view.parentNode.querySelectorAll('canvas').length), 2);
-      await page.screenshot({ path: new URL(`../e2e/out/recovery-${resource}.png`, import.meta.url).pathname });
+      await page.screenshot({ path: fileURLToPath(new URL(`../e2e/out/recovery-${resource}.png`, import.meta.url)) });
     } finally { await page.close(); }
   });
 });

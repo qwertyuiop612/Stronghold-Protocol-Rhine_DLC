@@ -92,7 +92,7 @@ export function collectViolations(m, { limit = 25 } = {}) {
     const researchPieces = all.filter((p) => p.research);
     if (reserve.length !== RHINE_DEVICES.length) fail(`${id}: wrong research reserve length`);
     if (new Set(researchPieces.map((p) => p.id)).size !== researchPieces.length) fail(`${id}: duplicate research device`);
-    if (ps.research?.unlocked && RHINE_DEVICES.some((d) => rhineDeviceUnlocked(d, ps.bonds[RHINE_BOND]) && !researchPieces.some((p) => p.id === d.tokenId))) fail(`${id}: missing unlocked research device`);
+    if (ps.research?.unlocked && RHINE_DEVICES.some((d) => gd.token(d.tokenId) && rhineDeviceUnlocked(d, ps.bonds[RHINE_BOND]) && !researchPieces.some((p) => p.id === d.tokenId))) fail(`${id}: missing unlocked research device`);
     if ([...ps.hand, ...ps.temp].some((p) => p?.research)) fail(`${id}: research device in ordinary hand`);
     if ([...ps.board.values()].filter((p) => p.research).length > (ps.alive ? rhineCapacity(ps.bonds[RHINE_BOND]) : 0)) fail(`${id}: research capacity exceeded`);
     if ([...ps.board.values()].some((p) => p.research && !rhineDeviceUnlocked(p.id, ps.bonds[RHINE_BOND]))) fail(`${id}: locked research device deployed`);
@@ -219,14 +219,15 @@ export function collectViolations(m, { limit = 25 } = {}) {
   }
   for (const [base, n] of held) if (!m.pool.has(base) && n !== 0) fail(`non-pool chess ${base} holds ${n} copies`);
 
-  // Shared shop equipment. The chess pool above may go negative (Mimic). Item stock may not: held ≤ cap.
+  // Fixed operator gifts may overdraw equipment stock; ownership still counts and keeps shop availability at zero.
+  // Other item families retain their cap. The chess pool above also permits explicit overdraw (Mimic).
   if (m.itemPool && gd.raw.items) {
     for (const [id, rec] of Object.entries(gd.raw.items)) {
       if (!rec || rec.isGolden) continue;
       const cap = m.itemPool.cap(id);
       if (!Number.isInteger(cap)) continue;
       const h = m.itemPool.held(id);
-      if (h > cap) fail(`item ${id}: held ${h} > cap ${cap}`);
+      if (h > cap && !gd.isUnlimitedGiftItem(id)) fail(`item ${id}: held ${h} > cap ${cap}`);
     }
   }
 

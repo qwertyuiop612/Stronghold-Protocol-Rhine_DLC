@@ -64,4 +64,4 @@ node tools/golden.mjs --twice                   # determinism: the corpus twice 
   hook list is frozen in the tool and the corpus is regenerated only on `golden:update` — but new data records do join
   the corpus there (the roster family enumerates `data/chess.json`).
 
-After the measured shared-stock update (DESIGN §29.8), the original stand-in / DIY seeds remain as outcome regressions even when they field no such operator. Companion seeds `coop2-NORMAL-1-coverage-standins` and `coop2-NORMAL-5-coverage-diy` exercise those full paths; the corpus now contains 287 scenarios.
+After the measured shared-stock update (DESIGN §29.8), the original stand-in / DIY seeds remain as outcome regressions even when they field no such operator. Companion seeds `coop2-NORMAL-1-coverage-standins` and `coop2-NORMAL-68-coverage-diy` exercise those full paths; the corpus now contains 287 scenarios.

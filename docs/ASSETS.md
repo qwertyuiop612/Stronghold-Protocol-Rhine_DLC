@@ -3,6 +3,11 @@
 Owner: `tools/fetch-assets.mjs` and `tools/assets/*`. Research background: `docs/research/07-assets.md`.
 
 All official game art, Spine models and audio are **downloaded at install time**. They are never committed; `public/assets/` is git-ignored.
+
+The UI sound `audio.sfx.ui.bondUp` is the official `ON_ACT1AUTOCHESS_ADD_BOND` bank's
+`act1autochess_b_ui_buffup`. Live prep/battle layer gains use it as well as bond activation. Its bank settings are
+`maxSoundAllowed: 1` and `popOldest: true`: one dedicated SFX channel, replacing the previous sound without an extra
+cooldown. It respects the SFX/mute settings; a stale asynchronous decode cannot restart a replaced cue (#482).
 All downloaded game assets the client needs are listed in **`data/assets.json`**. Game-art requests must use that manifest.
 The original project icons below are shipped static files, not downloaded game assets.
 
@@ -160,6 +165,7 @@ The research JSONs in `docs/research/` (03, 05, 07) define **which** ids are nee
 | Enemy Spine (PC build, premultiplied alpha) | isHarryh/Ark-Models `models_enemies/{key}/`, file names from `models_data.json` | `spine/enemy/{enemyId}/{stem}.*` |
 | Enemy Spine that no dump carries (灼热源石虫 / 炽焰源石虫) | the local client only (`tools/local-extract/extract.py ENEMY_SPINES`, optional); never downloaded and never required: an overlay of the web alias (`enemies[id].spineLocal`) | `local/spine/enemy/{enemyId}/{stem}.*` (listed in `data/local-assets.json`) |
 | Original token Spine overlays (40 summons: most 自选 summons, 凯瑟琳's 爬行号·防护单元, 凛御银灰's 风雪之眼, 香槟炸弹) | local-client extraction (`tools/local-extract/extract.py TOKEN_SPINES`, optional); the original overlay is preferred, with any listed web model retained as fallback | `local/spine/token/{tokenId}/{stem}.*` (listed in `data/local-assets.json`) |
+| Official battlefield scenes (one per battlefield: meshes, lightmaps, albedo textures; DESIGN §15, DESIGN §30.21) | the scene bundles `scenes/activities/<season>/level_<stage>/…` (`tools/local-extract/extract.py --only scene`, optional). The client carries them only while the season runs; off season `tools/local-extract/fetch_scenes.py` downloads the bundles of the in-season version `26-04-13-12-31-42_e9b560` from the official CDN into `.cache/official-scenes/` (33 bundles, 22,801,308 bytes compressed on the Android list, md5-checked), and the materials / textures still come from the local client's theme bundles. The 0.2.5 full release zip includes the extracted files under `public/assets/local/scene/` when the maintainer extracted them before packaging; a lite zip and a source install may fetch and extract them (`node tools/setup.mjs --scenes`). The repository never stores the bundles or the extracted files. Without a scene the 3D board draws its procedural metal tiles | `local/scene/{stageId}/scene.json`, `scene.bin`, `lm{i}.*`; `local/scene/tex/{texture}.*` (listed in `data/local-assets.json`) |
 | BGM | AA2 `voice` branch `audio/sound_beta_2/music/**` (大厅/休整期 `act1autochess`, 开战 `act13side/m_bat_kazimierz2_{1,2}` — 骑士之日 / 无畏者; the 开战 track follows the round: `_2` 无畏者 rounds 1–7, `_1` 骑士之日 from round 8) | `audio/bgm/{file}.mp3` |
 | SFX (UI, battle, per unit) | AA2 `voice` `audio/sound_beta_2/**`, mapped from `audio_data.json` banks | `audio/sfx/{same sub-path}.mp3` |
 | 干员战斗语音 | AA2 `voice` `audio/sound_beta_2/voice_cn/{charId}/cn_nn.mp3` (Chinese, `audio.voice`) and `voice/{charId}/cn_nn.mp3` (Japanese, `audio.voiceJp`: the same file names) — the lines `charword_table.json` lists (`placeType` = when the game plays one, `voiceAsset` = the path); `--voice-lang=jp|en|kr` fills `audio.voice` from `voice/`, `voice_en/`, `voice_kr/` instead | `audio/voice/cn/{charId}/{cn_nn}.mp3`, `audio/voice/jp/{charId}/{cn_nn}.mp3` (`audio/voice/{lang}/…` for another `--voice-lang`) |
@@ -205,11 +211,11 @@ The `stem` of a Spine model is the upstream file name. Two examples: `char_107_l
 - **Fonts:** OTF/TTF files are converted to WOFF2 by a built-in encoder (`tools/assets/woff2.mjs`: Brotli with null transforms).
   - Its output was verified lossless against Google's reference `woff2` decoder.
   - `fonts.css` lists WOFF2 first and falls back to the original file.
-- Images stay PNG. WebP conversion is not done: it would need a native dependency. The local-client board textures are the exception: `tools/local-extract/extract.py` (Python, where Pillow is already a dependency) writes WebP copies of the 12 textures the 3D board downloads (`WEBP`: colour maps lossy at quality 95 with the alpha and the RGB under transparent texels kept, normal and data maps lossless) and `data/local-assets.json` lists the copies; the PNGs stay beside them for `tools/crop-board-atlas.mjs`. `extract.py --webp` adds the copies to an existing extraction without the client.
+- Images stay PNG. WebP conversion is not done: it would need a native dependency. The local-client board textures are the exception: `tools/local-extract/extract.py` (Python, where Pillow is already a dependency) writes WebP copies of the 12 textures the 3D board downloads (`WEBP`: colour maps lossy at quality 95 with the alpha and the RGB under transparent texels kept, normal and data maps lossless) and `data/local-assets.json` lists the copies; the PNGs stay beside them for `tools/crop-board-atlas.mjs`. The 19 local 玩法说明 pages get a WebP copy too (`GUIDE_WEBP_MODE`, lossy quality 90 since the maintainer's side-by-side look of 2026-10-12: 25.6 MB → 4.2 MB on the CN client's pages; lossless would be 17.4 MB), listed in place of the PNG, which stays beside it; the mirror copies under `ui/guide/` stay PNG. `extract.py --webp` adds the copies to an existing extraction without the client.
 
 ## Manifest schema (`data/assets.json`)
 
-All paths are URL paths relative to the site root, for example `/assets/char/avatar/char_002_amiya.png`. **Only entries whose files exist on disk are emitted.** When a key is missing, the client should use its fallback (research 07 §5.6).
+All paths are URL paths relative to the site root, for example `/assets/char/avatar/char_002_amiya.png` — in the committed file; a server hands them out with a content-hash segment ("The committed manifest and the served manifests" below). **Only entries whose files exist on disk are emitted.** When a key is missing, the client should use its fallback (research 07 §5.6).
 
 ```js
 {
@@ -464,6 +470,39 @@ Other renderer rules from research 07 §5.4–5.5:
 - **Missing unit SFX:** use `audio.sfx.battle.enemyHit` or a WebAudio blip (research 07 §6.4).
 - **Bond icons:** if the real glyph ever fails, the stored file is the nation camp logo.
 
+## The committed manifest and the served manifests
+
+`data/assets.json` in git (and as `tools/fetch-assets.mjs` writes it) and `data/local-assets.json` (as
+`tools/local-extract` writes it) hold plain URLs. Since 0.2.6 (host bandwidth, layer 1) the server hands out a view of
+each (`server/http/assetIndex.js`, `server/http/assetViews.js`):
+
+- Shortly after the start (1 s) the server hashes every file under `public/assets/` and `public/fonts/` in the
+  background: SHA-256, the first 16 hex digits. The hashes are kept in `.cache/asset-hashes.json` by path + size +
+  mtime, so a restart only stats the files and reads none of the unchanged ones (12,691 files / 724 MB on the
+  maintainer's machine: 1.3 s for the first build, 0.25 s after that). A file whose size or mtime changed is hashed
+  again; a re-extraction, `setup --force` or a Docker rebuild then costs the players only the files whose bytes changed.
+- `GET /data/assets.json` and `GET /data/local-assets.json` answer with every art URL carrying its file's hash as the
+  first segment: `/assets/char/avatar/char_003_kalts.png` → `/assets/~398f32e2ff78d9e6/char/avatar/char_003_kalts.png`,
+  `/fonts/~<hash>/…`. Audio keeps its `/assets/~<hash>/audio/….mp3` form; `public/js/media.js` asks for it as
+  `/media/~<hash>/…` (the download-manager route, `shared/media.js`).
+- A Spine model's skeleton, atlas and pages carry one hash, the model's (SHA-256 of the files' hashes): pixi-spine finds
+  the atlas by the skeleton's name and the pages next to the atlas, so the URLs share a folder. In `data/assets.json`
+  every `{ skel, atlas, textures }` object is a model; in `data/local-assets.json` every `spine/…` group (the files a
+  `spineLocal` record names).
+- The server strips the segment and serves the file at the plain path. When the segment names the file's current bytes
+  (its own hash, or its model's) the answer is `Cache-Control: public, max-age=31536000, immutable`; any other segment —
+  a page loaded before an update, a URL derived from another file's — gets the current file with `no-cache`, so an old
+  page keeps working. The ETag of every indexed file is its content hash (`"398f32e2ff78d9e6"`, plus `-br` / `-gz` when
+  compressed), on the plain URL too.
+- A path segment, never `?v=`: `assets.js validSpine` matches `/\.skel$/`, `audio.js SKILL_MODE_FILE` the `.mp3` ending,
+  pixi-spine takes the atlas name from the skeleton's basename and resolves the pages against the atlas's folder — a
+  query string survives none of that.
+- A URL the index has no hash for (the file is missing, or not hashed yet) stays plain; plain URLs work as before
+  (`public, max-age=86400`, revalidated after a day).
+- Until the index is ready, with `SP_ASSET_INDEX=0`, or on a static host without this server, the manifests go out as
+  committed. The views are rebuilt in memory when a manifest or the hashes change; neither file is ever written by the
+  server, and the `hash` field is the committed one. The index lives in `.cache/` only and is never packaged.
+
 ## Verification
 
 `node --test test/assets.test.js` covers the pure helpers: the resolver, the atlas normalizer, the format sniffers, WOFF2, audio banks, the plan id sets, the downloader against a fake network, and the self-heal of corrupt skeletons.
@@ -513,3 +552,18 @@ operator's runtime ability graph. Mixed-letter banks are skipped. Preserve `mixO
 an older PR's full JSON, preserving JP voices and current operators. See DESIGN §28.17.
 
 The 40th local token model is the original champagne bomb (`token_10031_swire2_gdtrap`, §29.5), extracted from the official `btl_pfb_tokens_0.ab` through `TOKEN_SPINES`. Its web fallback is retained. Failed board-pack/image requests can retry after connectivity/visibility recovers; a failed three.js module gets at most two fresh-URL retries per page because browser module failures are cached. Successful resources remain cached.
+
+### 雷姆必拓原图
+
+雷姆必拓盟约使用用户指定的 [PRTS 原图](https://media.prts.wiki/e/ee/Logo_%E9%9B%B7%E5%A7%86%E5%BF%85%E6%8B%93.png)，不重绘。
+`tools/assets/rem-plan.mjs` 为常规资源下载流程增加该叶节点；也可运行 `node tools/fetch-rem-assets.mjs` 单独下载。
+下载目标 `public/assets/bond/rem.png` 遵循美术不入 Git 的规则，生成映射为 `assets.bonds.remShip`。
+已具备原图时可用 `--manifest-only` 离线更新映射；原图缺失时明确失败，不生成失效映射。
+
+新增七名原生干员和八种援军可运行 `node tools/fetch-rem-assets.mjs --units` 增量下载：
+复用主下载器、Spine 规范化和模型解析，合并清单时保留已有其他资源；此模式不请求阵营 Logo。
+常规 `fetch-assets.mjs` 同样包含这些干员和援军，援军通过真实敌人模型 ID 由现有渲染器读取。
+`RENDER_E2E=1 CHROME_PATH=... node --test test/render/rem-art.browser.test.js` 验证11名成员与八种援军的
+真实 SpineActor、图标解码及可见图鉴，截图输出 `test/e2e/out/rem-original-models.png`。
+用户另行上传原 PNG 时保留其实际字节，不套用旧附件的哈希或透明背景假设；浏览器验收可设置
+`REM_LOGO_REFERENCE=/path/to/original.png`，比较 HTTP 返回内容与该原件的字节数、SHA256，并检查解码和可见图鉴。

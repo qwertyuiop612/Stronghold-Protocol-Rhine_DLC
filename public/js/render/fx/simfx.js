@@ -70,6 +70,11 @@ export class FxSim {
     const r = clamp(num(ex.r ?? ex.radius, spec.r ?? 1), 0.3, 30);
     const ts = this.ctx.timeScale ? Math.max(0.25, this.ctx.timeScale()) : 2;
     const dur = num(ex.dur ?? ex.duration, spec.dur ?? 0) / ts;
+    if (spec.a === 'remPizza') {
+      // A fixed ground footprint: a moving boss never drags an already thrown pizza's landing point.
+      this.mortar(this._viewOf(ex.src), at.x, at.y, r, num(ex.t, 1) / ts, { exactRadius: true, drop: true });
+      return;
+    }
     if (spec.a.startsWith('kazdel')) { this.kazdelFx(kind, at, ex, dur); return; }
     if (kind === 'dorothyTrap' && ex.skill === 'sktok_doroth_3') {
       const row = Math.round(at.y), column = Math.round(at.x);
@@ -152,7 +157,7 @@ export class FxSim {
     switch (spec.a) {
       case 'blast': {
         if (r >= 12) { this.flashScreen(col, 0.5); break; }
-        if (kind === 'bombard') { this._touchLocks(ex.id ?? ex.src ?? null); this._landed(ex.id ?? ex.src ?? null, at.x, at.y, r); }
+        if (kind === 'bombard' || kind === 'remPizzaImpact') { this._touchLocks(ex.id ?? ex.src ?? null); this._landed(ex.id ?? ex.src ?? null, at.x, at.y, r); }
         this.explosion(at.x, at.y, at.z, r, col, { smoke: spec.smoke, heavy: !!spec.heavy, tiles: ex.tiles ? tilesAround(at.x, at.y, r, ex.tiles) : null });
         break;
       }
@@ -336,6 +341,10 @@ export class FxSim {
       case 'dodge': {
         this.particle('soft', p.x, p.y, { tint: 0xffffff, life: 0.3, s0: s / 128 * 0.5, s1: s / 128 * 0.9, a0: 0.5, a1: 0 });
         this.particle('slash', p.x, p.y, { tint: col, life: 0.22, s0: s / 128 * 0.8, s1: s / 128 * 1.1, a0: 0.7, a1: 0, rot: -0.5 });
+        // num:'m' — the sim already decided this dodge would have been a red number (PRTS yellow MISS, #ff9000).
+        if (ex.num === 'm' && at.v && this.ctx.settings?.damageNumbers !== false && this.ctx.settings?.officialDamageNumbers) {
+          this.officialNumber(at.v, 0, 'miss');
+        }
         break;
       }
       case 'counter': {

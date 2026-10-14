@@ -4,15 +4,6 @@
 import { RHINE_BOND, RHINE_BALANCE, RHINE_DEVICES, rhineCapacity, rhineDevice, rhineDeviceUnlocked, rhineDeviceStage, advanceRhineResearch } from '../../../shared/rhineResearch.js';
 
 export class PlayerResearch {
-  /**
-   * Device tokens are fabricated by this code, never drafted from the shop, so they only exist when the match's data
-   * describes them. A degraded data set (a match built from chess/bonds alone, no tokens catalog — test/match/fullmatch)
-   * keeps the whole reserve locked instead of creating pieces outside the data's own catalog.
-   */
-  _rhinePlayable() {
-    return RHINE_DEVICES.every((d) => !!this.gd.token(d.tokenId));
-  }
-
   /** The reserve slot is fixed by device kind; points belong to the player, never to a transient token uid. */
   _returnResearch(piece) {
     const idx = RHINE_DEVICES.findIndex((d) => d.tokenId === piece?.id);
@@ -25,8 +16,7 @@ export class PlayerResearch {
 
   _syncResearch() {
     const bond = this.bonds[RHINE_BOND];
-    const playable = this._rhinePlayable();
-    const cap = playable && this.alive ? rhineCapacity(bond) : 0;
+    const cap = this.alive ? rhineCapacity(bond) : 0;
     if (cap) this.research.unlocked = true;
     // Rebuild fixed slots by identity, not their saved array index. Older states can still contain the retired
     // ecology card; it cannot become a laser or cause a second medical/energy card to be generated.
@@ -39,13 +29,13 @@ export class PlayerResearch {
         if (p.kind === 'token' && d) this.board.delete(key);
         continue;
       }
-      if (!d || seen.has(d.key)) { this.board.delete(key); continue; }
+      if (!d || !this.gd.token(d.tokenId) || seen.has(d.key)) { this.board.delete(key); continue; }
       p.researchKey = d.key;
       seen.add(d.key);
     }
     for (const p of reserve) {
       const d = rhineDevice(p.id);
-      if (!p.research || !d || seen.has(d.key)) continue;
+      if (!p.research || !d || !this.gd.token(d.tokenId) || seen.has(d.key)) continue;
       p.researchKey = d.key;
       seen.add(d.key);
       this._returnResearch(p);
@@ -70,7 +60,8 @@ export class PlayerResearch {
         this.research.points[d.key] = 0;
         this.research.stages[d.key] = 0;
       }
-      if (!playable || !this.alive || !rhineDeviceUnlocked(d, bond) || seen.has(d.key)) continue;
+      // Degraded data can retain the covenant/cards while omitting its token definitions.
+      if (!this.alive || !this.gd.token(d.tokenId) || !rhineDeviceUnlocked(d, bond) || seen.has(d.key)) continue;
       this.research.points[d.key] ??= 0;
       this.research.stages[d.key] ??= 0;
       this.research.hand[idx] = this.newPiece('token', d.tokenId, { research: true, researchKey: d.key, ownerUid: null });
@@ -78,7 +69,7 @@ export class PlayerResearch {
   }
 
   researchView() {
-    const capacity = this.alive && this._rhinePlayable() ? rhineCapacity(this.bonds[RHINE_BOND]) : 0;
+    const capacity = this.alive ? rhineCapacity(this.bonds[RHINE_BOND]) : 0;
     const all = [...this.board.values(), ...this.research.hand.filter(Boolean)];
     const deployed = new Set([...this.board.values()].filter((p) => p.research).map((p) => p.uid));
     return {
@@ -87,7 +78,7 @@ export class PlayerResearch {
       hand: this.research.hand.map((p) => p ? this.pieceView(p) : null),
       devices: RHINE_DEVICES.map((d) => {
         const p = all.find((x) => x.research && x.id === d.tokenId);
-        const locked = !this.alive || !rhineDeviceUnlocked(d, this.bonds[RHINE_BOND]);
+        const locked = !this.alive || !this.gd.token(d.tokenId) || !rhineDeviceUnlocked(d, this.bonds[RHINE_BOND]);
         const points = d.maxStage === 0 ? 0 : this.research.points[d.key] || 0;
         return { key: d.key, tokenId: d.tokenId, uid: p?.uid ?? null, points, stage: rhineDeviceStage(d, this.research.stages[d.key]),
           onBoard: !locked && !!p && deployed.has(p.uid), locked, minCount: d.minCount, maxStage: d.maxStage };

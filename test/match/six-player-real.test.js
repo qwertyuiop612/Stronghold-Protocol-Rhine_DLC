@@ -13,9 +13,20 @@ test('six real client simulations traverse rounds 1–14 and settle every player
     for (let round = 1; round <= 14; round++) assert.ok(rounds.has(round), `${pid} participated in round ${round}`);
     assert.ok(client.log.some((msg) => msg.t === 'b.result'), `${pid} uploaded normal battle results`);
   }
-  const fifthBoss = h.clients.get('p_4').starts.find((s) => s.fieldId === 'b3' && s.spec.round === 14);
-  const sixthBoss = h.clients.get('p_5').starts.find((s) => s.fieldId === 'b3' && s.spec.round === 14);
-  assert.equal(fifthBoss.authoritative, true);
-  assert.equal(sixthBoss.authoritative, false);
-  assert.deepEqual(sixthBoss.spec.players.map((p) => [p.playerId, p.side]), [['p_4', 'L'], ['p_5', 'R']]);
+  // Pairing is shuffled per match (upstream 0.2.6), so the replica seat is not fixed: locate the boss field whose
+  // two clients both opened a round-14 start, then check that exactly one of them owns the field.
+  const byField = new Map();
+  for (const [, client] of h.clients) {
+    for (const s of client.starts) {
+      if (!s.fieldId || s.watch || s.spec.round !== 14) continue;
+      if (!byField.has(s.fieldId)) byField.set(s.fieldId, []);
+      byField.get(s.fieldId).push(s);
+    }
+  }
+  const paired = [...byField.values()].find((starts) => starts.length === 2);
+  assert.ok(paired, 'one boss field carries both members of a pair');
+  assert.equal(paired.filter((s) => s.authoritative).length, 1, 'exactly one client owns the paired field');
+  const replica = paired.find((s) => !s.authoritative);
+  assert.equal(replica.spec.players.length, 2, 'the replica receives both members of the pair');
+  assert.deepEqual([...new Set(replica.spec.players.map((p) => p.side))].sort(), ['L', 'R']);
 });

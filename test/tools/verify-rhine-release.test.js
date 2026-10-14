@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { verifyRhineDeviceRelease, verifyKazdelRelease, verifyOpeningBanRelease } from '../../tools/verify-rhine-release.mjs';
+import { verifyRhineDeviceRelease, verifyKazdelRelease, verifyOpeningBanRelease, verifyRhineOperatorsRelease, verifyRemIconRelease } from '../../tools/verify-rhine-release.mjs';
 
 const packageRoot = new URL('../../', import.meta.url);
 const data = () => Object.fromEntries(['tokens', 'bonds', 'assets', 'chess', 'garrisons', 'config'].map(name => [name,
@@ -83,7 +83,7 @@ test('release smoke remains compatible with a package predating the laser device
     get: async () => { throw new Error('old release should not request laser artifacts'); } }), { laser: false });
 });
 
-test('release smoke verifies all eleven Kazdel members, native loadouts, Tinman S2 and served artwork/code', async t => {
+test('release smoke verifies all ten Kazdel members, native loadouts, Tinman S2 and served artwork/code', async t => {
   const fixture = kazdelPackageFixture(t);
   const artifacts = {}, requested = [];
   const result = await verifyKazdelRelease({ fetched: data(), artifacts, packageRoot: fixture.packageRoot, get: async url => {
@@ -92,13 +92,13 @@ test('release smoke verifies all eleven Kazdel members, native loadouts, Tinman 
   } });
   assert.equal(result.enabled, true);
   assert.equal(result.tinmanSoulHealing, true);
-  assert.equal(result.characters.length, 11);
-  assert.deepEqual(result.characters.map(c => c.tier), [1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 6]);
+  assert.equal(result.characters.length, 10);
+  assert.deepEqual(result.characters.map(c => c.tier), [1, 2, 2, 2, 3, 4, 4, 4, 5, 6]);
   assert.equal(result.httpArtifacts, requested.length);
   assert.equal(new Set(requested).size, requested.length, 'shared native skill/module icons should be fetched once');
   assert.equal(Object.keys(artifacts).length, requested.length);
   assert.ok(Object.values(artifacts).every(value => /^[a-f0-9]{64}$/.test(value)));
-  for (const url of ['/sim/content/kazdel/ascalon.js', '/sim/content/kits/ops/op-ascln.js', '/shared/kazdel.js', '/sim/content/kazdel/souls.js', '/sim/content/kazdel/cannon.js',
+  for (const url of ['/sim/content/kits/ops/op-ascln.js', '/shared/kazdel.js', '/sim/content/kazdel/souls.js', '/sim/content/kazdel/cannon.js',
     '/sim/kazdelOrigin.js', '/js/ui/kazdelHud.js', '/js/render/fx/kazdel.js', '/art/kazdel/bond.png',
     '/assets/spine/op/char_4131_odda/front/char_4131_odda.skel', '/assets/spine/op/char_4131_odda/back/char_4131_odda.atlas']) {
     assert.ok(requested.includes(url), `${url} must be verified through the actual HTTP mount`);
@@ -109,7 +109,8 @@ test('release smoke rejects an obsolete Kazdel roster, wrong tier or supplementa
   const cases = [
     [f => { delete f.bonds.kazdelShip; }, /served Kazdel covenant missing/],
     [f => { f.bonds.kazdelShip.name = '萨卡兹'; }, /main covenant name mismatch/],
-    [f => { f.bonds.kazdelShip.thresholds = [3, 6, 9]; }, /threshold mismatch/],
+    [f => { f.bonds.kazdelShip.thresholds = [3, 6]; }, /threshold mismatch/],
+    [f => { f.bonds.kazdelShip.spec.cannon.friendlyFireRatio = .5; }, /cannon friendlyFireRatio mismatch/],
     [f => { f.bonds.kazdelShip.visibleMembers.pop(); }, /visible roster mismatch/],
     [f => { delete f.chess.chess_kazdel_logos_b; }, /character forms missing/],
     [f => { f.chess.chess_kazdel_hoederer_a.tier = 5; }, /tier mismatch/],
@@ -191,4 +192,45 @@ test('release smoke skips Kazdel artifacts in older bundles without importing ab
   assert.deepEqual(await verifyKazdelRelease({ packageRoot: pathToFileURL(`${directory}${path.sep}`), fetched: {},
     get: async () => { throw new Error('old release should not request Kazdel artifacts'); } }),
   { enabled: false, characters: [] });
+});
+
+test('release smoke verifies fixed IV Magallan native skills, drone production and current Rhine budgets', async t => {
+  const fixture = kazdelPackageFixture(t), artifacts = {};
+  const result = await verifyRhineOperatorsRelease({ fetched: data(), artifacts, ...fixture });
+  assert.deepEqual(result.map(x => [x.name, x.tier, x.skills]), [['星源', 2, 2], ['麦哲伦', 4, 3]]);
+  assert.ok(artifacts['/sim/content/kits/ops/op-mgllan.js']);
+  assert.ok(artifacts['/sim/content/kits/shared/summoner.js']);
+});
+
+test('release smoke rejects retired fixed Dorothy and unusable native Magallan drone variants', async () => {
+  const cases = [
+    [f => { f.chess.chess_rhine_dorothy_a = {}; }, /retired fixed Dorothy/],
+    [f => { f.chess.chess_rhine_magallan_a.charId = 'char_4048_doroth'; }, /native identity mismatch/],
+    [f => { f.tokens.token_10005_mgllan_drone1.variants.chess_rhine_magallan_a.bySkill[0].sources = ['display']; }, /drone production mismatch/],
+    [f => { f.garrisons.garrison_rhine_mayer_b.bb.max_layer = 48; }, /Mayer shared budget mismatch/],
+    [f => { f.garrisons.garrison_rhine_magallan_b.effectKey = 'RHINE_DOROTHY_ATTACK'; }, /Magallan protocol trait missing/],
+  ];
+  for (const [change, error] of cases) {
+    const fetched = data(); change(fetched);
+    await assert.rejects(verifyRhineOperatorsRelease({ fetched, get }), error);
+  }
+});
+
+test('release smoke detects stale native Magallan and owner-summon HTTP code', async t => {
+  const fixture = kazdelPackageFixture(t);
+  for (const stale of ['/sim/content/kits/ops/op-mgllan.js', '/sim/content/kits/shared/summoner.js', '/sim/content/rhineMeta.js']) {
+    await assert.rejects(verifyRhineOperatorsRelease({ fetched: data(), packageRoot: fixture.packageRoot, get: async url => {
+      const bytes = await fixture.get(url);
+      return url === stale ? Buffer.from('obsolete fixed-operator package') : bytes;
+    } }), /served Rhine operator artifact mismatch/);
+  }
+});
+
+test('release smoke refuses a missing or substituted Rem original logo mapping', async () => {
+  for (const mapping of [undefined, '/art/rem/replacement.svg']) {
+    const fetched = data(); fetched.assets.bonds.remShip = mapping;
+    await assert.rejects(verifyRemIconRelease({ fetched, get }), /Rem original PNG asset mapping missing or mismatched/);
+  }
+  const older = data(); delete older.bonds.remShip;
+  assert.deepEqual(await verifyRemIconRelease({ fetched: older, get }), { enabled: false });
 });

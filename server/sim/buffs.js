@@ -23,6 +23,8 @@ export const ADD_KEYS = Object.freeze([
   'atkFlat', 'atkPct', 'atkFinal', 'defFlat', 'defPct', 'hpFlat', 'hpPct', 'hpFinal', 'resFlat', 'aspd', 'batPct', 'blockCnt',
   'rangeExtend', 'defIgnoreFlat', 'defIgnorePct', 'resIgnoreFlat', 'resIgnorePct', 'dodgePhys', 'dodgeArts',
   'spRecoveryFlat', 'maxTargets', 'taunt', 'hpRegen', 'hpRegenRatio', 'spCostFlat', 'moveFlat', 'massFlat',
+  // Full bonus at <=30% HP, zero at full HP; units.js evaluates the current HP ratio lazily.
+  'lowHpAtkPct', 'lowHpSpRecoveryFlat',
   // 阻挡半径倍率 (PRTS 数值范围 BLOCK_RADIUS_SCALE, default 1): the air-block radius 0.8944 × (1 + Σ) — Battle._checkBlock
   'blockRadiusScale',
 ]);

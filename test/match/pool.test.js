@@ -13,7 +13,7 @@ test('co-op pool doubles the measured single-player capacities; only visible, un
   const pool = new SharedPool(gd, { banned: [] });
   const caps = { 1: 12, 2: 14, 3: 18, 4: 16, 5: 8, 6: 5 };
   assert.equal(pool.entries.size, gd.visibleChess.length);
-  assert.equal(pool.entries.size, 126);
+  assert.equal(pool.entries.size, 134);
   for (const [id, e] of pool.entries) {
     const expect = 2 * (DATA.config.economy.poolCopiesOverrides[id] ?? caps[e.tier]);
     assert.equal(e.cap, expect, id);
@@ -22,7 +22,7 @@ test('co-op pool doubles the measured single-player capacities; only visible, un
   }
   const banned = [gd.visibleChess[0], gd.visibleChess[5]];
   const p2 = new SharedPool(gd, { banned });
-  assert.equal(p2.entries.size, 124);
+  assert.equal(p2.entries.size, 132);
   assert.ok(!p2.has(banned[0]) && p2.left(banned[0]) === 0 && p2.take(banned[0]) === 0);
 });
 
@@ -62,12 +62,10 @@ test('odds sanity: level L rolls only tiers ≤ L; level 1 only tier 1; shares �
   // Rhine + Kazdel roster, full pools and no bans: the copy-weighted share of every tier sums to one and no
   // tier swallows the pool (the expansion's roster moves the shares, so this checks the shape, not the recipe).
   const s6 = pool.tierShares(6);
-  const total = Object.values(s6).reduce((n, x) => n + x, 0);
-  assert.ok(Math.abs(total - 1) < 1e-9, `tier shares sum to ${total}`);
-  for (const t of [1, 2, 3, 4, 5, 6]) assert.ok(s6[t] > 0.03 && s6[t] < 0.45, `T${t} ${s6[t]}`);
+  const want = { 1: 0.1357, 2: 0.1739, 3: 0.2609, 4: 0.2530, 5: 0.1107, 6: 0.0659 };
+  for (const t of Object.keys(want)) assert.ok(Math.abs(s6[t] - want[t]) < 0.01, `T${t} ${s6[t]}`);
   const s2 = pool.tierShares(2);
-  assert.ok(Math.abs(s2[1] + s2[2] - 1) < 1e-9, 'the two lowest tiers cover the level-2 pool');
-  assert.ok(s2[2] > s2[1], 'level 2 favours its top tier');
+  assert.ok(Math.abs(s2[1] - 0.4383) < 0.01 && Math.abs(s2[2] - 0.5617) < 0.01);
 });
 
 test('rolls are copy-weighted: an exhausted chess never rolls; tier/filter options work', () => {
@@ -126,15 +124,33 @@ test('effect-only items are never shop items: not in shopItemsByTier, never in t
   m.dispose();
 });
 
-test('维多利亚 25-layer reward and 洛洛的定制品: the 4 special 维式重锤 (and nothing else)', () => {
+test('维多利亚 25-layer reward: the 4 special 维式重锤 (and nothing else)', () => {
   const special = ['chess_item_2_03_e_a', 'chess_item_3_09_e_a', 'chess_item_3_10_e_a', 'chess_item_4_09_e_a'];
   const m = makeMatch({ mode: 'coop', seed: 3, fake: true }).m;
-  for (const pid of ['pool_equip_vict', 'pool_equip_rockr']) {
+  for (const pid of ['pool_equip_vict']) {
     assert.deepEqual([...DATA.choices.pools[pid].items].sort(), special, pid);
     const seen = new Set();
     for (let i = 0; i < 200; i++) seen.add(m.rollPool(pid).id);
     assert.deepEqual([...seen].sort(), special, `${pid}: every special hammer can come, nothing else`);
   }
+  m.dispose();
+});
+
+test('洛洛 and 焰尾 use the measured eight-item and 10/10/3 subsets; exhausted shop items are excluded', () => {
+  const m = makeMatch({ mode: 'coop', seed: 3, fake: true }).m;
+  const rock = DATA.choices.pools.pool_equip_rockr.weighted;
+  assert.deepEqual(rock.map(([id, n]) => [m.gd.item(id).name, n]), [
+    ['维式重锤', 10], ['战栗维式重锤', 2], ['坚固维式重锤', 2], ['加速维式重锤', 2], ['灼燃维式重锤', 2],
+    ['有限加速器', 1], ['护盾无人机', 4], ['激光发射器', 4],
+  ]);
+  assert.deepEqual(DATA.choices.pools.pool_char_pinus.weighted.map(([id, n]) => [m.gd.chess(id).name, n]), [['野鬃', 10], ['灰毫', 10], ['远牙', 3]]);
+  const seen = new Set();
+  for (let i = 0; i < 300; i++) seen.add(m.rollPool('pool_equip_rockr').id);
+  assert.deepEqual([...seen].sort(), rock.map(x => x[0]).sort());
+  const normal = rock[0][0], ps = m.order[0];
+  for (let i = 0; i < m.itemPool.cap(normal); i++) assert.ok(ps.acquireItem(normal));
+  assert.equal(m.itemPool.left(normal), 0);
+  for (let i = 0; i < 100; i++) assert.notEqual(m.rollPool('pool_equip_rockr').id, normal);
   m.dispose();
 });
 
@@ -169,7 +185,7 @@ test('the match pool excludes banned chess; m.public lists disabled bonds and ba
   assert.equal(pub.drawnDisabledBonds.length, 9);
   assert.ok(pub.bannedChess.length > 0);
   for (const id of pub.bannedChess) assert.ok(!h.m.pool.has(id), `${id} should not be in the pool`);
-  assert.equal(h.m.pool.entries.size + pub.bannedChess.length, 126);
+  assert.equal(h.m.pool.entries.size + pub.bannedChess.length, 134);
   checkInvariants(h.m);
   h.m.dispose();
 });

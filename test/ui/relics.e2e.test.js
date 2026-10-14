@@ -28,6 +28,25 @@ async function closed(page) {
   await page.waitForFunction(() => !document.querySelector('.relic-panel'), { timeout: 2000 });
 }
 
+test('护愈之手：收藏栏显示官方图标、史诗档位与完整效果', {
+  skip: !ENABLED && 'set SP_E2E=1 and provide system Chrome', timeout: 180000,
+}, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.goto(`${base}/dev/game-mock.html?shot=1&phase=PREP`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.relic-icons__heading');
+    await page.evaluate(() => globalThis.__MOCK__.mutate((s) => { s.priv.relics = [{ id: 'relic_172', round: 7 }]; }));
+    await page.click('.relic-icons__heading');
+    await page.waitForFunction(() => [...document.querySelectorAll('.relic-panel img')]
+      .some((img) => img.src.includes('relic_172.png') && img.complete && img.naturalWidth > 0));
+    const text = await page.$eval('.relic-panel', (e) => e.textContent);
+    assert.match(text, /护愈之手/);
+    assert.match(text, /史诗/);
+    assert.match(text, /免疫异常状态/);
+    assert.match(text, /100%/);
+  } finally { await page.close(); }
+});
+
 test('时光之末：自己的列表按钮复活队友、显示已使用，观战列表保持只读', {
   skip: !ENABLED && 'set SP_E2E=1 and provide system Chrome', timeout: 60000,
 }, async () => {
@@ -89,6 +108,10 @@ test('时光之末：自己的列表按钮复活队友、显示已使用，观�
 });
 
 for (const item of [
+  { id: 'relic_125', name: '液体化肥', tier: '精良', phrases: ['50 点生命', '100 点屏障', '140%'], shot: 'fertilizer' },
+  { id: 'relic_126', name: '热辣可可', tier: '稀有', phrases: ['30%', '+150%', '线性'], shot: 'cocoa' },
+  { id: 'relic_127', name: '止痛片', tier: '精良', phrases: ['30%', '2 点', '自然回复'], shot: 'painkillers' },
+  { id: 'relic_172', name: '护愈之手', tier: '史诗', phrases: ['免疫异常状态', '等量屏障', '100%'], shot: 'healing-hand' },
   { id: 'relic_233', name: '“时光之末”', tier: '史诗', phrases: ['11 点', '4 名', '死亡时自动复活', '保留原有干员'], shot: 'time-end' },
   { id: 'relic_158', name: '时间机器', tier: '普通', phrases: ['目标生命值', '等量增加', '仅生效一场'], shot: 'time-machine' },
   { id: 'relic_159', name: '木棍', tier: '精良', phrases: ['2 金币'], hiddenPhrases: ['数字', '■', '仅影响显示'], shot: 'stick' },

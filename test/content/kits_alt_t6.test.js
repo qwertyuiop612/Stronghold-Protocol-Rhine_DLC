@@ -52,7 +52,7 @@ const skillBuff = (u) => u.findBuff(`skill:${u.id}`);
 
 test('kit coverage: every selectable skill of every visible tier-6 chess is hand-authored (normal + elite, every module)', () => {
   const rep = kitCoverage({ tier: 6 });
-  assert.equal(rep.summary.chess, 20);
+  assert.equal(rep.summary.chess, 21);
   assert.equal(rep.summary.covered, rep.summary.skills, JSON.stringify(rep.chess.filter((r) => r.skills.some((s) => !s.covered)).map((r) => r.name)));
   for (const r of rep.chess) {
     for (const s of r.skills.filter((x) => !x.isDefault)) {
@@ -1070,7 +1070,7 @@ test('6_17 耀骑士临光 S2 逐夜烁光: on deploy ATK + and 3 护盾 layers 
 // =================================================================================================================
 // 6_18 荒芜拉普兰德
 
-test('6_18 荒芜拉普兰德 S1 慵怠者悲鸣: passive 浮游单元+1 (2 hits per attack); toggled on: ATK + and the drones lock still enemies anywhere', () => {
+test('6_18 荒芜拉普兰德 S1 慵怠者悲鸣: passive 浮游单元+1 (one body plus two additions); toggled on: ATK + and the drones lock still enemies anywhere', () => {
   for (const id of both('chess_char_6_18')) {
     const sid = 'skchr_whitw2_1', bb = bbOf(id, sid);
     const idle = run({ defs: { enemies: { e: dummy('e') } }, units: [U(id, sid, 10, 4, { carryState: IDLE })], enemies: [{ key: 'e', pos: [10, 6] }] });
@@ -1079,7 +1079,9 @@ test('6_18 荒芜拉普兰德 S1 慵怠者悲鸣: passive 浮游单元+1 (2 hits
     const a0 = idle.hooksOf('attack').find((c) => c.attacker === iu);
     assert.ok(a0);
     idle.run(1);
-    assert.equal(dealt(idle, iu, (c) => c.dmg.attackId === dealt(idle, iu)[0].dmg.attackId).length, 2, 'drone +1');
+    const volley = dealt(idle, iu, (c) => c.dmg.attackId === dealt(idle, iu)[0].dmg.attackId);
+    assert.equal(volley.filter((c) => c.dmg.isAttack).length, 1, 'one body hit');
+    assert.equal(volley.filter((c) => c.dmg.tags.includes('funnel')).length, 2, 'drone +1');
     done(idle);
 
     const h = run({

@@ -79,7 +79,7 @@ test('Soul native summon variants retain donor skill/grade and new owner identit
 });
 
 test('Soul Ascalon keeps native dread and skill but never the live-body Kazdel production aura', () => {
-  const h = field('chess_kazdel_ascalon_a', { skillIndex: 1 }), s = h.soul;
+  const h = field('chess_char_5_diy1_a', { diy: { slot: 'chess_char_5_diy1_a', charId: 'char_4132_ascln', skillIndex: 1 }, items: morph }), s = h.soul;
   const e = h.spawn('dummy', { pos: [10, 4] }), layers = h.b.getPlayer('p1').bonds[K].layers;
   s.skill.setSpTotal(s.skill.spCost); assert.ok(s.skill.activate('test'));
   h.b.forceAttack(s, [e]); h.run(7);
@@ -89,7 +89,7 @@ test('Soul Ascalon keeps native dread and skill but never the live-body Kazdel p
 });
 
 test('Soul stat refresh keeps the inherited base formula through native skill buffs', () => {
-  const h = field('chess_kazdel_ascalon_a', { skillIndex: 1 }), s = h.soul;
+  const h = field('chess_char_5_diy1_a', { diy: { slot: 'chess_char_5_diy1_a', charId: 'char_4132_ascln', skillIndex: 1 }, items: morph }), s = h.soul;
   const base = soulBaseline(h.body), layers = h.b.getPlayer('p1').bonds[K].layers;
   close(s.base.maxHp, .6 * base.maxHp + 10 * layers); close(s.base.atk, .8 * base.atk + 3 * layers);
   s.skill.setSpTotal(s.skill.spCost); s.skill.activate('test'); h.run(2);
@@ -185,4 +185,22 @@ test('A soul born from a cannon death starts independent native callbacks and re
     assert.equal(h.b._kazdelCannonDamageDepth, 1);
   }, 'p1');
   assert.ok(u.kazdelSoulUnit?.alive); assert.equal(nativeCallback(), null); valid(h);
+});
+
+for (const skillIndex of [0, 1, 2]) test(`Upstream 0.2.4 Clementia DIY soul preserves native skill ${skillIndex + 1} and independent state`, () => {
+  const h = field(undefined, { diy: { slot: 6, charId: 'char_4231_clemnt', skillIndex }, elite: true, items: morph, dir: 'RIGHT' });
+  const s = h.soul;
+  assert.equal(s.def.charId, 'char_4231_clemnt');
+  assert.equal(s.skill.id, `skchr_clemnt_${skillIndex + 1}`);
+  assert.notEqual(s.skill, h.body.skill); assert.notEqual(s.mem, h.body.mem);
+  assert.deepEqual(s.items, []);
+  const enemy = h.spawn('dummy', { pos: [10, 5] });
+  s.skill.gainSp(999, 'init'); assert.ok(s.skill.activate('test'));
+  h.b.forceAttack(s, [enemy]); h.run(4);
+  assert.ok(enemy.hp < enemy.s.maxHp, 'the real inherited skill/attack pipeline damages the target');
+  const layers = h.b.getPlayer('p1').bonds[K].layers;
+  h.b.retreat(s, { reason: 'kazdelReturn', permanent: true }); h.step();
+  assert.equal(s.alive, false); assert.equal(h.b.getPlayer('p1').bonds[K].layers, layers);
+  for (const hooks of Object.values(h.b._hooks)) assert.ok(hooks.every(x => x.owner !== s));
+  valid(h);
 });

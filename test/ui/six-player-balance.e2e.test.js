@@ -5,6 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
+import { getPriority, setPriority } from 'node:os';
 import path from 'node:path';
 import { Client, ROOT, hasChrome, sleep, startRealServer, problemsOf } from '../e2e/client.mjs';
 import { getDataProfile } from '../../server/data.js';
@@ -18,15 +19,66 @@ const CORE = 'chess_char_6_01_a'; // a six-tier operator present in both profile
 const BEACON = 'chess_item_5_04_e_a';
 const KIT = [CORE, 'chess_char_1_01_a', 'chess_char_1_19_a', 'chess_char_2_01_a'];
 const QUIET = { info() {}, warn() {}, error() {}, debug() {} };
+// Opt into software WebGL (not software GPU compositing) only in this test harness.
+// Combat speed, deadlines and gameplay assertions are unchanged. The six clients
+// use actual low-quality controls with a 720p host and compact teammate windows;
+// separate renderer/layout suites cover
+// full-quality art and the desktop/phone viewport matrix.
+const SOFTWARE_GPU = process.env.SP_E2E_SWIFTSHADER === '1';
+const BROWSER_ARGS = SOFTWARE_GPU ? ['--use-gl=angle', '--use-angle=swiftshader-webgl', '--enable-unsafe-swiftshader'] : [];
 const inventory = c => c.page.evaluate(() => {
   const p = globalThis.__SP__.store.get().match.private;
   return [...(p?.hand || []), ...(p?.temp || []), ...(p?.board || [])].filter(Boolean);
 });
 
+async function openClient(client, query) {
+  await client.open(query);
+  if (!SOFTWARE_GPU || process.platform !== 'win32') return;
+  // Hosted Windows jobs inherit BelowNormal, but Chromium raises its GPU process
+  // to AboveNormal. Six software GPUs can then starve the real server/network.
+  // Match this fixture's priority, only for the GPU owned by this browser.
+  const cdp = await client.browser.target().createCDPSession();
+  try {
+    const { processInfo } = await cdp.send('SystemInfo.getProcessInfo');
+    const gpuProcesses = processInfo.filter(p => /gpu/i.test(p.type));
+    assert.equal(gpuProcesses.length, 1, 'one owned browser GPU process');
+    const priority = getPriority(process.pid);
+    for (const gpu of gpuProcesses) {
+      setPriority(gpu.id, priority);
+      assert.equal(getPriority(gpu.id), priority, 'software GPU shares the fixture priority');
+    }
+  } finally { await cdp.detach(); }
+}
+
+async function lowQuality(client) {
+  await client.click('[data-testid="settings-btn"]');
+  await client.click('.set-seg button', '低');
+  await client.click('.modal__actions button', '完成');
+  assert.equal(await client.page.evaluate(() => JSON.parse(localStorage.getItem('sp.pref.settings')).quality), 'low');
+}
+
+async function warmClient(client, enabled) {
+  // Finish each real cold import while still in the room, before six boards render
+  // simultaneously. This is a readiness barrier, not a substituted simulator/data set.
+  await client.page.waitForFunction(enabled => globalThis.__SP__.store.get().ui.dataReady
+    && globalThis.__SP__.data.profileId === (enabled ? 'rhine' : 'vanilla'), { timeout: 30000 }, enabled);
+  await client.page.evaluate(enabled => globalThis.__SP_RUNNER__.ensureSim(enabled).then(() => true), enabled);
+}
+
 async function createSixHumanRoom(clients, rhineEnabled) {
   const host = clients[0];
-  await host.open();
+  await openClient(host);
+  if (SOFTWARE_GPU) {
+    const cdp = await host.browser.target().createCDPSession();
+    try {
+      const { gpu } = await cdp.send('SystemInfo.getInfo');
+      assert.match(gpu.auxAttributes.glRenderer, /SwiftShader/i, 'the requested software backend is actually active');
+      assert.equal(gpu.featureStatus.gpu_compositing, 'disabled_software', 'software WebGL does not turn on GPU compositing');
+      console.log(`Six-client GPU: ${gpu.auxAttributes.glRenderer}`);
+    } finally { await cdp.detach(); }
+  }
   await host.enter('六人验收1');
+  await lowQuality(host);
   await host.click('.mode-card', '同盟模拟');
   await host.click('.diff-card', '绝境模拟');
   await host.click('.create-box button', '创建同盟');
@@ -36,10 +88,15 @@ async function createSixHumanRoom(clients, rhineEnabled) {
     await host.page.waitForFunction(() => globalThis.__SP__.store.get().room?.rhineEnabled === false
       && globalThis.__SP__.data.profileId === 'vanilla' && globalThis.__SP__.store.get().ui.dataReady);
   }
+  await warmClient(host, rhineEnabled);
   for (const [i, client] of clients.slice(1).entries()) {
-    await client.open(`?room=${room.code}`);
+    await openClient(client, `?room=${room.code}`);
     await client.enter(`六人验收${i + 2}`);
     await client.waitFor(s => s.room?.code === room.code, 'join six-human room');
+    await warmClient(client, rhineEnabled);
+    // Auto-join replaces the lobby screen; configure its settings only after that
+    // transition, so it cannot unmount an open dialog between the two real clicks.
+    await lowQuality(client);
   }
   for (const client of clients.slice(1)) await client.click('.room-bar__right button', '准备就绪');
   await host.click('.room-bar__right button', '开始模拟');
@@ -48,7 +105,7 @@ async function createSixHumanRoom(clients, rhineEnabled) {
     const pub = await client.page.evaluate(() => globalThis.__SP__.store.get().match.public);
     assert.equal(pub.startingPlayerCount, 6);
     assert.equal(pub.dataProfile, rhineEnabled ? 'rhine' : 'vanilla');
-    assert.deepEqual(pub.openingBans, { core: rhineEnabled ? 2 : 1, addon: 4 });
+    assert.deepEqual(pub.openingBans, { core: rhineEnabled ? 3 : 1, addon: 4 });
     assert.equal(pub.players.filter(p => !p.isBot).length, 6);
     await client.click('.brief__foot .btn--primary', '准备就绪');
   }
@@ -77,9 +134,19 @@ async function createSixHumanRoom(clients, rhineEnabled) {
 async function recordCombat(client) {
   await client.page.evaluate(() => {
     const copy = value => JSON.parse(JSON.stringify(value));
-    const trace = globalThis.__sixBalance = { starts: [], pools: [], uploads: [], errors: [], byBattle: {} };
+    const trace = globalThis.__sixBalance = { starts: [], pools: [], uploads: [], errors: [], byBattle: {}, localPools: {}, phases: [] };
+    // Capture the real local pool when its field is shown. At accelerated combat speed,
+    // RESULT may clear runner entries before the six clients are inspected sequentially.
+    const runner = globalThis.__SP_RUNNER__;
+    runner.on('field', () => {
+      for (const entry of runner._entries.values()) {
+        if (entry.own && entry.battle?.sharedBoss) trace.localPools[entry.battleId] = entry.battle.sharedBoss.maxHp;
+      }
+    });
     const net = globalThis.__SP__.net;
     net.on('*', msg => {
+      if (['m.public', 'b.start', 'b.end'].includes(msg.t)) trace.phases.push({ type: msg.t,
+        phase: globalThis.__SP__.store.get().match.public?.phase, runner: runner.state() });
       if (msg.t === 'b.start') trace.starts.push(copy(msg));
       if (msg.t === 'error') trace.errors.push({ code: msg.code, detail: msg.detail });
       if (msg.t === 'b.pool') {
@@ -166,7 +233,7 @@ for (const rhineEnabled of [true, false]) {
       const srv = await startRealServer({ fast: { timerScale: 1, combatSpeed: 16, startRound: 14, chess: KIT, autoPlace: true } });
       const puppeteer = (await import('puppeteer-core')).default;
       const clients = Array.from({ length: 6 }, (_, i) => new Client(puppeteer, srv.base, `${profile}-${i + 1}`,
-        { w: i === 5 ? 1280 : 1920, h: i === 5 ? 720 : 1080, prefix: `six-balance-${profile}-p${i + 1}` }));
+        { w: i === 0 ? 1280 : 640, h: i === 0 ? 720 : 360, prefix: `six-balance-${profile}-p${i + 1}`, browserArgs: BROWSER_ARGS }));
       try {
         await createSixHumanRoom(clients, rhineEnabled);
         const rewards = await Promise.all(clients.map(inventory));
@@ -176,13 +243,19 @@ for (const rhineEnabled of [true, false]) {
           assert.equal(awarded[0].giftTiming, 'immediate');
         }
         const last = clients.at(-1), lastId = (await last.st()).me, lastBeacon = rewards[5].find(p => p.id === BEACON).uid;
-        await last.page.waitForNetworkIdle({ idleTime: 500, timeout: 15000 });
+        // Finish the simulation module/data boot before navigating away. Unrelated
+        // asset/media traffic need not become globally idle for a valid refresh.
+        await last.page.evaluate(() => globalThis.__SP_RUNNER__.ensureSim().then(() => true));
         await last.page.reload({ waitUntil: 'domcontentloaded' });
         await last.page.waitForFunction(() => !!globalThis.__SP__ && !!document.querySelector('.gm'));
         await last.waitFor(s => s.phase === 'PREP' && s.round === 14, 'resume R14 prep');
         assert.equal((await last.st()).me, lastId);
         assert.deepEqual((await inventory(last)).filter(p => p.id === BEACON).map(p => p.uid), [lastBeacon], 'refresh does not duplicate the award');
-        await last.shot('prep-720');
+        // The refreshed page has to import the real simulator again. Complete that boot
+        // before 16x combat; software-rendered six-browser runs can otherwise settle the
+        // whole battle while this client is still fetching its simulation modules/data.
+        await last.page.evaluate(() => globalThis.__SP_RUNNER__.ensureSim().then(() => true));
+        await last.shot('prep-compact');
         await useAwardedBeacon(clients);
         await Promise.all(clients.map(recordCombat));
         for (const client of clients) await client.click('.readybtn');
@@ -196,9 +269,16 @@ for (const rhineEnabled of [true, false]) {
           const expected = bossPoolHp(gd4, start.spec.bossId, 4) * 2;
           assert.equal(start.spec.boss.poolMax, expected, `${client.label}: doubled four-seat maximum in real battle spec`);
           assert.equal(start.spec.boss.poolHp, expected, `${client.label}: doubled four-seat initial current HP`);
-          await client.page.waitForFunction(() => globalThis.__SP_RUNNER__?.stats().errors === 0
-            && [...globalThis.__SP_RUNNER__._entries.values()].some(e => e.battle?.sharedBoss?.maxHp > 0), { timeout: 30000 });
-          const max = await client.page.evaluate(() => [...globalThis.__SP_RUNNER__._entries.values()].find(e => e.own)?.battle.sharedBoss.maxHp);
+          await client.page.waitForFunction(id => globalThis.__SP_RUNNER__?.stats().errors === 0
+            && globalThis.__sixBalance.localPools[id] > 0, { timeout: 30000 }, start.battleId).catch(async error => {
+            const diagnostic = await client.page.evaluate(() => ({ phase: globalThis.__SP__.store.get().match.public.phase,
+              localPools: globalThis.__sixBalance.localPools, phases: globalThis.__sixBalance.phases,
+              stats: globalThis.__SP_RUNNER__.stats(),
+              entries: [...globalThis.__SP_RUNNER__._entries.values()].map(e => ({ battleId: e.battleId,
+                own: e.own, maxHp: e.battle?.sharedBoss?.maxHp })) }));
+            throw new Error(`${client.label}: ${error.message}; ${JSON.stringify(diagnostic)}`, { cause: error });
+          });
+          const max = await client.page.evaluate(id => globalThis.__sixBalance.localPools[id], start.battleId);
           assert.equal(max, expected, `${client.label}: actual local shared pool has the same maximum`);
         }
         for (const client of clients) await client.waitFor(s => s.phase === 'RESULT', 'complete boss settlement', 150000);
@@ -218,7 +298,7 @@ for (const rhineEnabled of [true, false]) {
           assert.equal(await client.page.evaluate(() => globalThis.__SP_RUNNER__.stats().errors), 0);
         }
         assert.equal(authoritativeUploads, 3, 'all three pair fields uploaded and replayed');
-        await last.shot('result-720');
+        await last.shot('result-compact');
         assert.deepEqual(problemsOf(clients), [], 'no page, console or resource errors');
         assert.deepEqual(srv.logs.filter(line => /verify mismatch|meta handler error|\[sim\].*(?:error|failed)/i.test(line)), []);
       } finally {
