@@ -135,4 +135,8 @@
   PIN 与 22 个基线文件一起重录。
 - 上游 0.2.6 的场景 / 素材索引依赖本机提取缓存，仓库不存放官方文件；
   `public/dev/simcheck/data/` 已在 `.gitignore` 中。
-- CI：`.github/workflows` 未参与逐文件合并，本轮沿用 fork 现有工作流，需在推送后复核一次流水线。
+- CI：`.github/workflows` 未参与逐文件合并，本轮沿用 fork 现有工作流。用干净克隆复现流水线（无 `public/assets`、
+  无 `data/local-assets.json`、无 `public/fonts`、CI 的 `SP_*`/`NO_COLOR` 环境）后，确定性失败只有一个：
+  `test/docs-paths.test.js` 的 `EXEMPT` 少了 `public/fonts/`（上游 0.2.6 的 `docs/ARCHITECTURE.md` 在
+  `assetIndex.js` 一节里提到它，而 `.gitignore:13` 把它列为安装期生成物），已补进 `EXEMPT`；其余是并发/机器计时类
+  （socket 限流 2 项与重型首领战场基准），同一条流水线上换一台机器或单跑即通过。
