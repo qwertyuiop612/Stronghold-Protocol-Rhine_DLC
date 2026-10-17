@@ -291,7 +291,7 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 - 性能测试：`/dev/battle-perf.html` 在浏览器里跑一场真实战斗（对局用的战斗运行器、模拟和渲染），实时显示帧率与逐帧耗时；在手机上打开后点击「开始测量（10 秒）」，生成的报告可以复制后附在反馈中。用到的战斗来自 `node tools/capture-specs.mjs` 从固定种子的机器人对局里截取的数据（`public/dev/perf/`）。
 - 只重构、不改玩法的提交不能改变 `test/golden/*.json`；有意改变玩法时运行 `npm run golden:update`，检查差异后随改动一起提交（见 [test/golden/README.md](test/golden/README.md)）。
 - GitHub Actions（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 与 Windows、Node 22 / 24 上运行 `npm ci`、`node --test` 和服务器冒烟测试。
-- 2026-10-17 本地全量测试记录：8790 项，8721 通过、0 失败、69 项条件跳过（原始数据缓存或可选浏览器环境）。本次以 `node --test --test-concurrency=4` 运行（与 4 核 CI 相同的并发度）：测试里嵌套启动子进程的用例对并发敏感，并发 8 时会有 5 项因冷启动超时而假失败，单跑或并发 4 全部通过，见 [docs/design/overview.md](docs/design/overview.md)。独立本机 HTTP／WebSocket 与开发场景检查通过；此记录不等同于完整人工多人实机验收，也不预先代表 GitHub Actions 已运行通过。
+- 2026-10-17 本地全量测试记录：8806 项，8737 通过、0 失败、69 项条件跳过（原始数据缓存或可选浏览器环境）。本次以 `node --test --test-concurrency=4` 运行（与 4 核 CI 相同的并发度）：测试里嵌套启动子进程的用例对并发敏感，因此等待帧、子进程试跑与前端对局上报都改用按负载放宽的上限（`SP_WAIT_MS`、`test/studio/review.test.js` 的试跑预算、`test/match/realtime.test.js` 的有界等待），并发 8 时冷启动仍可能假失败，单跑或并发 4 全部通过，见 [docs/design/overview.md](docs/design/overview.md)。独立本机 HTTP／WebSocket 与开发场景检查通过；此记录不等同于完整人工多人实机验收，也不预先代表 GitHub Actions 已运行通过。
 - 2026-10-03 本地全量测试记录：3488 项，3479 通过、0 失败、9 项条件跳过（原始数据缓存或可选浏览器环境）。独立本机 HTTP／WebSocket 与开发场景检查通过；此记录不等同于完整人工多人实机验收，也不预先代表 GitHub Actions 已运行通过。
 - 代码怎么分层、改某个规则该从哪个文件入手，见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 

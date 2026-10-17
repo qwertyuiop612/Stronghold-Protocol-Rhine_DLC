@@ -199,6 +199,8 @@ export class PlayerState {
     this._tempDue = new Map();
     /** @type {Map<string, any>} 'r,c' → piece */
     this.board = new Map();
+    // 雷姆必拓集合点: the player's own rally choice on the deploy field; combat specs freeze a copy.
+    this.remRally = null;
     // Player-owned research devices have fixed reserve slots, independent of the ordinary hand and a summoner.
     this.research = { unlocked: false, hand: RHINE_DEVICES.map(() => null), points: {}, stages: {}, battleRound: null, participants: [], settled: new Set() };
     /** persistent bond layers */

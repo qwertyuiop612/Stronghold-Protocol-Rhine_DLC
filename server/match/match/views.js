@@ -78,6 +78,10 @@ export class MatchViews {
       startingPlayerCount: this.startingPlayerCount,
       openingBans: { ...this.openingBans },
       difficultyLevel: this.difficultyLevel,
+      // 战斗倍速 (fork feature): the HUD's speed picker reads the room preset from the public view
+      combatSpeed: this.gameSpeed,
+      combatSpeedMode: this.combatSpeedMode,
+      combatDurationMultiplier: this.combatDurationMultiplier,
       stageId: this.stageId,
       setupRevision: this.setupRevision,
       rerollVote: this.setupVote ? {

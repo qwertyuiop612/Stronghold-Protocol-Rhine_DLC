@@ -6,7 +6,7 @@
 
 import { autoSelectRelic } from '../relics.js';
 import { unitStatsEntry } from '../../../shared/protocol.js';
-import { PHASE, ERR, EMOTES, EMOTE_COOLDOWN_MS, GEO } from '../../../shared/constants.js';
+import { PHASE, ERR, EMOTES, EMOTE_COOLDOWN_MS, GEO, COMBAT_SPEEDS, COMBAT_SPEED_MODES, COMBAT_DURATION_MULTIPLIERS } from '../../../shared/constants.js';
 import { deriveSeed } from '../../sim/rng.js';
 import { OK, fail } from './common.js';
 import { onHumanEmote } from '../botEmotes.js';
@@ -30,6 +30,8 @@ export class MatchIntents {
       case 'g.freeze': return ps.freeze();
       case 'g.levelUp': return ps.levelUp();
       case 'g.sell': return ps.sell(msg.uid);
+      // 雷姆必拓集合点: the rally marker the prep screen drags onto a melee tile
+      case 'g.remRally': return ps.setRemRally(msg.row, msg.col);
       // dir: the deploy wheel's facing (DESIGN §3; absent ⇒ PlayerState reads to.dir, then RIGHT)
       case 'g.move': return ps.move(msg.uid, msg.to, msg.dir);
       case 'g.equip': return ps.equip(msg.itemUid, msg.targetUid, msg.replaceUid ?? null);
@@ -47,6 +49,8 @@ export class MatchIntents {
       case 'g.watch': return this.watch(ps, msg.fieldId, msg.playerId ?? null);
       case 'g.autoplay': return this.setAutoplay(ps, !!msg.on);
       case 'g.pause': return this.setPause(ps, !!msg.on);
+      // 战斗倍速 (fork feature): the HUD's speed picker, host only, prep phases
+      case 'g.setCombatSpeed': return this.setCombatSpeed(ps, msg.speed, msg.mode, msg.durationMultiplier);
       // the stats the board's units start their next battle with (the detail card in prep, user playtest #4 item 7)
       case 'g.unitStats': return this.unitStats(ps, msg.seq ?? null);
       case 'g.leave': this.onLeave(ps.playerId); return OK;
@@ -76,6 +80,24 @@ export class MatchIntents {
     this.markPublic();
     if (on) this.kickBot(ps);
     if (on && this.phase === PHASE.SETTLE && ps.relicOffer) { autoSelectRelic(ps); this._completeRelicChoices(); }
+    return OK;
+  }
+
+  /**
+   * 战斗倍速 (fork feature): the host may change the speed preset mid-match during the prep phases; `power` mode
+   * multiplies attack power instead of playing faster, `durationMultiplier` stretches every battle's time limit.
+   */
+  setCombatSpeed(ps, speed, mode = this.combatSpeedMode, durationMultiplier = this.combatDurationMultiplier) {
+    if (ps.playerId !== this.hostId) return fail(ERR.NOT_HOST);
+    if (![PHASE.INFO_CHECK, PHASE.BAND_DRAFT, PHASE.SP_DRAFT, PHASE.ROUND_START, PHASE.PREP, PHASE.BATTLE_CHECK].includes(this.phase)) {
+      return fail(ERR.WRONG_PHASE);
+    }
+    if (!COMBAT_SPEEDS.includes(speed) || !COMBAT_SPEED_MODES.includes(mode) || !COMBAT_DURATION_MULTIPLIERS.includes(durationMultiplier)) return fail(ERR.BAD_MSG);
+    this.gameSpeed = speed;
+    this.combatSpeedMode = mode;
+    this.combatDurationMultiplier = durationMultiplier;
+    this.attackPowerMultiplier = mode === 'power' ? speed : 1;
+    this.markPublic();
     return OK;
   }
 

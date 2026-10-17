@@ -37,7 +37,8 @@ export class MatchClientCombat {
     const seq = `${this.battlePrefix}.${this.round}.${++this._battleSeq}`;
     // protocol ids are ≤ 64 chars (shared/protocol.js isId): the field id is informational, the sequence is unique
     const battleId = seq.length + 1 + String(fieldId).length <= 64 ? `${seq}.${fieldId}` : seq;
-    const spec = buildBattleSpec({ ...opts, battleId, fieldId, kind, content: this.battleContent, boss, difficultyLevel: this.difficultyLevel, cs: this.cs, vs: this.vs });
+    const spec = buildBattleSpec({ ...opts, battleId, fieldId, kind, content: this.battleContent, boss, difficultyLevel: this.difficultyLevel,
+      combatSpeed: this.gameSpeed, combatSpeedMode: this.combatSpeedMode, cs: this.cs, vs: this.vs });
     Object.defineProperties(spec, {
       rhineEnabled: { value: this.rhineEnabled, enumerable: true },
       dataProfile: { value: this.dataProfile, enumerable: true },
@@ -101,7 +102,7 @@ export class MatchClientCombat {
       rhineEnabled: this.rhineEnabled, dataProfile: this.dataProfile,
       authoritative: !!(!f.done && !f.verifyJob && f.mode === 'client' && f.authority === pid && !watch),
       startAt: f.startAt, serverNow: this.sched.now(), elapsed: Math.round(this._fieldElapsed(f) * 1000) / 1000,
-      speed: this.gameSpeed, watch: !!watch, done: !!f.done,
+      speed: this.gameSpeed, speedMode: this.combatSpeedMode, watch: !!watch, done: !!f.done,
     };
   }
 

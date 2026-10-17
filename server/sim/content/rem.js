@@ -370,10 +370,16 @@ export function install(b) {
     const gates = b.grid.specialTiles('end');
     const home = ps.units[0] ? [ps.units[0].tileR, ps.units[0].tileC] : [10, 3];
     const gate = [...gates].sort((a, c) => distance(a, home) - distance(c, home))[0] ?? home;
-    let vehicleStop = [gate[0], gate[1] + (ps.mirror ? -3 : 3)];
-    const options = nearby(b, vehicleStop).filter(p => distance(p, gate) >= 3);
-    options.sort((a, c) => nearby(b, c).length - nearby(b, a).length || distance(a, vehicleStop) - distance(c, vehicleStop));
-    vehicleStop = options[0] ?? gate;
+    // 雷姆必拓集合点 (fork feature): the player's own rally point when the board offered one, else the automatic
+    // stop next to the gate. The rally is a melee tile chosen in prep (`g.remRally`, server/match/player/placement.js).
+    let vehicleStop = ps.input.remRally
+      ? b.mapTile(ps, ps.input.remRally.row, ps.input.remRally.col)
+      : [gate[0], gate[1] + (ps.mirror ? -3 : 3)];
+    if (!ps.input.remRally) {
+      const options = nearby(b, vehicleStop).filter(p => distance(p, gate) >= 3);
+      options.sort((a, c) => nearby(b, c).length - nearby(b, a).length || distance(a, vehicleStop) - distance(c, vehicleStop));
+      vehicleStop = options[0] ?? gate;
+    }
     const exit = b.grid.specialTiles('start').sort((a, c) => distance(a, gate) - distance(c, gate))[0] ?? vehicleStop;
     const airRoute = remPath(b, gate, [exit], null, false, true) ?? [gate, exit];
     const carry = b.kind === 'unite' && Number.isInteger(ps.input.remSurvivalTicks) && ps.input.remSurvivalTicks > 0

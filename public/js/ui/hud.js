@@ -35,6 +35,7 @@ import { overtimeState, overtimeDrainPerSec, remainAt } from './matchStatus.js';
 import { hotkeyLabelOf } from './settings.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 import { UnofficialMark } from './pluginTag.js';
+import { CombatSpeedPicker } from './combatSpeed.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -363,6 +364,7 @@ export function PauseButton({ paused, busy = false, onToggle }) {
  */
 export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, onReady, readyBusy, readyCount, playerCount, pen = false, penAvail = false, onPen = () => {},
   config = null, frozenAt = null, pause = null, live = null, spectator = false,
+  speedHost = false, speedLocked = false, onSpeed = null,
   spectators = null, myId = null, isHost = false, onRemoveSpectator = null, room = null }) {
   const phase = pub?.phase;
   const boss = isBossPhase(phase);
@@ -417,6 +419,8 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
     </div>
 
     <div class="gtop__right">
+      <${CombatSpeedPicker} speed=${pub?.combatSpeed} durationMultiplier=${pub?.combatDurationMultiplier} mode=${pub?.combatSpeedMode}
+        host=${speedHost} locked=${speedLocked} busy=${readyBusy} onPick=${onSpeed} />
       <div class="gtop__clock">
         ${frozenSecs != null
           ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`

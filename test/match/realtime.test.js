@@ -213,7 +213,11 @@ test('real-time co-op over websockets with the real simulation: 2 humans + 2 AI 
     for (const st of own) {
       assert.equal(st.spec.kind, 'normal');
       assert.equal(st.speed, 40);
-      assert.ok(c.sim.log.some((x) => x.t === 'b.result' && x.battleId === st.battleId), `${c.id} reported ${st.battleId}`);
+      // The client simulates its own battle off the real scheduler; on a loaded suite host it can still be finishing
+      // when the field has already settled on the server, so give the report a bounded wait instead of a snapshot.
+      const reported = () => c.sim.log.some((x) => x.t === 'b.result' && x.battleId === st.battleId);
+      for (let n = 0; n < 240 && !reported(); n++) await new Promise((ok) => setTimeout(ok, 25));
+      assert.ok(reported(), `${c.id} reported ${st.battleId}`);
     }
     assert.ok(c.sim.log.filter((x) => x.t === 'b.progress').length >= own.length);
     // observing a teammate after the own battle: the watched field's spec arrives as a display replica

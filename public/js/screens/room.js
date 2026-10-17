@@ -25,7 +25,8 @@ import { toast, toastError } from '../ui/toasts.js';
 import { copyText } from '../ui/clipboard.js';
 import { GuideButton } from '../ui/guide.js';
 import { openStats } from './stats.js';
-import { SettingsButton } from '../ui/settings.js';
+import { SettingsButton, settingsStore } from '../ui/settings.js';
+import { CombatSpeedPicker } from '../ui/combatSpeed.js';
 import { RoomSettingsButton } from '../ui/roomSettings.js';
 import { LoadoutButton } from './loadout.js';
 import { PluginTag, isModdedRoom } from '../ui/pluginTag.js';
@@ -317,6 +318,10 @@ export function RoomScreen() {
   const addBot = () => run('add', () => net.request('room.addBot', {}));
   const removeBot = (seat) => run(`rm${seat}`, () => net.request('room.removeBot', { seat }));
   const setDifficulty = (difficulty, difficultyLevel = room.difficultyLevel ?? 0) => run('diff', () => net.request('room.setDifficulty', { difficulty, difficultyLevel }));
+  // 战斗倍速 (fork feature): the room's preset — the mode ('attack' | 'power') is a per-player client setting
+  const setCombatSpeed = (speed, durationMultiplier = room.combatDurationMultiplier) => run('speed', () => net.request('room.setCombatSpeed', {
+    speed, durationMultiplier, mode: settingsStore.get().combatSpeedMode,
+  }));
   const levelPicker = room.difficulty === 'ASCENSION' ? html`<${DifficultyLevelPicker} value=${room.difficultyLevel} minimal=${true}
     onChange=${(n) => setDifficulty('ASCENSION', n)} disabled=${!!busy || !online} readOnly=${!facts.isHost} />` : null;
   // the host removes a human before the match (community report #17): asked first; the player may join again. The
@@ -393,6 +398,8 @@ export function RoomScreen() {
         <${PluginTag} room=${room} myId=${me.playerId} />
       </div>
       <div class="topbar__right">
+        <${CombatSpeedPicker} speed=${room.combatSpeed} durationMultiplier=${room.combatDurationMultiplier} mode=${room.combatSpeedMode}
+          host=${facts.isHost} busy=${!!busy} onPick=${setCombatSpeed} />
         ${coop ? html`<${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} />` : html`<div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>${t('仅限 1 名博士')}</span></div>`}
       </div>
     </header>

@@ -15,6 +15,16 @@ import WebSocket from 'ws';
 
 const REPLY_TYPES = new Set(['ok', 'error', 'welcome', 'pong']);
 
+// Default per-frame wait. The 2 s this used to be is a serial-machine number: a full `node --test` run keeps every
+// file's worker alive at once, and several tests spawn their own node/python children (match hosts, studio probes)
+// whose cold start on a loaded host outlives it — the frame still arrives, just later. A protocol bug still fails,
+// it only takes longer to say so. Same rationale as test/helpers/perfBudget.js; SP_WAIT_MS overrides it.
+const DEFAULT_WAIT_MS = (() => {
+  const forced = Number(process.env.SP_WAIT_MS);
+  if (Number.isFinite(forced) && forced > 0) return forced;
+  return process.env.CI ? 8000 : 5000;
+})();
+
 export class TestClient {
   /**
    * Open a socket and resolve once connected.
@@ -93,7 +103,7 @@ export class TestClient {
    * @param {number} [timeout] ms
    * @returns {Promise<any>}
    */
-  waitFor(type, predicate = () => true, timeout = 2000) {
+  waitFor(type, predicate = () => true, timeout = DEFAULT_WAIT_MS) {
     const match = (m) => (type == null || m.t === type) && predicate(m);
     const i = this.inbox.findIndex(match);
     if (i >= 0) return Promise.resolve(this.inbox.splice(i, 1)[0]);
@@ -123,7 +133,7 @@ export class TestClient {
    * @param {object} msg @param {number} [timeout]
    * @returns {Promise<any>}
    */
-  request(msg, timeout = 2000) {
+  request(msg, timeout = DEFAULT_WAIT_MS) {
     const rid = this.send({ ...msg, rid: this.nextRid++ });
     return this.waitFor(null, (m) => REPLY_TYPES.has(m.t) && m.rid === rid, timeout);
   }

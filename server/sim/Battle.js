@@ -81,6 +81,11 @@ export class Battle {
     this.kind = opts.kind ?? 'normal';
     this.modeId = opts.modeId ?? null;
     this.difficulty = difficultyEffects(opts.difficultyLevel);
+    // 战斗倍速 (fork feature): the spec's speed preset. `power` multiplies the attack power of every attack by the
+    // speed instead of playing faster (server/sim/damage.js dealDamage).
+    this.combatSpeed = Number.isFinite(opts.combatSpeed) && opts.combatSpeed > 0 ? opts.combatSpeed : 2;
+    this.combatSpeedMode = opts.combatSpeedMode === 'power' ? 'power' : 'attack';
+    this.attackPowerMultiplier = this.combatSpeedMode === 'power' ? this.combatSpeed : 1;
     this.round = opts.round ?? 0;
     this.fieldId = opts.fieldId ?? null;
     this.logger = opts.logger ?? console;

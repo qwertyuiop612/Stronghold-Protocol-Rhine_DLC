@@ -16,6 +16,7 @@ export class MatchCombat {
   /** Construct a battle; a constructor failure yields a finished stand-in (clean result) and is logged. */
   newBattle(opts, { preview = false } = {}) {
     const full = { data: this.ds, content: this.battleContent, logger: this.log, ...opts, difficultyLevel: this.difficultyLevel,
+      combatSpeed: this.gameSpeed, combatSpeedMode: this.combatSpeedMode,
       ...(preview ? { logger: {}, quiet: true } : {}) };
     try {
       return new this.BattleClass(full);
@@ -72,7 +73,7 @@ export class MatchCombat {
       round: this.round,
       stageId: this.stageId,
       rect: { ...GEO.NORMAL_RECT },
-      timeLimit: wave.timeLimit,
+      timeLimit: wave.timeLimit * this.combatDurationMultiplier,
       players: [ev.input && typeof ev.input === 'object' ? ev.input : input],
       spawns: this._sanitizeSpawns(Array.isArray(ev.spawns) ? ev.spawns : spawns, ps.playerId),
       routes: wave.routes,

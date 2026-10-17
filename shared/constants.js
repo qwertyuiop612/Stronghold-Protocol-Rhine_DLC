@@ -17,6 +17,11 @@ export const DEV_BUILD = /-dev$/.test(APP_VERSION);
 export const PLUGIN_API = Object.freeze({ current: 1, min: 1 });
 
 export const MAX_SEATS = 6;
+export const COMBAT_SPEEDS = Object.freeze([1, 2, 3, 4, 5]);
+export const DEFAULT_COMBAT_SPEED = 2;
+export const COMBAT_DURATION_MULTIPLIERS = Object.freeze([1, 2, 3, 4, 5]);
+export const DEFAULT_COMBAT_DURATION_MULTIPLIER = 1;
+export const COMBAT_SPEED_MODES = Object.freeze(['attack', 'power']);
 /**
  * Spectator seats of a co-op room (community report #26, owner's decision 2026-10-04) — a remake feature: the official
  * room has 1–4 players and no spectator seat (there only eliminated players and 联防 bystanders watch, research 09 §3.1).

@@ -74,6 +74,10 @@ export function buildBattleSpec(o = {}) {
     seed: (Number(o.seed) >>> 0) || 1,
     modeId: o.modeId ?? null,
     difficultyLevel: normalizeDifficultyLevel(o.difficultyLevel),
+    // 战斗倍速 (fork feature): the preset travels with the spec so a client-side battle applies the same
+    // attack-power multiplier (`power` mode) as the server would.
+    combatSpeed: Number.isFinite(o.combatSpeed) && o.combatSpeed > 0 ? o.combatSpeed : 2,
+    combatSpeedMode: o.combatSpeedMode === 'power' ? 'power' : 'attack',
     round: Number.isInteger(o.round) ? o.round : 0,
     stageId: o.stageId ?? null,
     rect: o.rect ?? null,
@@ -97,10 +101,14 @@ export function buildBattleSpec(o = {}) {
   for (const p of out.players) if (p && Object.hasOwn(p, 'remSurvivalTicks')) {
     if (out.kind !== 'unite' || !Number.isInteger(p.remSurvivalTicks) || p.remSurvivalTicks < 0 || p.remSurvivalTicks > 1e9) delete p.remSurvivalTicks;
   }
-  // Retired growth and rally metadata never enter a new battle, including from an older replay/session.
+  // Retired growth metadata never enters a new battle, including from an older replay/session.
   for (const p of out.players) if (p) {
     delete p.remAppearances;
-    delete p.remRally;
+    if (!Object.hasOwn(p, 'remRally')) continue;
+    // 雷姆必拓集合点 (fork feature): an in-field melee tile, or null — anything else cannot reach the battle.
+    const r = p.remRally;
+    p.remRally = r && Number.isInteger(r.row) && r.row >= 9 && r.row <= 12 && Number.isInteger(r.col) && r.col >= 2 && r.col <= 10
+      ? { row: r.row, col: r.col } : null;
   }
   for (const p of out.players) for (const u of (p && Array.isArray(p.units) ? p.units : [])) if (u && typeof u === 'object') sanitizeUnitLoadout(u);
   return out;
@@ -167,6 +175,8 @@ export function createBattleFromSpec(spec, dataSource, opts = {}) {
     kind: s.kind,
     modeId: s.modeId,
     difficultyLevel: s.difficultyLevel,
+    combatSpeed: s.combatSpeed,
+    combatSpeedMode: s.combatSpeedMode,
     round: s.round,
     stageId: s.stageId,
     rect: s.rect ?? undefined,

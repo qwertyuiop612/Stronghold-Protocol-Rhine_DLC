@@ -1143,3 +1143,15 @@
 .plugin-settings__row { display: flex; gap: .1rem; align-items: center; justify-content: space-between; }
 .plugin-settings input, .plugin-settings select { color: var(--text-hi); background: var(--bg-2); border: 1px solid var(--line-2); padding: .03rem .06rem; max-width: 2rem; }
 .plugin-settings input[aria-invalid="true"] { border-color: var(--orange); }
+
+/* 战斗倍速 (fork feature): the host's speed + duration picker (ui/combatSpeed.js) */
+.combat-speed { display: flex; align-items: center; gap: .08rem; white-space: nowrap; }
+.combat-speed__label { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; color: var(--text-dim); }
+.combat-speed__label b { color: var(--mint-300); font-size: calc(.12 * var(--t)); }
+.combat-speed__range { display: flex; align-items: center; gap: .05rem; min-width: 1.1rem; }
+.combat-speed__range input { width: .85rem; accent-color: var(--mint-400); cursor: pointer; }
+.combat-speed__range input:disabled { cursor: default; opacity: .72; }
+.combat-speed__range output { min-width: .28rem; color: var(--text-hi); font: 700 .13rem/1 var(--font-mono); }
+.combat-speed__duration { display: flex; align-items: center; gap: .04rem; color: var(--text-lo); font-size: calc(.1 * var(--t)); }
+.combat-speed__duration select { height: .25rem; border: 1px solid var(--line-3); background: rgba(10, 18, 24, .82); color: var(--text-hi); font: 700 .11rem/1 var(--font-mono); }
+.combat-speed.is-locked .combat-speed__range, .combat-speed.is-locked .combat-speed__duration { opacity: .55; }

@@ -121,7 +121,12 @@ test('trial draft writer rejects traversal, absolute paths, hidden names and bac
   writeTrialDraftFile(root, 'data/operator.json', '{}'); assert.equal(fs.readFileSync(path.join(root, 'data/operator.json'), 'utf8'), '{}');
 });
 
-for (const ending of ['close', 'timeout', 'probe-timeout']) test(`a real pinned SIGTERM-ignoring probe leaves no grandson after trial ${ending}`, { timeout: 20000 }, async t => {
+// These budgets are serial-machine numbers: a full `node --test` run keeps every file's worker alive and each of these
+// fixtures forks a real child, so on a loaded host the fork + contentSet preflight can take tens of seconds and a
+// 20 ms timer tick can arrive much later. Every wait below is therefore deadline-based and every trial budget scaled,
+// so a slow host fails nothing while a real hang still ends the test.
+const PROBE_LOAD = 3;
+for (const ending of ['close', 'timeout', 'probe-timeout']) test(`a real pinned SIGTERM-ignoring probe leaves no grandson after trial ${ending}`, { timeout: 90000 }, async t => {
   const f = scriptFixture(t), marker = path.join(f.root, 'probe.pid');
   f.put('loop', `export default () => { const p = global['pro' + 'cess'];
     p.getBuiltinModule('fs').writeFileSync(${JSON.stringify(marker)}, String(p.pid));
@@ -129,18 +134,20 @@ for (const ending of ['close', 'timeout', 'probe-timeout']) test(`a real pinned 
   let leader;
   const bench = createTrialBench({ registry: f.registry, files: createPluginFiles(f.pluginsDir),
     spawn: (entry, args, opts) => (leader = fork(entry, args, { ...opts, env: { ...process.env, SP_SCRIPT_PROBE_MS: ending === 'probe-timeout' ? String(SCRIPT_PROBE_TIMEOUT_MS) : '60000' } })),
-    limits: { ...TRIAL_LIMITS, timeoutMs: ending === 'timeout' ? 6000 : 15000 } });
+    limits: { ...TRIAL_LIMITS, timeoutMs: (ending === 'timeout' ? 6000 : 15000) * PROBE_LOAD } });
   t.after(() => bench.close());
   const pending = bench.run({ id: 'loop', seconds: 1 });
   const checked = ending === 'probe-timeout' ? pending : assert.rejects(pending, { code: ending === 'timeout' ? 'PLUGIN_STUDIO_TRIAL_TIMEOUT' : 'PLUGIN_STUDIO_TRIAL_FAILED' });
-  for (let n = 0; n < 400 && !fs.existsSync(marker); n++) await delay(20);
+  const markerBy = Date.now() + 30000;
+  while (!fs.existsSync(marker) && Date.now() < markerBy) await delay(20);
   assert.ok(fs.existsSync(marker), 'the actual contentSet preflight ran');
   const pid = Number(fs.readFileSync(marker, 'utf8'));
   t.after(() => { try { process.kill(pid, 'SIGKILL'); } catch { /* absent */ } });
   if (ending === 'close') bench.close();
   const result = await checked;
   if (ending === 'probe-timeout') { assert.equal(result.ok, false); assert.equal(result.issues[0].code, 'PLUGIN_SCRIPT_CHECK'); assert.match(result.issues[0].text, new RegExp(`${SCRIPT_PROBE_TIMEOUT_MS} ms.*SIGKILL`)); }
-  for (let n = 0; n < 100; n++) { try { process.kill(pid, 0); await delay(20); } catch { break; } }
+  const goneBy = Date.now() + 6000;
+  while (Date.now() < goneBy) { try { process.kill(pid, 0); } catch { break; } await delay(20); }
   assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
   assert.throws(() => process.kill(leader.pid, 0), { code: 'ESRCH' });
 });

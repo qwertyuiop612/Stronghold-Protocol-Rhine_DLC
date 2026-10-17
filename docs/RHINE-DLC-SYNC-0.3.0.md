@@ -65,10 +65,18 @@ test/version.test.js, tools/{package,plugin}.mjs
   - `test/golden-diy.test.js`：新语料下 seed 24 的 AI 只抽不派，覆盖「完整商店 → 部署 → 战斗」路径改用 seed 5（`coop2-NORMAL-5-coverage-diy`）。
 - **身份**：README 标题、`本轮版本：v0.3.0-test`、维护者/分支、Releases 与 Issues 链接、docs 表（新增本文件）与英文 Fork 段逐项对齐；`test/version.test.js` 断言 fork 的包名与仓库地址。
 
+### 合并后回植的 fork 功能（用户复查时发现的三处）
+
+- **3D 战场场景与背景**：官方场景素材（`public/assets/local/scene/**`，12 套场景）是 git-ignored 的资源，干净工作树里没有，所以浏览器 `board3d/scene.js` 拿不到 `data/local-assets.json` 的 `scene` 组、背景不显示。这不是代码丢失；把 DLC 树的 `public/assets/local/**` 与 `data/local-assets.json`（`count` 1690）复制进工作树后复验通过。本次从 DLC 树复制 148 MB 场景素材（`test/local-token-models.test.js` + `test/scene-assets.test.js` 13/13）。
+- **战斗倍速（DLC 0.2.x 的 `room.setCombatSpeed` + `g.setCombatSpeed`）**：上游 0.3.0 重写了房间与战斗调度，这两个命令随之消失，房间与对局 UI 里的倍速选择器、`CombatHud` 的倍速按钮、`combatSpeedMode`（`attack`/`power`）一并丢失。已按 HEAD 之前的实现逐文件回植：`shared/constants.js`（`COMBAT_SPEEDS`/`COMBAT_DURATION_MULTIPLIERS`/`COMBAT_SPEED_MODES`）、`shared/protocol.js`（`room.setCombatSpeed`、`g.setCombatSpeed`）、`server/lobby.js`（房间字段、`snapshot()`、`setCombatSpeed`、建房时传给对局）、`server/match/Match.js`、`server/match/match/intents.js`、`combat.js`/`clientCombat.js`/`unitePhase.js`（战斗时长乘数）、`server/sim/Battle.js` + `server/sim/damage.js`（`power` 模式的攻击力换算）、前端 `public/js/screens/room.js`、`public/js/ui/hud.js`、`public/js/screens/game.js`、`public/js/ui/gameLogic/settings.js` 与 `public/css/components.css`；`test/room-rhine-profile.test.js` 与 `test/match/fuzz.test.js` 补了对应断言。
+- **雷姆必拓集合点（`g.remRally`）**：上游 0.3.0 主动退役了该功能（`test/match/rem-rally.test.js` 被改写为「retired rally commands are rejected」，`server/sim/content/rem.js` 把玩家选的集合点换成了自动 `vehicleStop`）。按 fork 「保留扩展规则」的约定回植：`shared/protocol.js` 的 `g.remRally`、`server/match/PlayerState.js` 字段、`server/match/player/placement.js` 的 `setRemRally`/`remRallyView`、`server/match/player/views.js` 与 `round.js` 的私有视图/战斗输入、`server/match/match/intents.js` 分发、`server/sim/spec.js` 的白名单清洗、`server/sim/content/rem.js`（玩家选了合法近战格就用它，否则回落到自动停车点）、前端 `public/js/ui/gameActions.js` 与 `public/js/screens/game.js`；测试恢复 fork 版本的 `test/match/rem-rally.test.js`、`test/sim/rem.browser.test.js`、`test/ui/rem-rally.browser.test.js`，`test/match/rem-round-carry.test.js` 的 spec 用例改为「合法集合点进战斗、伪造/畸形值被清成 null」，`test/match/fuzz.test.js` 重新生成 `g.remRally` 意图。
+
 ## 六、验证
 
 - 静态检查：`tsc --noEmit --checkJs -p jsconfig.json` 0 error、ESLint `154 problems (0 errors, 154 warnings)`、`tools/check-imports.mjs` 3 条既有 allowed note、`node tools/ci.mjs --only setup,smoke,imports,typecheck` 全 ok。
-- 全量测试：`node --test --test-concurrency=4` → **8790 项，8721 通过、0 失败、69 项条件跳过**，用时约 31 分钟。并发度必须用 4（与 4 核 CI 一致）：`test/match/plugin-host.test.js`、`test/plugin-package.test.js`、`test/studio/review.test.js` 里有嵌套启动 node/python 子进程并按固定超时等待的用例，在 16 核机器上并发 8 时冷启动超时会假失败，单跑或并发 4 全部通过。
+- 全量测试：`node --test --test-concurrency=4` → **8806 项，8737 通过、0 失败、69 项条件跳过**，用时约 39 分钟。并发度必须用 4（与 4 核 CI 一致）：`test/match/plugin-host.test.js`、`test/plugin-package.test.js`、`test/studio/review.test.js` 里有嵌套启动 node/python 子进程并按固定超时等待的用例，在 16 核机器上并发 8 时冷启动超时会假失败，单跑或并发 4 全部通过。
+  - 为让「并发 4 的高负载全量」稳定，本轮把三处串行机器的时间假设改成按负载放宽（与 `test/helpers/perfBudget.js` 同一思路，而不是靠重跑）：`test/helpers/wsClient.js` 的默认等待帧上限 2 s → 5 s（`CI` 下 8 s，`SP_WAIT_MS` 可覆盖）；`test/studio/review.test.js` 的真实子进程试跑预算 ×3（测试超时 90 s，标记/退出等待改为按截止时间而非次数）；`test/match/realtime.test.js` 对自己战斗 `b.result` 的上报改为有界等待（最多 6 s）。
+  - 顺带修掉 `test/ui/gameLogic.test.js` 的 `sanitizeSettings` 期望值：设置里新增的 `combatSpeedMode` 必须出现在默认设置快照里。
 
 ## 七、继续的入口
 

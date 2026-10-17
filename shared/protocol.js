@@ -1,7 +1,7 @@
 // Normative message catalogue (DESIGN §8). Used by server (validation) and client (building requests).
 // Every client→server message is `{ t, rid?, ...fields }`. Unknown `t` or invalid fields ⇒ ERR.BAD_MSG.
 
-import { DIFFICULTIES, MAX_DIFFICULTY_LEVEL, NAME_MAX_LEN, ROOM_CODE_LEN, ROOM_PASSWORD_MAX_LEN, MAX_SEATS, EMOTES, GEO } from './constants.js';
+import { DIFFICULTIES, MAX_DIFFICULTY_LEVEL, NAME_MAX_LEN, ROOM_CODE_LEN, ROOM_PASSWORD_MAX_LEN, MAX_SEATS, EMOTES, GEO, COMBAT_SPEEDS, COMBAT_SPEED_MODES, COMBAT_DURATION_MULTIPLIERS } from './constants.js';
 import { isDroppableChess } from './standIn.js';
 import { diySlotIds, validateDiyPicks } from './diy.js';
 import { cultivatedStats, isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT, hasPotentialData } from './potential.js';
@@ -428,6 +428,10 @@ export const C2S = {
   'room.ready': { ready: isBool },
   'room.setDifficulty': { difficulty: (v) => DIFFICULTIES.includes(v), difficultyLevel: (v) => isInt(v, 0, MAX_DIFFICULTY_LEVEL), $optional: ['difficultyLevel'] },
   'room.setRhine': { enabled: isBool },
+  // 战斗倍速 (fork feature): the host's speed preset for the room — the game seconds a real second covers while a
+  // battle runs in real time (1–5), whether more speed means faster playback ('attack') or a stronger attack-power
+  // multiplier ('power'), and the battle wave time limit multiplier (1–5). Answered by a room snapshot.
+  'room.setCombatSpeed': { speed: (v) => COMBAT_SPEEDS.includes(v), mode: (v) => COMBAT_SPEED_MODES.includes(v), durationMultiplier: (v) => COMBAT_DURATION_MULTIPLIERS.includes(v), $optional: ['mode', 'durationMultiplier'] },
   // the co-op room option 「AI 队友最后选择」 (GitHub #338; host, before the match): the strategy and 机变 drafts order every
   // human seat before every AI seat (server/match/match/phases.js humansFirst); room.state.aiPicksLast
   'room.setAiPicksLast': { on: isBool },
@@ -483,6 +487,8 @@ export const C2S = {
   'g.freeze': {},
   'g.levelUp': {},
   'g.sell': { uid: isUid },
+  // 雷姆必拓集合点: a melee tile of the owner's deploy field (no tile is occupied by the marker itself)
+  'g.remRally': { row: (v) => isInt(v, 9, 12), col: (v) => isInt(v, 2, 10) },
   // dir: the facing chosen on the deploy wheel for a board target (absent ⇒ RIGHT; the piece's own tile ⇒ re-orient)
   'g.move': { uid: isUid, to: target, dir: isDir, $optional: ['dir'] },
   // replaceUid: with both of the target's slots used, the equipped item the replace dialog picked (research 09 §1.2
@@ -503,6 +509,9 @@ export const C2S = {
   // solo pause (official PauseUp / ResumeUp, DESIGN §14): freezes the running battle (field clock, deadlines, the
   // browser's local runner) — solo matches only (co-op ⇒ WRONG_PHASE), only while a battle runs; m.public.paused
   'g.pause': { on: isBool },
+  // 战斗倍速 in a running match (fork feature): the same three values as room.setCombatSpeed, sent by whoever holds the
+  // match's speed control (the HUD picker); the match broadcasts it and every field's clock reads it
+  'g.setCombatSpeed': { speed: (v) => COMBAT_SPEEDS.includes(v), mode: (v) => COMBAT_SPEED_MODES.includes(v), durationMultiplier: (v) => COMBAT_DURATION_MULTIPLIERS.includes(v), $optional: ['mode', 'durationMultiplier'] },
   // the stats the own board's units start their next battle with (user playtest #4 item 7; prep phases): answered by
   // the push m.unitStats { seq, round, units: [unitStatsEntry] }; `seq` is echoed so the client keeps the newest answer
   'g.unitStats': { seq: (v) => isInt(v, 0, 2 ** 31), $optional: ['seq'] },

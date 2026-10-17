@@ -110,6 +110,29 @@ test('only the lobby host can change Rhine; changes clear all human readiness an
   } finally { h.lobby.shutdown(); }
 });
 
+// 战斗倍速 (fork feature): the room's speed preset survives the 0.3.0 merge — host-only, x1–x5, mode + duration
+test('combat speed is host-only, supports x1-x5 and duration multiplier, and broadcasts the attack mode', () => {
+  const h = lobbyHarness();
+  try {
+    const host = h.player('Host');
+    const guest = h.player('Guest');
+    const room = create(h, host);
+    assert.deepEqual(h.send(guest, { t: 'room.join', code: room.code }), { ok: true });
+    assert.equal(room.combatSpeed, 2);
+    assert.equal(room.combatSpeedMode, 'attack');
+    assert.equal(validateC2S({ t: 'room.setCombatSpeed', speed: 3, mode: 'power' }), null);
+    assert.equal(validateC2S({ t: 'room.setCombatSpeed', speed: 6, mode: 'attack' }), 'bad field speed');
+    assert.equal(h.send(guest, { t: 'room.setCombatSpeed', speed: 1, mode: 'attack' }).error, ERR.NOT_HOST);
+    assert.deepEqual(h.send(host, { t: 'room.setCombatSpeed', speed: 5, mode: 'power', durationMultiplier: 3 }), { ok: true });
+    assert.equal(room.combatSpeed, 5);
+    assert.equal(room.combatSpeedMode, 'power');
+    assert.equal(room.combatDurationMultiplier, 3);
+    assert.equal(host.messages.at(-1).combatSpeed, 5);
+    assert.equal(host.messages.at(-1).combatSpeedMode, 'power');
+    assert.equal(host.messages.at(-1).combatDurationMultiplier, 3);
+  } finally { h.lobby.shutdown(); }
+});
+
 test('switching and joining sanitize missing operators, skills and modules independently against the target room data', () => {
   const h = lobbyHarness();
   try {

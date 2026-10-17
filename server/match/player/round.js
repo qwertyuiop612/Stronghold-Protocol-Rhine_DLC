@@ -192,6 +192,7 @@ export class PlayerRound {
       deviceOverrides: { ...this.deviceOverrides },
       research: this.researchView(),
       relics: relicsView(this).map((r) => r.id),
+      remRally: this.remRallyView(),
     };
   }
 }

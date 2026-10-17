@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+﻿import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildBattleSpec, compactResult, createBattleFromSpec, resultDigest } from '../../server/sim/spec.js';
 import { validateClientResult } from '../../server/match/fields.js';
@@ -76,7 +76,7 @@ test('unite carries only bounded positive integers and never converts old appear
   } finally { h.m.dispose(); }
 });
 
-test('spec keeps survival time only for unite and strips retired time-independent growth and rally metadata', () => {
+test('spec keeps survival time only for unite, keeps a validated rally point and strips retired growth metadata', () => {
   for (const kind of ['normal', 'unite', 'boss', 'hidden']) {
     for (const ticks of [0, 1, 149, 1e9, ...BAD_TICKS]) {
       const input = { playerId: 'p_0', units: [], remSurvivalTicks: ticks, remAppearances: 99, remRally: { row: 10, col: 4 } };
@@ -85,10 +85,15 @@ test('spec keeps survival time only for unite and strips retired time-independen
       assert.equal(Object.hasOwn(spec.players[0], 'remSurvivalTicks'), valid, `${kind}: ${String(ticks)}`);
       if (valid) assert.equal(spec.players[0].remSurvivalTicks, ticks);
       assert.equal(Object.hasOwn(spec.players[0], 'remAppearances'), false);
-      assert.equal(Object.hasOwn(spec.players[0], 'remRally'), false);
+      // 雷姆必拓集合点 (fork feature): an in-field melee tile survives into the battle spec, anything else is nulled.
+      assert.deepEqual(spec.players[0].remRally, { row: 10, col: 4 });
       assert.equal(input.remAppearances, 99, 'building a spec does not rewrite the source record');
       assert.deepEqual(input.remRally, { row: 10, col: 4 });
     }
+    const forged = buildBattleSpec({ kind, players: [{ playerId: 'p_0', units: [], remRally: { row: 1, col: 1 } }] });
+    assert.equal(forged.players[0].remRally, null);
+    const malformed = buildBattleSpec({ kind, players: [{ playerId: 'p_0', units: [], remRally: { row: '10', col: 4 } }] });
+    assert.equal(malformed.players[0].remRally, null);
   }
 });
 

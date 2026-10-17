@@ -90,6 +90,7 @@ import { Ticker } from '../ui/ticker.js';
 import { EmoteWheel } from '../ui/emotes.js';
 import { DamageRanking } from '../ui/damageRanking.js';
 import { EffectsList } from '../ui/effectsList.js';
+import { RemRally } from '../ui/remRally.js';
 import { RhineDock } from '../ui/rhineDock.js';
 import { researchRange } from '../../../shared/rhineRange.js';
 import { RelicCollection, RelicChoice, ownerRelics, revivalTargets } from '../ui/relicPanel.js';
@@ -183,6 +184,7 @@ function MatchScreen() {
   const myId = useStore((s) => s.me.playerId);
   const conn = useStore((s) => s.connection, shallowEqual);
   const emotes = useStore((s) => s.emotes);
+  const room = useStore((s) => s.room);
   const roomSolo = useStore((s) => s.room?.mode === 'solo');
   const spectator = useStore((s) => isSpectating(s.room, s.me.playerId));
   const metricsSetting = useSettings().combatMetrics === true;
@@ -264,6 +266,13 @@ function MatchScreen() {
   const personalChoice = !spectator && alive ? normalizePersonalChoice(pub, priv, myId) : null;
   const hasPersonalChoice = !!personalChoice;
   const editable = phase === PHASE.PREP && !!priv && alive && !priv.ready && !watchingOther && !hasPersonalChoice;
+  // 战斗倍速 (fork feature): the host picks the room's preset before the match and may change it during the prep phases
+  const speedHost = room?.hostId === myId;
+  const speedLocked = ![PHASE.INFO_CHECK, PHASE.BAND_DRAFT, PHASE.SP_DRAFT, PHASE.ROUND_START, PHASE.PREP, PHASE.BATTLE_CHECK].includes(phase);
+  const setCombatSpeed = (speed, durationMultiplier = pub?.combatDurationMultiplier) => net.request('g.setCombatSpeed', {
+    speed, durationMultiplier, mode: settingsStore.get().combatSpeedMode,
+  })
+    .catch((err) => toast(err?.message || t('倍速设置失败'), 'warn'));
   const showShop = !!priv && alive && (phase === PHASE.PREP || phase === PHASE.SP_DRAFT || phase === PHASE.ROUND_START) && !watchingOther;
   const layersDisabled = phase === PHASE.UNITE || isBossPhase(phase);
   const sp = phase === PHASE.SP_DRAFT ? normalizeSp(pub?.sp, players) : null;
@@ -1618,7 +1627,7 @@ function MatchScreen() {
         readyBusy=${readyBusy} readyCount=${readyCount} playerCount=${solo ? 1 : aliveCount}
         pen=${pen} penAvail=${penAvail} onPen=${togglePen} config=${gd.config} frozenAt=${frozenAt}
         pause=${canPause || paused ? { show: canPause, paused, busy: pauseBusy, onToggle: () => togglePause(!paused) } : null}
-        live=${liveLpNow} spectator=${spectator}
+        live=${liveLpNow} spectator=${spectator} speedHost=${speedHost} speedLocked=${speedLocked} onSpeed=${setCombatSpeed}
         spectators=${specFacts.list} myId=${myId} isHost=${specFacts.isHost} onRemoveSpectator=${removeSpectator} room=${modRoom} />
 
       <div class="gm__bonds">
@@ -1648,6 +1657,9 @@ function MatchScreen() {
           queuedChess=${strip.ownerId === myId ? priv?.relicChessQueue?.length || 0 : 0} />
         <div class="gm__effect-base"><${EffectsList} effects=${watchingOther && field ? (field.effects ?? null) : priv?.effects} /></div>
       </div>
+      ${!watchingOther && !pen && !sp ? html`<${RemRally} point=${priv?.remRally} editable=${editable && showPrep}
+        view=${view} placeCtx=${placeCtx} enabled=${(priv?.bonds || []).some(b => b.bondId === 'remShip' && b.count > 0)}
+        onSet=${(row, col) => actions.remRally(row, col)} />` : null}
       ${!watchingOther && !pen && !sp ? html`<${RhineDock} research=${priv?.research} editable=${editable && showPrep}
         view=${view} placeCtx=${placeCtx}
         onDeploy=${async (uid, tile) => {

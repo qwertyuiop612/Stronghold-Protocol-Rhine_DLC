@@ -158,7 +158,7 @@
 //     a player seat (the seat is kept and given back on resume).
 
 import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
-import { DIFFICULTIES, ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor, normalizeDifficultyLevel } from '../shared/constants.js';
+import { DIFFICULTIES, ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor, normalizeDifficultyLevel, COMBAT_SPEEDS, COMBAT_SPEED_MODES, DEFAULT_COMBAT_SPEED, COMBAT_DURATION_MULTIPLIERS, DEFAULT_COMBAT_DURATION_MULTIPLIER } from '../shared/constants.js';
 import { checkLoadout, loadoutOptions, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks, charPotentialChanges } from '../shared/protocol.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession, TokenBucket } from './net.js';
 import { getData as defaultGetData, getDataProfile as defaultGetDataProfile, deepFreeze, lookup } from './data.js';
@@ -271,11 +271,19 @@ function freezeDiy(picks) {
 /** One room: MAX_SEATS seat slots, host, difficulty, optional running match. */
 export class Room {
   /** @param {string} code @param {'solo'|'coop'} mode @param {string} difficulty @param {number} now */
-  constructor(code, mode, difficulty, now, rhineEnabled = true, difficultyLevel = 0) {
+  constructor(code, mode, difficulty, now, rhineEnabled = true, difficultyLevel = 0, combatSpeed = DEFAULT_COMBAT_SPEED, combatSpeedMode = 'attack', durationMultiplier = DEFAULT_COMBAT_DURATION_MULTIPLIER) {
     this.code = code;
     this.mode = mode;
     this.difficulty = difficulty;
     this.rhineEnabled = rhineEnabled;
+    /**
+     * 战斗倍速 (fork feature): the game seconds a real second covers while a battle runs (`COMBAT_SPEEDS`), what more
+     * speed means (`COMBAT_SPEED_MODES`: 'attack' = faster playback, 'power' = a stronger attack-power multiplier) and
+     * the wave time limit multiplier. The host's choice, kept across matches, read by the match's clocks.
+     */
+    this.combatSpeed = COMBAT_SPEEDS.includes(combatSpeed) ? combatSpeed : DEFAULT_COMBAT_SPEED;
+    this.combatSpeedMode = COMBAT_SPEED_MODES.includes(combatSpeedMode) ? combatSpeedMode : 'attack';
+    this.combatDurationMultiplier = COMBAT_DURATION_MULTIPLIERS.includes(durationMultiplier) ? durationMultiplier : DEFAULT_COMBAT_DURATION_MULTIPLIER;
     /** @type {Readonly<Record<string, any>> | null} the room's selected immutable tables */
     this.data = null;
     this.difficultyLevel = difficulty === 'ASCENSION' ? normalizeDifficultyLevel(difficultyLevel) : 0;
@@ -359,6 +367,9 @@ export class Room {
       dataProfile: this.rhineEnabled ? 'rhine' : 'vanilla',
       difficultyLevel: this.difficultyLevel,
       aiPicksLast: this.aiPicksLast,
+      combatSpeed: this.combatSpeed,
+      combatSpeedMode: this.combatSpeedMode,
+      combatDurationMultiplier: this.combatDurationMultiplier,
       isPublic: this.isPublic,
       hasPassword: !!this.password,
       inMatch: !!this.match,
@@ -639,6 +650,7 @@ export class Lobby {
       case 'room.ready': return this.ready(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
       case 'room.setRhine': return this.setRhine(session, msg);
+      case 'room.setCombatSpeed': return this.setCombatSpeed(session, msg);
       case 'room.setAiPicksLast': return this.setAiPicksLast(session, msg);
       case 'room.addBot': return this.addBot(session);
       case 'room.removeBot': return this.removeBot(session, msg);
@@ -1181,6 +1193,23 @@ export class Lobby {
     return OK;
   }
 
+  /**
+   * 战斗倍速 (fork feature): the host picks the room's speed preset before the match starts.
+   */
+  setCombatSpeed(session, { speed, mode = 'attack', durationMultiplier = this.roomOf(session)?.combatDurationMultiplier ?? DEFAULT_COMBAT_DURATION_MULTIPLIER }) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (!COMBAT_SPEEDS.includes(speed) || !COMBAT_SPEED_MODES.includes(mode) || !COMBAT_DURATION_MULTIPLIERS.includes(durationMultiplier)) return fail(ERR.BAD_MSG);
+    if (room.combatSpeed === speed && room.combatSpeedMode === mode && room.combatDurationMultiplier === durationMultiplier) return OK;
+    room.combatSpeed = speed;
+    room.combatSpeedMode = mode;
+    room.combatDurationMultiplier = durationMultiplier;
+    this.broadcastState(room);
+    return OK;
+  }
+
   addBot(session) {
     const room = this.roomOf(session);
     if (!room) return fail(ERR.NOT_IN_ROOM);
@@ -1487,6 +1516,9 @@ export class Lobby {
         data,
         rhineEnabled: room.rhineEnabled,
         dataProfile: room.rhineEnabled ? 'rhine' : 'vanilla',
+        combatSpeed: room.combatSpeed,
+        combatSpeedMode: room.combatSpeedMode,
+        combatDurationMultiplier: room.combatDurationMultiplier,
         log: this.log,
         now: this.now,
         send: (playerId, msg) => (ctx.live ? this.matchSend(room, ctx, playerId, msg) : false),

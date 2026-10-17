@@ -199,7 +199,7 @@
 //   common.js        what the modules share (FLOW_TICKER_PRIORITY, DELAYS, BAND_TURN_SECONDS — re-exported here, OK,
 //                    fail, BOSS_CLOCK_MS)
 
-import { PHASE, modeIdFor, normalizeDifficultyLevel } from '../../shared/constants.js';
+import { PHASE, modeIdFor, normalizeDifficultyLevel, COMBAT_SPEEDS, COMBAT_SPEED_MODES, COMBAT_DURATION_MULTIPLIERS, DEFAULT_COMBAT_DURATION_MULTIPLIER } from '../../shared/constants.js';
 import { isContentHash } from '../../shared/plugins/identity.js';
 import { Battle } from '../sim/Battle.js';
 import { DataSource } from '../sim/simdata.js';
@@ -309,7 +309,12 @@ export class Match {
     this.BattleClass = typeof opts.BattleClass === 'function' ? opts.BattleClass : Battle;
     this.battleContent = opts.battleContent || 'full';
     this.timerScale = Number.isFinite(opts.timerScale) && opts.timerScale >= 0 ? opts.timerScale : 1;
-    this.gameSpeed = Number.isFinite(opts.combatSpeed) && opts.combatSpeed > 0 ? Math.min(opts.combatSpeed, 200) : GAME_SPEED;
+    this.gameSpeed = COMBAT_SPEEDS.includes(opts.combatSpeed) ? opts.combatSpeed : (Number.isFinite(opts.combatSpeed) && opts.combatSpeed > 0 ? Math.min(opts.combatSpeed, 200) : GAME_SPEED);
+    // 战斗倍速 (fork feature): `combatSpeedMode` 'power' turns the speed into an attack-power multiplier (each battle's
+    // attackPowerMultiplier, server/sim/damage.js); `combatDurationMultiplier` stretches every battle's wave time limit.
+    this.combatSpeedMode = COMBAT_SPEED_MODES.includes(opts.combatSpeedMode) ? opts.combatSpeedMode : 'attack';
+    this.combatDurationMultiplier = COMBAT_DURATION_MULTIPLIERS.includes(opts.combatDurationMultiplier) ? opts.combatDurationMultiplier : DEFAULT_COMBAT_DURATION_MULTIPLIER;
+    this.attackPowerMultiplier = this.combatSpeedMode === 'power' ? this.gameSpeed : 1;
     /** layouts a bot rehearses per prep with the real simulation (bot.js; 0 = heuristic placement only) */
     this.botRehearsal = Number.isInteger(opts.botRehearsal) && opts.botRehearsal >= 0 ? Math.min(opts.botRehearsal, 8) : BOT_REHEARSAL_DEFAULT;
     /** wall-clock budget of one rehearsal slice (scheduleBotPrep) */
