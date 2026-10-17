@@ -3,7 +3,12 @@
 import { downloadUrls, normalizeProxyPrefix } from './sources.mjs';
 
 export function validateSource(mode) {
-  if (!['direct', 'mirror'].includes(mode)) throw new Error(`unknown asset source: ${mode} (direct|mirror)`);
+  if (!['direct', 'mirror'].includes(mode)) {
+    throw new Error(
+      `unknown asset source: ${mode} (direct|mirror); a proxy address is not a source — set it in SP_GITHUB_PROXY, `
+        + 'e.g. SP_GITHUB_PROXY=https://ghfast.top/ with --asset-source=mirror'
+    );
+  }
   return mode;
 }
 

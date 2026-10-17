@@ -19,6 +19,15 @@ if not exist "node_modules\ws\package.json" (
   if errorlevel 1 goto :fail
 )
 
+rem Mirror mode without a proxy configured: use the one measured fastest on a Chinese line (docs\ASSETS.md).
+rem --asset-source only picks direct|mirror; the mirror address itself is the SP_GITHUB_PROXY prefix.
+set "SP_MIRROR_DEFAULT="
+if /i "%SP_ASSET_SOURCE%"=="mirror" set "SP_MIRROR_DEFAULT=1"
+echo %* | findstr /i /c:"--asset-source=mirror" /c:"--asset-source mirror" >nul && set "SP_MIRROR_DEFAULT=1"
+if defined SP_GITHUB_PROXY set "SP_MIRROR_DEFAULT="
+if defined SP_MIRROR_DEFAULT set "SP_GITHUB_PROXY=https://ghfast.top/"
+if defined SP_MIRROR_DEFAULT echo [network] 镜像模式：默认代理 https://ghfast.top/（要换别的就设置 SP_GITHUB_PROXY）
+
 node scripts\launch.mjs %*
 if errorlevel 1 goto :fail
 exit /b 0

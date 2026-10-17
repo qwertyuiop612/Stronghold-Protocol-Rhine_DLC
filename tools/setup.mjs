@@ -369,7 +369,16 @@ export function venvPython() {
   return IS_WIN ? path.join(VENV_DIR, 'Scripts', 'python.exe') : path.join(VENV_DIR, 'bin', 'python');
 }
 
-const PY_ENV = { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1', PIP_DISABLE_PIP_VERSION_CHECK: '1' };
+// Keep pip's wheel cache inside the project: `%LOCALAPPDATA%\pip\cache\wheels` belongs to the account that
+// created it per machine, and building a wheel for `tpk_ar` there dies with "[WinError 5] 拒绝访问".
+const PIP_CACHE = path.join(ROOT, '.cache', 'pip');
+const PY_ENV = {
+  PYTHONUTF8: '1',
+  PYTHONIOENCODING: 'utf-8',
+  PYTHONDONTWRITEBYTECODE: '1',
+  PIP_DISABLE_PIP_VERSION_CHECK: '1',
+  PIP_CACHE_DIR: process.env.PIP_CACHE_DIR || PIP_CACHE
+};
 
 /** Create .venv-extract and install tools/local-extract/requirements.txt (skipped when the imports already work). */
 function ensureVenv(py, log) {

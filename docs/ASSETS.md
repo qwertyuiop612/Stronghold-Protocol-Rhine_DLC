@@ -122,6 +122,15 @@ How downloads are fetched:
 - Each source gets 3 attempts with exponential backoff.
 - If `raw.githubusercontent.com` fails, the jsDelivr mirror (`cdn.jsdelivr.net/gh/…`) is tried.
 - There is no mirror for the ArknightsAssets2 `voice` branch, because jsDelivr returns 404 for it.
+- `--asset-source=mirror` (or `SP_ASSET_SOURCE=mirror`) puts the proxy prefix in `SP_GITHUB_PROXY` in front of every
+  `raw.githubusercontent.com` URL (`https://gh-proxy.com/` when unset; an empty value turns the prefix off, mirror mode
+  included). This is not a source name: `--asset-source=ghfast.top` is rejected, because the flag only chooses
+  `direct|mirror`. Free proxies differ by more than an order of magnitude on a Chinese line — measured 2026-10-17 on a
+  15 MB file, `https://ghfast.top/` served 2.1–2.9 MB/s and `https://ghproxy.net/` 170 KB/s, while
+  `gh-proxy.com` managed 70 KB/s and `raw.githubusercontent.com` / `cdn.jsdelivr.net` did not connect at all. So
+  `scripts/start-windows.bat` fills `SP_GITHUB_PROXY` with `https://ghfast.top/` when mirror mode is requested and the
+  variable is unset; anywhere else, set it yourself:
+  `set "SP_GITHUB_PROXY=https://ghfast.top/"` then `start-windows.bat --asset-source=mirror`.
 - A manifest entry with fallbacks (for example an enemy icon that falls back to its base enemy's icon) only moves on to the next alternative after a **definitive 404**. When the primary fails transiently (network error, 5xx or an invalid payload after all retries), no fallback is fetched. The path is listed under `downloadErrors` in the report, and the next run retries the primary.
 - A skeleton that fails to parse is deleted and removed from the ledger, so the next online run downloads it again.
 
