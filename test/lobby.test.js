@@ -558,37 +558,65 @@ describe('websocket lobby', () => {
     assert.equal(pong.t, 'pong');
   });
 
-  test('rate limit: bursts beyond 40 msg/s get RATE, connection survives, bucket refills', async () => {
-    const c = await pool.player('Spammer');
-    const N = 100;
-    const rids = [];
-    for (let i = 0; i < N; i++) rids.push(c.send({ t: 'ping', c: i }));
-    const replies = [];
-    for (const rid of rids) replies.push(await c.waitFor(null, (m) => m.rid === rid, 3000));
-    const pongs = replies.filter((m) => m.t === 'pong').length;
-    const limited = replies.filter((m) => m.t === 'error' && m.code === ERR.RATE).length;
-    assert.equal(pongs + limited, N);
-    assert.ok(pongs >= 39 && pongs <= 45, `pongs ${pongs}`); // hello used one token
-    assert.ok(limited >= 55, `limited ${limited}`);
-    assert.ok(c.isOpen);
-    await delay(1100);
-    const ok = await c.request({ t: 'ping', c: 0 });
-    assert.equal(ok.t, 'pong');
+  test('rate limit: bursts beyond the limit get RATE, connection survives, bucket refills', async () => {
+    // A dedicated server with a small bucket: the shared one allows 40 msg/s, and a loaded runner spreads 100 sends
+    // over >3 s (31/s), so nothing is ever limited and the assertions say nothing. The same accounting code at 2/s
+    // makes the rejection structural — no host speed can hide it.
+    const limitSrv = await startServer({
+      port: 0, host: '127.0.0.1', quiet: true, ratePerSec: 2, rateBurst: 4,
+    });
+    const limitPool = clientPool(() => `ws://127.0.0.1:${limitSrv.port}/ws`);
+    try {
+      const c = await limitPool.player('Spammer');
+      const N = 100;
+      const t0 = Date.now();
+      const rids = [];
+      for (let i = 0; i < N; i++) rids.push(c.send({ t: 'ping', c: i }));
+      const replies = [];
+      for (const rid of rids) replies.push(await c.waitFor(null, (m) => m.rid === rid, 3000));
+      const elapsedMs = Date.now() - t0;
+      const pongs = replies.filter((m) => m.t === 'pong').length;
+      const limited = replies.filter((m) => m.t === 'error' && m.code === ERR.RATE).length;
+      assert.equal(pongs + limited, N);
+      // hello used one of the four burst tokens; the bucket then refills at 2/s, so even on a host that needs
+      // several seconds to push 100 frames the accepted count stays bounded by burst + refill.
+      assert.ok(pongs >= 3, `pongs ${pongs}`);
+      assert.ok(pongs <= 4 + 2 * (Math.ceil(elapsedMs / 1000) + 1), `pongs ${pongs} over ${elapsedMs} ms`);
+      assert.ok(limited >= 40, `limited ${limited} over ${elapsedMs} ms`);
+      assert.ok(c.isOpen);
+      await delay(1100);
+      const ok = await c.request({ t: 'ping', c: 0 });
+      assert.equal(ok.t, 'pong'); // the bucket refilled
+    } finally {
+      await limitPool.closeAll();
+      await limitSrv.close();
+    }
   });
 
   test('flooding far beyond the limit closes the socket (1008)', async () => {
-    const c = await pool.player('Flood');
-    // bursts until the server closes it: the close needs more than abuseDropsPerSec drops inside one 1 s window, and on
-    // a heavily loaded machine a single burst of 600 can be read over more than a second — the old single burst then
-    // never closed the socket and `await c.closed` (no timeout) hung the whole file
-    const t0 = Date.now();
-    while (c.isOpen && Date.now() - t0 < 20000) {
-      for (let i = 0; i < 600 && c.isOpen; i++) c.send({ t: 'ping', c: i, rid: null });
-      await delay(50);
+    // The default limiter (ratePerSec 40, abuseDropsPerSec 400) only closes a socket the host manages to read >400
+    // dropped frames of inside one 1 s window — a loaded runner reads far less and the flood survived. A dedicated
+    // server with a scaled-down limiter exercises the same accounting → 1008 path with drops no host can avoid.
+    const floodSrv = await startServer({
+      port: 0, host: '127.0.0.1', quiet: true, ratePerSec: 5, rateBurst: 5, abuseDropsPerSec: 3,
+    });
+    const floodPool = clientPool(() => `ws://127.0.0.1:${floodSrv.port}/ws`);
+    try {
+      const c = await floodPool.player('Flood');
+      // Four drops close the socket, so a bounded burst is enough. Unbounded flooding only fills the client's own
+      // outbound queue, and `ws` completes the close handshake after draining it — under load that parked the
+      // 'close' event (and this test) past its 10 s wait.
+      for (let round = 0; round < 5 && c.isOpen; round++) {
+        for (let i = 0; i < 40 && c.isOpen; i++) c.send({ t: 'ping', c: i, rid: null });
+        await delay(50);
+      }
+      const info = await Promise.race([c.closed, delay(5000).then(() => null)]);
+      assert.ok(info, 'the server closed the flooding socket');
+      assert.equal(info.code, 1008);
+    } finally {
+      await floodPool.closeAll();
+      await floodSrv.close();
     }
-    const info = await Promise.race([c.closed, delay(10000).then(() => null)]);
-    assert.ok(info, 'the server closed the flooding socket');
-    assert.equal(info.code, 1008);
   });
 
   test('create / join / leave', async () => {

@@ -92,9 +92,11 @@
 - 静态检查：`tsc --noEmit --checkJs -p jsconfig.json`（0 error）、ESLint（0 error / 152 warning）、
   `tools/check-imports.mjs`（3 条 allowed note）、`tools/i18n.mjs check`（en 1611/1611）、
   `node tools/ci.mjs --only setup,smoke,imports,typecheck` 全 `ok`；服务器冒烟 `/healthz` ok、app 0.2.6、首页 200。
-- 全量测试（2026-10-14，`node --test`）：7410 项，7357 通过、3 失败、50 项条件跳过。3 个失败都是本机高并发下的
-  计时抖动（`test/lobby.test.js` 的 socket 限流 2 项与 `test/sim/robustness.test.js` 的重型首领战场基准），
-  两者合跑单跑 103/103 全通过；移植前基线在同样负载下也失败。
+- 全量测试（2026-10-17，`node --test`）：7411 项，7361 通过、0 失败、50 项条件跳过（原始数据缓存或可选浏览器环境）。
+  同日把两个计时型用例改成与主机负载无关：`test/lobby.test.js` 的限流与泛洪各起一个把 `ratePerSec` / `abuseDropsPerSec`
+  调小的独立服务器（默认 40 msg/s + 400 drops/s 的阈值在并行负载下根本触发不到），性能基准的 0.5 ms/tick 由
+  `test/helpers/perfBudget.js` 在并行测试进程里按 `SUITE_LOAD = 6` 放宽（空闲机上同一首领战场 0.22 ms/tick，
+  全量并行跑起来约 1.0 ms/tick；`SP_PERF_FACTOR=1` 回到串行口径）。
 
 ### 合并后的修补（逐文件结果之外）
 
