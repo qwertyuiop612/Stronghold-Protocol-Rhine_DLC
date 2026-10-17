@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { RELICS } from '../../shared/relics.js';
 import { RelicList, relicEntries, relicOdds, ownerRelics, revivalTargets } from '../../public/js/ui/relicPanel.js';
 import { liveLp } from '../../public/js/ui/hud.js';
+import { LpTower } from '../../public/js/ui/gameComponents.js';
 import { rowLp } from '../../public/js/ui/teamPanel.js';
 import { PHASE } from '../../shared/constants.js';
 
@@ -95,6 +96,19 @@ test('live LP previews include shields, keep uncapped survivor counts and avoid 
   assert.equal(rowLp(b, pub, null, { uniteLocal: { b: 1 } }).pending, 0);
 });
 
+
+test('LP tower keeps current HP for both shielded losses and time-machine gains until settlement', () => {
+  for (const [lp, pending, tick] of [[24, 8, '−8'], [1, -3, '+3']]) {
+    const view = LpTower({ value: lp, pending });
+    const nodes = [...walk(view)];
+    const value = nodes.find(n => n.props?.class?.includes('lp__val'));
+    const change = nodes.find(n => n.props?.class?.includes('lp__pend'));
+    assert.equal(textOf(value), String(lp), 'pending changes do not rewrite current HP');
+    assert.equal(textOf(change), tick);
+    assert.equal(view.props['data-pending'], pending);
+    assert.match(change.props['aria-label'], pending < 0 ? /增加 3/ : /扣除 8/);
+  }
+});
 
 test('时间机器：普通与联防血量预览加血、不截断低血回血、结算后不重复预览', () => {
   const first = liveLp(null, { phase: 'COMBAT', round: 2, lp: 1, leaks: 3, shield: 2, reverseLp: true });

@@ -131,7 +131,8 @@ public/
     ui/                    hud.js, bondStrip.js, bondPopup.js, shopBar.js, teamPanel.js, detailPanel.js,
                            tooltip.js, choiceOverlay.js, rewardOverlay.js, ticker.js, emotes.js, settings.js, toasts.js,
                            gameLogic.js (barrel; gameLogic/*.js placement, bonds, phases, shop, loadout)
-    render/                app.js (field view; app/*.js helpers), projection.js, tiles.js, units.js, spine.js, fx.js (effects; fx/*.js), interp.js, drag.js, pick.js, promote.js (API §9)
+    render/                app.js (field view; app/*.js helpers), projection.js, tiles.js, units.js, spine.js, fx.js (effects; fx/*.js), interp.js, drag.js, pick.js, promote.js (API §9);
+                           vfx/*.js (the official battle effects from the local client: interpreter, WebGL2 renderer, wiring; §9, §33)
   vendor/                  pixi, pixi-spine, preact, hooks, htm (copied from node_modules by tools/vendor.mjs)
   assets/                  downloaded art/audio (git-ignored), see docs/ASSETS.md
   fonts/                   self-hosted fonts
@@ -158,6 +159,7 @@ Ownership rule for parallel agents: **only edit files assigned to you**; if you 
 - Unit tests per module; content tests per effect; **full-match bot tests**: 1/2/4-player matches of every difficulty with fixed seeds run to RESULT headlessly (fast-forward: no real-time pacing) with zero errors; protocol fuzz (random/invalid intents) never crashes and never corrupts state.
 - **Browser E2E** (puppeteer-core + system Chrome): open 2 tabs, create/join room, add AI, play through prep/combat of several rounds, zero console errors, screenshots saved to `test/e2e/out/` for visual review.
 - Performance: a normal battle tick with 60 enemies + 10 ops < 0.5 ms; 4 parallel fields at 2× real time < 15% CPU of one core; the heavy 2-player boss field (18 ops, ~130 enemies alive, `test/sim/robustness.test.js`) < 0.5 ms per tick on an idle development machine, the best of three runs of the same battle — a serial wall-clock number that only holds on an idle machine. The parallel full suite keeps every file's worker and its live battle data on the box at once, so the same battle measures ~1.0 ms/tick there against 0.22 ms alone (×4.6, a property of the runner rather than of noise: sixteen busy-spinning processes left it at 0.227 ms), and GitHub's shared runners are slower still (`0.51–0.58 ms` on PR #10, #12, #14 and master's own push). `test/helpers/perfBudget.js` therefore widens such a bar by `SUITE_LOAD` (6) whenever the perf test runs inside the forked test runner or `CI`, and `SP_PERF_FACTOR=N` sets the factor outright — `SP_PERF_FACTOR=1 node --test test/sim/robustness.test.js` asserts the serial numbers on an idle machine, so a real slowdown still shows.
+- Test concurrency: the suite is meant to run as `node --test --test-concurrency=4`, the concurrency GitHub's four-core runners use. A few cases (`test/match/plugin-host.test.js`, `test/plugin-package.test.js`, `test/studio/review.test.js`) start nested node/python children and wait on them with fixed timeouts; at `--test-concurrency=8` on a 16-core machine those cold starts overshoot and five of them fail, while every one of those files passes when run alone. At 4 the whole suite is green in about 31 minutes.
 
 ---
 

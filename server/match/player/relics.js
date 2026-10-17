@@ -13,7 +13,7 @@ export class PlayerRelics {
     this.temp = saved.temp;
     this.relicChessQueue = saved.queue;
     this.eliminatedRoster = null;
-    for (const p of this.allChess()) p.poolCopies = this.poolOf(this.gd.baseIdOf(p.id)).take(this.gd.baseIdOf(p.id), saved.copies.get(p.uid) || 0);
+    for (const p of this.allChess()) p.poolCopies = this.poolOf(this.gd.baseIdOf(p.id)).take(this.gd.baseIdOf(p.id), saved.copies.get(p.uid) || 0, { overdraw: true });
     // 死亡期间错过的整备不销毁还原的临时区物件，重新给一次完整处理机会。
     this._tempDue.clear();
     for (let i = 0; i < this.temp.length; i++) if (this.temp[i]) this._putTemp(i, this.temp[i]);
@@ -24,7 +24,7 @@ export class PlayerRelics {
     if (this._drainingRelicChess || !this.alive || this.left || this.ready || this.m.phase !== PHASE.PREP) return;
     this._drainingRelicChess = true;
     try {
-      while (this.relicChessQueue.length) {
+      while (this.relicChessQueue.length) { // loop-cap: finite supply queue, shifted each iteration or stopped on failure
         const id = this.relicChessQueue[0];
         if (freeSlot(this.hand) < 0 && freeSlot(this.temp) < 0 && !this.completesChessMerge(id)) break;
         this.relicChessQueue.shift();

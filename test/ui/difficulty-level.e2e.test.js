@@ -74,7 +74,7 @@ test('lobby shows tactical tips for ascension; room level controls render, synch
     await sleep(350);
     assert.equal(await currentLevel(c), 20);
     assert.match(await c.page.$eval('.level-wheel__row.is-selected', (el) => el.textContent), /终极协同/);
-    assert.match(await c.page.$eval('.level-wheel__row.is-selected', (el) => el.textContent), /另一名干员/);
+    assert.match(await c.page.$eval('.level-wheel__row.is-selected', (el) => el.textContent), /每受到一次伤害后.*负面效果的剩余持续时间减少35%/);
     assert.equal(await c.page.$eval('.level-effects__head', el => el.textContent.trim()), 'LEVEL 20');
     assert.equal(await c.page.$$eval('.level-wheel__row.is-active', (els) => els.length), 20);
     assert.equal(await c.page.$('.solo-brief .level-rule, .solo-brief .level-effects'), null, 'solo has no separate effect panel');
@@ -200,7 +200,9 @@ test('lobby shows tactical tips for ascension; room level controls render, synch
       const panel = document.querySelector('.room-level').getBoundingClientRect();
       const avatarsFit = [...document.querySelectorAll('.seats .avatar')].every(el => {
         const avatar = el.getBoundingClientRect(), art = el.closest('.seat__art').getBoundingClientRect();
-        return avatar.top >= art.top && avatar.bottom <= art.bottom;
+        const measured = parseFloat(getComputedStyle(el.closest('.seat__art')).getPropertyValue('--seat-art-height'));
+        return Number.isFinite(measured) && Math.abs(measured - el.closest('.seat__art').clientHeight) < 1 &&
+          avatar.top >= art.top && avatar.bottom <= art.bottom && Math.abs(avatar.width - avatar.height) < 1;
       });
       return effect.top >= row.top && effect.bottom <= row.bottom && avatarsFit && [...document.querySelectorAll('.seat')].every(el => el.getBoundingClientRect().bottom <= panel.top + 1);
     }), 'the co-op effect fits its row and the panel does not overlap seats on touch screens');

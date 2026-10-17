@@ -168,6 +168,11 @@
 .seat__state--waiting { color: var(--text-lo); }
 .seat__state--offline { color: var(--orange-hi); }
 .seat__state--host { color: var(--gold-2); }
+/* a room with gameplay plugins (DESIGN §32.6): whether the seat's page has loaded and checked the room's content */
+.seat__content { display: block; padding: 0 .12rem; font-size: calc(.13 * var(--t)); color: var(--text-lo); letter-spacing: .04em; }
+.seat__content.is-ready { color: var(--mint-400); }
+.seat__content.is-failed { color: var(--orange-hi); }
+.room-mode { margin-left: .1rem; padding: 0 .08rem; border: 1px solid rgba(255, 106, 61, .6); color: #ff8a5c; font-size: calc(.16 * var(--t)); vertical-align: middle; }
 
 .seat.is-ready { --bk-c: var(--mint-500); border-color: var(--mint-800); }
 .seat.is-ready::before { background: var(--mint-500); box-shadow: 0 0 .12rem rgba(23, 249, 183, .6); }
@@ -369,3 +374,21 @@
 @media (max-width: 767px) and (max-height: 400px) {
   .seats:not(.seats--solo) .seat__art .avatar { --av: .7rem; }
 }
+
+.room-config-btn { flex: none; }
+.room-config__row { display: flex; justify-content: space-between; align-items: center; gap: .2rem; }
+.room-config__row strong { font-size: calc(.2 * var(--t)); }
+.room-config__row p, .room-config__hint { color: var(--text-lo); font-size: calc(.15 * var(--t)); line-height: 1.6; margin: .08rem 0 0; }
+.room-config__password { margin-top: .28rem; padding-top: .22rem; border-top: 1px solid var(--line); }
+.room-config__password-status { display: flex; justify-content: space-between; align-items: center; gap: .14rem; min-height: .42rem; margin-top: .1rem; color: var(--text-lo); font-size: calc(.15 * var(--t)); }
+.room-config__password-status > span { display: flex; align-items: center; gap: .06rem; }
+.room-config__password-status .icon { width: .18rem; height: .18rem; color: var(--mint-500); }
+@media (max-width: 1200px) {
+  .room-bar__right { gap: .12rem; }
+  .room-config-btn__label { display: none; }
+  .room-bar__right .room-config-btn { width: 44px; min-width: 44px; height: 44px; padding: 0; }
+}
+
+.trusted-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 90; padding: 5px 16px; background: #9b202b; color: #fff; display: flex; justify-content: space-between; gap: 12px; }
+.trusted-banner button { color: inherit; text-decoration: underline; }
+.trusted-hash { overflow-wrap: anywhere; font-family: monospace; }

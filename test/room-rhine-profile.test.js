@@ -110,28 +110,6 @@ test('only the lobby host can change Rhine; changes clear all human readiness an
   } finally { h.lobby.shutdown(); }
 });
 
-test('combat speed is host-only, supports x1-x5 and duration multiplier, and broadcasts the attack mode', () => {
-  const h = lobbyHarness();
-  try {
-    const host = h.player('Host');
-    const guest = h.player('Guest');
-    const room = create(h, host);
-    assert.deepEqual(h.send(guest, { t: 'room.join', code: room.code }), { ok: true });
-    assert.equal(room.combatSpeed, 2);
-    assert.equal(room.combatSpeedMode, 'attack');
-    assert.equal(validateC2S({ t: 'room.setCombatSpeed', speed: 3, mode: 'power' }), null);
-    assert.equal(validateC2S({ t: 'room.setCombatSpeed', speed: 6, mode: 'attack' }), 'bad field speed');
-    assert.equal(h.send(guest, { t: 'room.setCombatSpeed', speed: 1, mode: 'attack' }).error, ERR.NOT_HOST);
-    assert.deepEqual(h.send(host, { t: 'room.setCombatSpeed', speed: 5, mode: 'power', durationMultiplier: 3 }), { ok: true });
-    assert.equal(room.combatSpeed, 5);
-    assert.equal(room.combatSpeedMode, 'power');
-    assert.equal(room.combatDurationMultiplier, 3);
-    assert.equal(host.messages.at(-1).combatSpeed, 5);
-    assert.equal(host.messages.at(-1).combatSpeedMode, 'power');
-    assert.equal(host.messages.at(-1).combatDurationMultiplier, 3);
-  } finally { h.lobby.shutdown(); }
-});
-
 test('switching and joining sanitize missing operators, skills and modules independently against the target room data', () => {
   const h = lobbyHarness();
   try {
@@ -176,6 +154,51 @@ test('missing vanilla profile refuses toggle/create atomically, preserves the cu
     assert.equal(replacement.error, ERR.INTERNAL);
     assert.strictEqual(h.lobby.roomOf(host), room);
     assert.equal(h.lobby.rooms.size, 1);
+  } finally { h.lobby.shutdown(); }
+});
+
+test('profile changes recompose the selected plugins transactionally, including an empty original content set', () => {
+  const calls = [], held = [], released = [];
+  const rhineCs = 'a'.repeat(64), originalCs = 'b'.repeat(64);
+  const profiles = fixtureProfiles();
+  let refuse = false;
+  const plugins = {
+    resolve(ids, options) {
+      calls.push([ids.slice(), options.rhineEnabled]);
+      if (refuse) return { ok: false, error: ERR.PLUGIN_BUSY };
+      return { ok: true, set: { cs: options.rhineEnabled ? rhineCs : originalCs,
+        plugins: ids.map(id => ({ id, version: '1.0.0', class: 'content' })) } };
+    },
+    dataOf(cs) { return cs === originalCs ? profiles.vanilla : profiles.rhine; },
+    holdContent(cs) { held.push(cs); },
+    releaseContent(cs) { released.push(cs); },
+  };
+  const h = lobbyHarness({ content: { cs: rhineCs }, plugins });
+  try {
+    const host = h.player('Host'), room = create(h, host);
+    assert.deepEqual(h.send(host, { t: 'room.setPlugins', plugins: [{ id: 'sample' }] }), { ok: true });
+    assert.deepEqual(h.send(host, { t: 'room.ready', ready: true }), { ok: true });
+    const before = room.content;
+    refuse = true;
+    assert.equal(h.send(host, { t: 'room.setRhine', enabled: false }).error, ERR.PLUGIN_BUSY);
+    assert.equal(room.rhineEnabled, true);
+    assert.strictEqual(room.content, before);
+    assert.equal(room.seatOf(host.playerId).ready, true);
+    assert.deepEqual(held, []);
+    refuse = false;
+    assert.deepEqual(h.send(host, { t: 'room.setRhine', enabled: false }), { ok: true });
+    assert.deepEqual(calls.at(-1), [['sample'], false]);
+    assert.equal(room.content.cs, originalCs);
+    assert.equal(room.seatOf(host.playerId).ready, false);
+    assert.strictEqual(h.lobby.dataFor(room), profiles.vanilla);
+    assert.equal(h.lobby.dataFor(room).chess[EXTRA], undefined);
+    assert.deepEqual(held, [originalCs]);
+    assert.deepEqual(h.send(host, { t: 'room.setPlugins', plugins: [] }), { ok: true });
+    assert.deepEqual(calls.at(-1), [[], false]);
+    assert.equal(room.content.cs, originalCs);
+    assert.equal(room.content.vanilla, false, 'the original profile still has its independently verified content');
+    assert.deepEqual(held, [originalCs]);
+    assert.deepEqual(released, []);
   } finally { h.lobby.shutdown(); }
 });
 

@@ -5,7 +5,7 @@
 //     continues with what is left.
 //   * Pairing: shuffled once per match before Final Assault prep; Hidden Core keeps those pairs. If players leave,
 //     intact pairs stay together and the remaining single players pair up. An odd player uses the `_s` template
-//     (solo modes always use `_s`). Field ids 'b1', 'b2'. In a pair the first player is the LEFT side, the second the
+//     (solo modes always use `_s`). Field ids 'b1', 'b2', 'b3'. In a pair the first player is the LEFT side, the second the
 //     RIGHT side (the sim mirrors the right side: board col c → field col 20 − c with the piece direction RIGHT ↔
 //     LEFT, UP / DOWN unchanged (DESIGN §3, research 09 §1.2 ConvertChessPositionInfoToBossMap); board rows 9–12 →
 //     boss rows 2–5, sim/constants BOSS_ROW_OFFSET). `bossFieldPlacement` gives that mapping for UIs / tools.
@@ -33,7 +33,8 @@
 //     (player report after 0.1.0: "隐藏boss还没打就出了造成50%伤害播报").
 //   * Hidden Core eligibility (after an R14 win): difficulty in hiddenCore.difficulties, the mode has a hidden round,
 //     Σ activated layers of the alive players measured at the end of the boss round's prep > threshold (solo 350 /
-//     co-op 1200) and team LP > minTeamLpExclusive (1).
+//     co-op 1200) and team LP > minTeamLpExclusive (1, so at least 2 left: PRTS's user-contributed 「剩余生命值 > 1」,
+//     which the community's measurement 路标月报#2 matches — GitHub #645).
 
 import { BOSS_ROW_OFFSET, COLS, BOSS_POOL_MIN_HP } from '../sim/constants.js';
 import { mirrorDir, normDir } from '../sim/dir.js';
@@ -71,7 +72,7 @@ export function pairPlayers(alive, rng, previous = null) {
       if (group.length === 2) groups.push(group); else singles.push(...group);
     }
     singles.push(...remaining.values());
-  } else singles = sorted.length > 1 ? rng.shuffle(sorted) : sorted;
+  } else singles = sorted.length > 1 && rng ? rng.shuffle(sorted) : sorted;
   for (let i = 0; i < singles.length; i += 2) groups.push(singles.slice(i, i + 2));
   return groups;
 }

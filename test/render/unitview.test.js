@@ -916,3 +916,48 @@ describe('death timing (PR #380): a dying flyer drops inside the fade, a long Di
     assert.ok(!v.remove && v.alpha > 0.5, 'still on screen 5 s in');
   });
 });
+
+test('Rem enemy-art allies turn with travel like enemies without changing allegiance; deployed operators keep direction', () => {
+  const marcher=view({kind:'token',defId:'token_rem_miner',spine:'enemy_10222_agtski',dir:'RIGHT'});
+  const enemy=view({kind:'enemy',side:'enemy',defId:'enemy_10222_agtski'});
+  const operator=view({kind:'chess',dir:'RIGHT'});
+  for(const vx of [-1,1]) {
+    const sample={x:5.3,y:12,hp:100,maxHp:100,sp:0,spMax:0,flags:0,anim:1,vx,vy:0};
+    for(const v of [marcher,enemy,operator])v.sync(sample,1);
+    assert.equal(marcher.visFacing,enemy.visFacing);
+    assert.equal(marcher._baseFromAnim(),'move');
+    assert.equal(marcher.x,sample.x);
+    assert.equal(marcher.isEnemy,false);
+    assert.equal(operator.visFacing,1);
+  }
+  marcher.sync({x:5.3,y:12,hp:100,maxHp:100,sp:0,spMax:0,flags:0,anim:0,vx:0,vy:0},2);
+  assert.equal(marcher._baseFromAnim(),'idle');
+});
+
+describe('GitHub #648: the Hidden Core 假想敌：管 (enemy_9021_acduml_2)', () => {
+  const boss = (defId) => view({ side: 'enemy', kind: 'enemy', defId, boss: true, x: 9, y: 3, maxHp: 600000 });
+
+  test('faces right as authored whatever turn it is given — so do the other 管 and both 胄; other leaders still turn', () => {
+    for (const key of ['enemy_9021_acduml_2', 'enemy_9021_acduml', 'enemy_9013_acstmk', 'enemy_9013_acstmk_2']) {
+      const h = boss(key);
+      assert.equal(h.visFacing, 1, `${key}: right from the start`);
+      h.visFacing = -1; // an attack, a walk or the prep leader's faceLeader
+      assert.equal(h.visFacing, 1, `${key}: still right`);
+    }
+    const b = boss('enemy_1521_dslily'); // 盐风主教昆图斯: a huge leader with the regular FaceSwitcher 3
+    assert.equal(b.visFacing, -1, 'an enemy starts facing left');
+    b.visFacing = 1;
+    assert.equal(b.visFacing, 1, 'and turns');
+  });
+
+  test('its boss HUD sits 1.4 tiles right of the model (the prefab _bossHudOffset); the model stays on its tile', () => {
+    const h = boss('enemy_9021_acduml_2');
+    const b = boss('enemy_9021_acduml');
+    for (const v of [h, b]) v.update(1 / 60, cam(), 0);
+    assert.equal(h.screen.x, b.screen.x, 'the model is drawn at the unit position');
+    const c = cam();
+    const dx = c.project(10.4, 3, 0).x - c.project(9, 3, 0).x;
+    assert.ok(dx > 0);
+    assert.ok(Math.abs((h.hpFill.position.x - b.hpFill.position.x) - dx) < 1, `HP bar moved by ${h.hpFill.position.x - b.hpFill.position.x} px (1.4 tiles ≈ ${dx})`);
+  });
+});

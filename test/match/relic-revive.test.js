@@ -15,14 +15,13 @@ test('revival restores a DIY operator from the player stock without touching the
   const slot = 'chess_char_5_diy1_a';
   const diy = { [slot]: { charId: 'char_112_siege', skillIndex: 2, uniEquipId: 'uniequip_002_siege' } };
   const seats = [0, 1].map((seat) => ({ seat, playerId: 'p_' + seat, name: 'P' + seat, isBot: false, connected: true, diy }));
-  // seed 1: the 0.2.2 DIY stock record makes this slot available with 8 copies (seed 11 no longer lists it)
-  const h = setup({ seats, seed: 1 });
+  const h = setup({ seats, seed: 11 });
   try {
     const owner = h.ps('p_0'), target = h.ps('p_1');
     grantRelic(owner, ID);
     const before = target.diyStock.snapshot()[slot];
     const ownerStock = owner.diyStock.snapshot()[slot];
-    assert.equal(before, 8, 'the selected DIY slot is available for this seed');
+    assert.equal(before, h.m.gd.poolCopies(slot), 'the selected DIY slot uses the co-op stock cap');
     const piece = target.acquireChess(slot, { source: 'buy' });
     assert.ok(piece);
     assert.equal(target.diyStock.snapshot()[slot], before - 1);
@@ -34,6 +33,26 @@ test('revival restores a DIY operator from the player stock without touching the
     assert.equal(target.diyStock.snapshot()[slot], before - 1);
     assert.equal(owner.diyStock.snapshot()[slot], ownerStock);
     assert.equal(h.m.pool.has(slot), false);
+    h.invariants();
+  } finally { h.m.dispose(); }
+});
+
+test('revival keeps shared-stock accounting when teammates took the returned copies', () => {
+  const h = setup();
+  try {
+    const owner = h.ps('p_0'), target = h.ps('p_1');
+    grantRelic(owner, ID);
+    const base = [...h.m.pool.entries.keys()].find((id) => h.m.gd.tierOf(id) === 6);
+    assert.ok(base);
+    const original = target.acquireChess(base);
+    kill(target);
+    while (h.m.pool.left(base) > 0) assert.ok(owner.acquireChess(base));
+    assert.equal(h.m.handle(owner.playerId, request()).ok, true);
+    assert.equal(target.find(original.uid).piece.poolCopies, 1);
+    assert.ok(h.m.pool.entries.get(base).left < 0);
+    assert.equal(h.m.pool.left(base), 0);
+    h.invariants();
+    kill(target);
     h.invariants();
   } finally { h.m.dispose(); }
 });
@@ -163,17 +182,19 @@ test('时光之末：并列最高选择单个盟约，空池仍直接发四名�
     for (const b of bonds) target.layers[b] = 50;
     const expected = revivalOperators(target, owner, 4);
     assert.ok(bonds.includes(expected.bondId));
-    // 模拟候选副本全部耗尽，效果发放仍可创建不占池副本的干员。
+    // 模拟候选副本全部耗尽；效果仍发放干员，并按上游共享卡池规则记录透支。
     for (const id of new Set(expected.ids)) {
       const e = h.m.pool.entries.get(id);
       e.left = 0;
     }
     assert.equal(h.m.handle(owner.playerId, request()).ok, true);
     assert.equal(target.round.gainedChess, 4);
-    // 0.2.4 的领取允许透支池容量（take(..., { overdraw: true })）：池空时仍发满四名，但副本继续占用库存，
-    // 于是 left 变负而 poolCopies > 0（HEAD 的旧实现是夹在 0 → 发到 poolCopies 0 的“不占池”副本）。
-    assert.ok(h.m.pool.entries.get(expected.ids[0]).left < 0, 'overdrawn pool');
-    assert.ok(target.allChess().every((p) => p.poolCopies > 0));
+    assert.equal(target.allChess().reduce((n, p) => n + p.poolCopies, 0), 4);
+    for (const id of new Set(expected.ids)) {
+      const copies = expected.ids.filter((x) => x === id).length;
+      assert.equal(h.m.pool.entries.get(id).left, -copies);
+      assert.equal(h.m.pool.left(id), 0);
+    }
   } finally { h.m.dispose(); }
   const fresh = setup();
   try { assert.deepEqual(fresh.ps('p_0').relics, []); assert.deepEqual(fresh.ps('p_0').relicChessQueue, []); }

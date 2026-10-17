@@ -26,15 +26,26 @@
 // SP_START_SHOP stocks its first slots) — test/ui/diy.e2e.test.js: a tier-5 自选 piece is sold from level 5.
 // SP_FINISH_AFTER=<round>: the match ends (a defeat: m.result, the RESULT screen) once that round has settled, instead
 // of going on to the next round — test/ui/standin.e2e.test.js: the result lineup of the board just fought with.
+// SP_PLUGINS_DIR=<dir>: the server's plugin folders (startServer `pluginsDir`) — test/ui/plugins.e2e.test.js: a cosmetic
+// plugin switched on during a match.
 // SP_SLOW_SPAWNS=<humanIdx>:<factor>: that human's (seat order) normal battles spawn their enemies at <factor> × the
 // scheduled times (and intervals) — a leaker's battle then runs to the round's time limit, long after a teammate's quick
 // one (test/ui/watch-bonds.e2e.test.js, "after the own battle": a window for watching and a reload).
+// SP_E2E_SERVER_DIAG=1: bounded, read-only host/lifecycle and synchronous fixture timing evidence.
 // Not a test file (node --test runs it as a no-op module when NODE_TEST_CONTEXT is set).
 
 import { startServer } from '../../server/index.js';
 import { Match } from '../../server/match/Match.js';
 import { legalTiles, placeClass, tileKey } from '../../server/match/board.js';
 import { planLayout } from '../../server/match/bot.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { beginFastMatchDiagnostic, markFastMatchDiagnostic, createFastServerDiagnostics } from './fastServerDiagnostics.mjs';
+
+// Hosted profile/plugin matches import this same fixture after installing their
+// isolated data. Importing it must not start another HTTP server in the child.
+let MatchForHost;
+export { MatchForHost as Match };
 
 if (!process.env.NODE_TEST_CONTEXT) {
   const timerScale = Number(process.env.SP_TIMER_SCALE) || 1;
@@ -71,7 +82,13 @@ if (!process.env.NODE_TEST_CONTEXT) {
     }
 
     startRound(r) {
-      if (this._jumped) { super.startRound(r); return; }
+      const diagnostic = beginFastMatchDiagnostic(this, 'startRound', { requestedRound: r, alreadyJumped: this._jumped });
+      if (this._jumped) {
+        super.startRound(r);
+        markFastMatchDiagnostic(this, diagnostic, 'after-super');
+        markFastMatchDiagnostic(this, diagnostic, 'end');
+        return;
+      }
       this._jumped = true;
       const target = startAt === 'boss' ? this.gd.bossRound : startAt === 'hidden' ? (this.gd.hiddenRound || this.gd.bossRound) : Number(startAt);
       const humans = this.order.filter((ps) => !ps.isBot);
@@ -80,9 +97,11 @@ if (!process.env.NODE_TEST_CONTEXT) {
         if (ps && ps.alive) { ps.lp = 0; ps.eliminate(r); ps.dirty(); }
       }
       super.startRound(Number.isInteger(target) && target > r ? target : r);
+      markFastMatchDiagnostic(this, diagnostic, 'after-super');
       humans.forEach((ps, i) => { if (ps.alive) this._starterKit(ps, Array.isArray(humanKits[i]) ? humanKits[i] : null); });
       if (botChess.length) for (const ps of this.alivePlayers()) if (ps.isBot) { this._give(ps, botChess); ps.recompute(); }
       if (autoPlace) this._placeRound = this.round;
+      markFastMatchDiagnostic(this, diagnostic, 'end');
     }
 
     /** Chess ids into the hand's free slots (copies taken from the pool when it has them). */
@@ -96,8 +115,13 @@ if (!process.env.NODE_TEST_CONTEXT) {
     }
 
     enterPrep() {
+      const diagnostic = beginFastMatchDiagnostic(this, 'enterPrep', { placeRound: this._placeRound });
       super.enterPrep();
-      if (this._placeRound == null || this.round !== this._placeRound) return;
+      markFastMatchDiagnostic(this, diagnostic, 'after-super');
+      if (this._placeRound == null || this.round !== this._placeRound) {
+        markFastMatchDiagnostic(this, diagnostic, 'end', { autoPlacement: false });
+        return;
+      }
       this._placeRound = null;
       // every player's hand operators onto the field they deploy on: the bots' layout planner (bot.js planLayout —
       // tiles and facings), any piece it leaves out on the first free legal tile
@@ -107,7 +131,9 @@ if (!process.env.NODE_TEST_CONTEXT) {
         if (Array.isArray(kit) && kit.length === 0) continue; // "no operators": a band's gift stays in the hand
         const pieces = ps.hand.filter((p) => p && p.kind === 'chess');
         let plan = null;
+        const layoutDiagnostic = beginFastMatchDiagnostic(this, 'planLayout', { playerId: ps.playerId, pieces: pieces.length });
         try { plan = planLayout(this, ps, pieces); } catch { plan = null; }
+        markFastMatchDiagnostic(this, layoutDiagnostic, 'end', { playerId: ps.playerId, planned: plan?.size ?? null });
         for (const piece of pieces) {
           const key = plan && plan.get(piece.uid);
           if (key) {
@@ -125,6 +151,7 @@ if (!process.env.NODE_TEST_CONTEXT) {
         ps.dirty();
       }
       this.markPublic();
+      markFastMatchDiagnostic(this, diagnostic, 'end', { autoPlacement: true });
     }
 
     afterSettle() {
@@ -194,9 +221,21 @@ if (!process.env.NODE_TEST_CONTEXT) {
     }
   }
 
-  const srv = await startServer({ port: Number(process.env.PORT) || 0, host: process.env.HOST || '127.0.0.1', quiet: true, MatchClass: FastMatch });
-  console.log(`fast server on ${srv.url} (timers ×${timerScale}, combat ${combatSpeed}×${startAt ? `, first round ${startAt}` : ''})`);
-  const stop = () => { srv.close().finally(() => process.exit(0)); };
-  process.on('SIGTERM', stop);
-  process.on('SIGINT', stop);
+  MatchForHost = FastMatch;
+  if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    const diagnostics = createFastServerDiagnostics();
+    const srv = await startServer({ port: Number(process.env.PORT) || 0, host: process.env.HOST || '127.0.0.1', quiet: true, MatchClass: FastMatch,
+      ...(diagnostics ? { log: diagnostics.log } : {}),
+      matchHost: { matchModule: fileURLToPath(import.meta.url) },
+      ...(process.env.SP_PLUGINS_DIR ? { pluginsDir: process.env.SP_PLUGINS_DIR } : {}) });
+    diagnostics?.attach(srv);
+    console.log(`fast server on ${srv.url} (timers ×${timerScale}, combat ${combatSpeed}×${startAt ? `, first round ${startAt}` : ''})`);
+    const stop = () => {
+      diagnostics?.final();
+      diagnostics?.stop();
+      srv.close().finally(() => process.exit(0));
+    };
+    process.on('SIGTERM', stop);
+    process.on('SIGINT', stop);
+  }
 }

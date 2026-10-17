@@ -1,41 +1,47 @@
-# Stronghold-Protocol-Rhine_DLC
+# 卫戍协议：阵营拓展 ＋ DLC · Stronghold-Protocol-Rhine-DLC
 
-> 本项目使用 AI 辅助进行代码分析、功能开发、测试与文档整理。本项目是 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) 的 fork，并整合了莱茵生命与 DLC 扩展；内容为非官方同人复刻与扩展，未经《明日方舟》及相关权利方授权。
+本轮版本：**v0.3.0-test**（上游 v0.3.0 基座，合入莱茵线 `v0.3.0-rhine.9` 与 DLC 线 `0.3.0`）。Windows x64 整合包、升级工具与验收结果见[本仓库 Releases](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/releases)，以该页的发布状态为准。
 
-当前合并版本：**v0.2.6-test** —— 上游基础 **v0.2.6**（`488db49f`）＋ 莱茵生命 **v0.2.4-rhine.5**（bundle `b159e574`）＋ DLC 扩展（超限难度、收藏品、房主战斗倍速，`3fd0be02`）。
+上游 0.3.0 起把 3D 棋盘与官方特效作为默认表现；若机器在软件渲染下出现初始化超时，仍可在游戏地址后加 `/?board=2d` 使用 2D 棋盘。本 fork 随源码与整合包一并发布，升级方式见下方「快速开始」，本轮完整改动见[同步报告](docs/RHINE-DLC-SYNC-0.3.0.md)。
 
-本仓库是基于上游 **v0.2.6** 的 fork 合并测试版：上游 0.2.5 与 0.2.6 的全部改动已逐文件并入，同时合入莱茵生命／卡兹戴尔扩展（**v0.2.4-rhine.5**，含科研装置、众魂、战争巨炮、舍身装备与雷姆必拓援军）与 DLC 超限难度协议体系、收藏品、低血线缩放和房主战斗倍速；两侧冲突一律按「保留扩展规则、采纳上游机制」逐处解决。它由 Rhine 与 DLC 两条功能线合并生成，不代表上游作者或《明日方舟》官方。本次同步的逐文件范围、验证数字与剩余问题见 [同步报告](docs/RHINE-DLC-SYNC-0.2.6.md)。
+本仓库是 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) 的**非官方阵营拓展 fork**（莱茵生命、卡兹戴尔、雷姆必拓，外加盟约 DLC 扩展：收藏品、超限模拟与后期商店），基于上游 **v0.3.0**，固定官方发布标签（提交 [`c24e17ee`](https://github.com/sganggs/Stronghold-Protocol/commit/c24e17eec3af1e6dedfa9935a6d15245cf2f4586)），并逐文件合入莱茵线 [`v0.3.0-rhine.9`](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine)（`bec8e325`）与 DLC 线 `0.3.0`（`d8d10f19`）的改动，本次同步日期为 **2026-10-18**。原项目的开发成果与莱茵线的署名保留；本 fork 由 [qwertyuiop612](https://github.com/qwertyuiop612) 维护，不代表上游作者、莱茵维护者或《明日方舟》官方。正式分支为 `main`。
+
 扩展代码沿用 **GPL-3.0-or-later**，并保留原有 Spine Runtimes 组合分发附加许可；[LICENSE](LICENSE)、[NOTICE.md](NOTICE.md) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 原文保留。游戏数据、官方阵营标识及其他游戏素材的权属不因此改变，不应将本仓库全部美术视为 GPL 内容。
 
 ### 本扩展新增内容
 
-- 本次同步上游 0.2.5／0.2.6：3D 官方场景（`node tools/setup.mjs --scenes`）、设置新增「官方伤害数字」与「弹药数量」、标题页脚项目仓库链接、首领配对随机与最终攻势洗牌、维什戴尔魂灵之影落点修正、开服流量优化（WebSocket 消息压缩、素材地址带内容哈希长期缓存、brotli、教程图改 WebP）、官方场景光照改回官方值、每回合开始重播干员入场动画，以及 0.2.5 发布后反馈的规则与渲染修复；上一轮同步已并入 0.2.4 的共享卡池与装备库存、突袭复活选敌、克莱门莎、六席信标供给等改动；详见 [CHANGELOG.md](CHANGELOG.md) 与[同步报告](docs/RHINE-DLC-SYNC-0.2.6.md)。
-- 扩展干员支持低潜能与练度选择，默认仍为满潜能、精英2 Lv.60；自选同名干员与扩展特质分开处理。
-- DLC 战线：**超限模拟**（沿用终极模拟条件，可选 0–20 级战场协议，附可查阅的协议说明与难度选择器交互）、**收藏品**三选一奖励与本地图鉴（含护愈之手、低血线增益与原创藏品）、房主的**战斗倍速**控制（x1–x5，可选「攻速」或「攻击力」两种等价算法，另有战斗时长增幅 x1–x5）。
+- **雷姆必拓**：取消集合点，普通援军从己方蓝门入场，自动搜索同战场友方（含合作队友）已部署攻击干员火力覆盖内的可达敌人并接近攻击；目标失效后重新选择，无合格敌人时在覆盖内四向徘徊，无覆盖时让开蓝门待机。援军之间可重叠，车辆与老板保留独立路线。6／9 档按实际存活的援军累计时间，每援军·秒让己方雷姆干员攻血 +1%／+2%，每回合最多 +200%／+300%；同回合联防继承。老板攻击 `1000+2S`，每秒投下200%攻击力的对地物理披萨。九名扩展精锐修正默认模组，保存自选保持；石棉增加独行。暴行仍以周围八格己方雷姆干员、援军及车辆的真实击杀产层，同玩家共享回合上限。详见 [雷姆必拓说明](docs/REM.md)。
 
-- 六人同房合作：真人与 AI 共用六个席位；五人开场少 BAN 一个核心盟约、六人少两个，最终攻势支持五人 2＋2＋1、六人 2＋2＋2 分组；详见 [多人版说明](docs/MULTIPLAYER.md)。
+本项目以“阵营拓展”为展示名称，继续作为完整拓展版随包维护，兼容上游插件系统；本次不迁移为插件分发。仓库地址、安装目录、启动脚本文件名与升级渠道保持现有路径。
+
+- 本次同步上游 0.3.0：插件与工作台、官方特效、战斗与界面修复，以及共享池和装备已展示卡的库存语义。扩展干员支持低潜能与练度选择，默认仍为满潜能、精英2 Lv.60；自选同名干员与扩展特质分开处理。
+
+- 六人同房合作：真人与 AI 共用六个席位；BAN 按开局人数固定，一至四人增加三个并逐阶保底，五至六人保留既有减免；最终攻势支持五人 2＋2＋1、六人 2＋2＋2 分组；详见 [多人版说明](docs/MULTIPLAYER.md)。
 - 六人局最终攻势与隐秘核心共享 BOSS 血量为同规则四人局的 200%，其他属性不变；第 10、12、14 回合每位存活玩家各获得一个信标，第 14 回合奖励信标使用后立即转赠，10、12 回合仍在下个休整期送达。
-- 等待室的“莱茵／卡兹戴尔扩展”由房主在开局前选择，单人与合作均默认开启；选择“原版”后，本局使用随包固定的上游 v0.2.4 原版干员、盟约、装备及其他游戏数据。切换会取消队友准备状态，各房间独立设置，对局开始后锁定。
+- 等待室的“莱茵／卡兹戴尔扩展”由房主在开局前选择，单人与合作均默认开启；选择“原版”后，本局使用随包固定的上游 v0.3.0 原版干员、盟约、装备及其他游戏数据。切换会取消队友准备状态，各房间独立设置，对局开始后锁定。
 - 五至六人悬赏决策保留原六张牌并追加三张现有目标，合计九张；追加牌为 I / II / II 阶，赏金分别为 1 / 2 / 2。一至四人的悬赏张数保持原规则。
 - 莱茵生命 3 / 6 / 9 人盟约、独立科研备牌位：3人获得生态与能量装置、6人可部署两种、9人解锁单级激光钻机并可部署三种；层数提供数值，生态与能量的参战研究点用于阶段突破。
 - 生态维持仪合并治疗与持续减速，二、三级让范围内己方干员接受任意来源治疗时获得护盾；一级能量谐振仪保留3点充能，发射命中装置整个范围。9莱茵的激光钻机锁定全场最大生命值最高的敌人，持续输出从150%A/秒增至300%A/秒，满20秒后每秒追加最大生命值（0.05%＋每层科研0.0005个百分点）的真实伤害，领袖按完整共享生命上限计算。
-- 梅尔使身前装置有效工作产层（普通 1 / 精锐 2，同玩家每场普通主战共享24 / 48层上限），溯光星源资金特质增加莱茵层数；装置每层 4 点基础攻击，伊芙利特继承最高单台有效装置的 100% / 精锐 150%。
-- 梅尔、乌啾、森蚺、伊芙利特、星源、多萝西及其全部可选技能、适用模组；多萝西调整为 IV 阶，科研每层提供普通1／精锐2点固定攻击，与六莱茵共享攻击加算，陷阱不再产科研；调整白面鸮、塞雷娅等干员的盟约与特质。
+- 梅尔使身前装置有效工作产层（普通 1 / 精锐 2，同玩家每回合普通主战共享12 / 24层上限），溯光星源资金特质增加莱茵层数；装置每层 4 点基础攻击，伊芙利特继承最高单台有效装置的 100% / 精锐 150%。
+- 固定名单含梅尔、乌啾、森蚺、伊芙利特、星源与 IV 阶麦哲伦，保留可选原生技能和模组。麦哲伦本体及原生无人机按科研每层增加普通 1／精锐 2 攻击，装置额外增加 0.5／1；白面鸮按在场不同阶位每种增加 2／4 层科研，每回合最多 12／24。科研主机与六档共享按既有规则加算。
 - 莱茵实验终端、联合研究主机的普通／精锐装备、套装效果、合成和转职路径，以及新绘制的装置／装备图标与动态。
 - 装置放置预览、整格范围、充能条、攻击反馈和突破后范围变化；联机同步、机器人选择及相关测试。
-- 卡兹戴尔 3 / 6 人盟约：3人本体每次真正倒地产生死魂灵，6人解锁21格场外巨炮，仅对所属玩家活体友军造成100%炮伤，其他玩家与魂灵免疫；9名以上仍按六档。众魂层数提高本体生命、魂灵生命与攻击；魂灵免疫炮击及衍生伤害，持续到死亡、本体复活或战斗结束。
+- 卡兹戴尔 3 / 6 / 9 人盟约：3 人本体真正倒地生成死魂灵，继承所选原生技能、天赋与模组；众魂叠层增加本体生命及魂灵生命、攻击。6 人解锁 5×5 去四角的 21 格场外战争巨炮，造成 `800 + 15 × 众魂层数` 真实伤害；所属玩家的活体友军同额承伤，队友与魂灵免疫，炮击误伤及衍生死亡不产层或充能。9 人将产魂资格扩展到本玩家所有阵营的干员本体，不包含援军、召唤物与装置。魂灵持续到死亡、本体复活或战斗结束，存活魂灵的生命与技力可延续至本回合联防。
 - 卡兹戴尔十名成员：红豆、奥达、陨星、锡人、明椒、赫德雷、伊内丝、泥岩、逻各斯、维什戴尔及其技能、普通模组与特质。医疗魂灵治疗魂灵，锡人二技能也可以给魂灵回血；魔王保持原有设计。
 - 魂灵完整继承本体所选原生技能、全部原生天赋和模组行为，独立技力、弹药及召唤物；不继承装备触发或活体产层特质。舍身刻印、众魂战刃及同构装备组合见[卡兹戴尔说明](docs/KAZDEL.md)。采用批准的装备／钻机v2图片与用户原徽记。
 - 普通／困难／深渊基础核心 BAN 数调整为5，趣味为2，训练为0；五、六人席位减免继续保留。新增魂灵模型表现、格子预警、炮击冲击与充能条。
 
-完整机制见 [莱茵扩展说明](docs/RHINE.md)和[卡兹戴尔说明](docs/KAZDEL.md)，修改范围和验证边界见 [扩展变更记录](docs/RHINE-CHANGES.md)。Windows 玩家可直接下载 [扩展免安装整合包](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/releases/latest)（Windows 便携整合包由莱茵项目发布，本仓库是整合两条线的源码 fork），完整解压后双击 **`启动莱茵科研版.bat`**；无需安装 Node.js 或 Git。已有玩家关闭服务后运行 **`联网更新.bat`**。上游原版整合包不包含本扩展。扩展问题请在 [本 fork 的 Issues](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/issues) 反馈。
+本次适配保留：1–4 人局增加一个核心和两个附加 BAN，每阶至少八种共享可刷干员；5–6 人普通干员店增加一格，装备格不变；每位存活玩家在 R3、R7 准备阶段各获一个独立补给的普通简易通讯机。本轮后续改动为雷姆覆盖内自动寻敌、援军重叠、存活时间攻血成长、老板数值、默认模组及石棉独行；温米成功生成产层、暴行共享击杀产层和其他原生技能保持。详见 [本轮卡池审计](docs/RHINE-030-POOL-AUDIT.md) 和 [雷姆说明](docs/REM.md)。
+
+完整机制见 [莱茵扩展说明](docs/RHINE.md)、[卡兹戴尔说明](docs/KAZDEL.md)、[雷姆必拓说明](docs/REM.md)和[收藏品说明](docs/COLLECTIBLES.md)，修改范围和验证边界见 [扩展变更记录](docs/RHINE-CHANGES.md)。Windows 玩家可直接下载 [本仓库的免安装整合包](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/releases)，完整解压后双击 **`启动莱茵科研版.bat`**；无需安装 Node.js 或 Git。上游原版整合包不包含本扩展。扩展问题请在 [本 fork 的 Issues](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/issues) 反馈。
 
 以下保留原项目介绍、声明与致谢，并对本 fork 的安装方式作相应说明。
 
 《明日方舟》季节性自走棋塔防玩法「卫戍协议：盟约」的**非官方同人复刻**：浏览器即开即玩，单人或 1–6 人联机合作。
 
-![version](https://img.shields.io/badge/version-0.2.6-2ea44f)
-![upstream base](https://img.shields.io/badge/upstream%20base-0.2.6-blue)
+基于 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) 的非官方玩法扩展 fork，在上游 v0.3.0 与莱茵／卡兹戴尔／雷姆必拓扩展之上，再加入 DLC 战线的**收藏品、超限模拟和后期商店扩展**。DLC 是本 fork 的扩展标识，非鹰角官方 DLC。
+
+![base version](https://img.shields.io/badge/upstream%20base-0.3.0-2ea44f)
 ![license](https://img.shields.io/badge/code%20license-GPL--3.0--or--later-blue)
 ![node](https://img.shields.io/badge/node-22%20%7C%2024-339933)
 
@@ -51,18 +57,26 @@
 
 English summary: [below](#english).
 
-| 同盟房间 | 策略轮选 | 休整期（商店 / 盟约） |
-|---|---|---|
-| ![房间](docs/img/room.jpg) | ![策略](docs/img/band-draft.jpg) | ![休整期](docs/img/prep.jpg) |
-| **部署方向轮盘** | **作战** | **最终攻势** |
-| ![方向](docs/img/facing-wheel.jpg) | ![作战](docs/img/combat.jpg) | ![最终攻势](docs/img/final-assault.jpg) |
-
 ## 目录
 
-- [声明](#声明) · [简介](#简介) · [功能一览](#功能一览)
+- [与原项目的差异](#与原项目的差异) · [简介](#简介) · [原版功能一览](#原版功能一览) · [Fork 扩展玩法](#fork-扩展玩法)
 - [快速开始](#快速开始)：[莱茵整合包](#本扩展windows-免安装整合包推荐) · [本扩展源码](#本扩展从源码运行) · [上游原版整合包](#上游原版整合包不包含本扩展) · [系统要求](#系统要求) · [端口与配置](#端口与配置) · [局域网联机](#和朋友一起玩局域网)
-- [联机方式](#联机方式) · [操作](#操作) · [文档](#文档) · [开发与测试](#开发与测试) · [项目结构](#项目结构)
-- [许可证](#许可证) · [致谢与数据来源](#致谢与数据来源) · [贡献](#贡献)
+- [联机方式](#联机方式) · [插件](#插件) · [操作](#操作) · [文档](#文档) · [开发与测试](#开发与测试) · [项目结构](#项目结构)
+- [声明](#声明) · [许可证](#许可证) · [致谢与数据来源](#致谢与数据来源) · [贡献](#贡献)
+
+## 与原项目的差异
+
+本 fork 以原项目 **0.3.0** 为基础，当前保留上游至 `c24e17ee` 的更新。以下比较针对这一基线；`package.json` 中的 0.3.0 是沿用的基础版本号，不表示这些扩展已属于上游发布内容。
+
+| 项目 | 原项目（0.3.0 基线） | 本 fork |
+|---|---|---|
+| 难度 | 标准 / 险境 / 绝境 / 终极四种模拟 | 保留四种基础难度，新增以终极为基础的「超限模拟」0–20 级，逐级累积战场协议 |
+| 作战奖励 | 无本局收藏品选择流程 | 无漏怪作战后藏品三选一，46 件藏品按回合进度分档掉落，增益整局保留 |
+| 连续漏怪 | 按原有扣血与联防规则结算 | 连续三个完成的作战回合本人漏怪后，存活玩家获得逆风补给三选一与下回合 2 点护盾 |
+| 招募扩展 | 干员招募位数量由调度中心等级决定 | 初始额外增加 1 个干员招募位，第 4、第 9 回合开始时各再增加 1 个，装备位不变 |
+| 界面 | 原有难度选择、效果栏与结算展示 | 增加超限等级轮盘与规则预览、个人收藏图标和详情、奖励选择及结算收藏展示 |
+
+原项目的招募与晋升、盟约、装备、联防、最终攻势、隐秘核心、AI 队友及断线重连仍作为基础玩法保留；同盟观战席、补位干员、自选编队、多语言、自定义快捷键、满潜能数据、调配导入 / 导出、战斗语音、分回合音乐，以及干员技能、敌人规则、渲染、启动器和诊断等上游更新也继续保留。共享卡池与装备库存、潜能与练度设置、AI 队友最后选择、重新生成开局和渲染性能等 0.2.2–0.2.4 更新也已同步。0.2.5–0.2.6 的官方战场场景、驭械术师与索敌修正、带宽优化（WebSocket / brotli 压缩、素材内容哈希缓存、教程图 WebP）、入场动画、「官方伤害数字」与「弹药数量」选项及模型裁切修复也已同步。0.3.0 的插件系统与浏览器工作台、官方战斗特效与场景打光、水面、更多语音语言、本地素材包导入、作战统计、AI 布阵与演习、扩展临时整备队列及玩法修复也已同步。基础玩法见 [玩法指南](docs/PLAYING.md)，上游版本记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 简介
 
@@ -70,18 +84,18 @@ English summary: [below](#english).
 
 - **独立模拟**（单人）与**同盟模拟**（1–6 人**合作**，没有 PvP；空位可以加 AI 队友）。
 - 服务器是一个 Node.js 程序，**战斗在各玩家的浏览器里模拟**（和官方一样），服务器只管经济与回合，一台低功耗小主机就能开服。
-- 当前版本 0.2.6：减轻开服电脑的流量（静音时不下载背景音乐、WebSocket 消息压缩、素材地址带内容哈希长期缓存、brotli 压缩、教程图改用 WebP），官方场景光照改回官方值，每回合开始重播干员入场动画，新增「弹药数量」选项，并修复了单位多时模型被裁切、留下残影等 0.2.5 发布后反馈的问题，详见 [CHANGELOG.md](CHANGELOG.md)。仍有少数规则按推断实现，与官方不一致的地方欢迎在 Issue 里反馈。
+- 当前版本 0.3.0：加入插件系统——外观、数据、DSL、脚本与界面插件，浏览器插件工作台和安装工具；可选的「官方特效」用本机客户端提取的官方战斗特效（完整包附带）；官方场景按客户端着色器重新打光并补上水面，伊利昂的木驮兽和「越长尘」会载客，冻结后手动刷新会取消冻结，机器人的布阵、采购和演习也有改进，详见 [CHANGELOG.md](CHANGELOG.md)。仍有少数规则按推断实现，与官方不一致的地方欢迎在 Issue 里反馈。
 
 ## 原版功能一览
 
-以下数量取自上游 0.2.4 的介绍口径，本 fork 在此基础上加入上述莱茵扩展。
+以下数量为上游 v0.3.0 介绍口径，本 fork 在此基础上加入上述莱茵与 DLC 扩展。
 
 - **完整的一局**：确认本局信息 → 策略轮选（40 名策略）→ 14 回合 → 结算称号；险境及以上满足条件时进入第 15 回合「隐秘核心」。
 - **4 种难度**：标准 / 险境 / 绝境 / 终极，独立与同盟各一套参数，均取自官方数据。
 - **休整期**：招募、刷新、冻结、升级调度中心；整备区与临时整备区；从整备区拖到棋盘部署，用**方向轮盘**选择朝向。同盟模拟的卡池共用。
 - **晋升精锐**：3 名同名干员自动合成精锐，并获得一次高一阶的免费招募。
-- **干员与调配**：126 名可招募干员（另有 126 个精锐形态，合计 252 条干员记录；含莱茵生命与卡兹戴尔扩展干员）及其技能、天赋和特质；开局前可以为每名干员选择携带的技能（304 个技能全部手工实现）和精锐的模组。
-- **盟约与层数**：25 个盟约（10 个核心盟约 + 附加盟约，含莱茵与卡兹戴尔），层数整局保留，每个盟约最多 999 层。
+- **干员与调配**：112 名可招募干员（+ 精锐）及其技能、天赋和特质；开局前可以为每名干员选择携带的技能（283 个技能全部手工实现）和精锐的模组。
+- **盟约与层数**：23 个盟约（8 个势力核心盟约 + 附加盟约），层数整局保留，每个盟约最多 999 层。
 - **装备与机变**：装备与法术，同名装备合成、特定组合赋予盟约效果；已配发的装备锁定在干员身上。部分回合开始前有机变选卡（装备、资金、干员、层数、悬赏等）。
 - **自动作战**：技能按官方「技能策略」自动释放；按接触半径阻挡，阻挡者倒下时由接触的干员接替；元素损伤与元素爆发；召唤物由玩家手动摆放；推开 / 拉拽按力度与重量计算；被击倒的干员留在原地显示再部署倒计时。
 - **地形与敌人**：阻隔工事、射击台、源石流吹风机、沼泽、排气格栅、涨潮等地形装置；空中与近地悬浮敌人、悬赏敌人。
@@ -93,12 +107,35 @@ English summary: [below](#english).
 - **画面与声音**：真实 Spine 小人、官方 BGM 与音效、表情（6 套 × 6 个）、作战特效；可选的官方 3D 棋盘（需要从本机客户端提取贴图）。
 - **手机与电脑**：触摸拖拽、长按查看详情，推荐横屏；设置里可以调低画质。
 
+这些扩展会改变成长与战斗平衡：**选择四种基础难度仍会启用收藏品与后期商店扩展**，并不等于回到原项目规则。藏品名称与图标参考明日方舟其他玩法，但档位、数值与效果经过本 fork 适配，不代表官方「卫戍协议」规则。
+
+## Fork 扩展玩法
+
+### 本局收藏品
+
+- **46 件、五档强度**：普通 / 精良 / 稀有 / 史诗 / 传说，候选概率随回合推进变化。无漏怪作战后从三个候选中领取一件，候选排除已拥有藏品。
+- **个人持有、整局生效**：从下一场战斗开始生效，不占装备槽或整备区，干员属性加成只给持有者，鸭梨手机降低全队累计难度；新的一局重新收集。同类增益相加且不设累计上限，同名藏品不会重复获得。
+- **逆风补给**：连续三回合本人漏怪可触发较高档位奖励，并获得仅下回合有效的 2 点扣血护盾。联防救回敌人或护盾抵消扣血，都不会抹掉本人漏怪记录。
+- **选择与展示**：单人及仅一名人类的对局选择不计时，多人限时 30 秒；右侧图标支持悬停、聚焦或长按查看，结算保留本局收藏记录。
+
+完整清单、概率、生效边界与领袖结算规则见 [收藏品说明](docs/COLLECTIBLES.md)。已有素材的安装可运行 `node tools/fetch-relic-icons.mjs` 补齐 46 张收藏品图标（含六件原创图片）；首次安装的素材下载流程已包含这些图标。
+
+### 超限模拟
+
+超限模拟沿用终极模拟的基础参数，**0 级不附加超限协议**；1–20 级逐级累积，选择某一级会同时启用此前所有协议。协议包含敌人开场加速、死亡余烬、首击屏障、护甲轮转、技力限制、回响分裂与受伤缩短负面效果等机制，要求玩家调整站位、输出组合与技能节奏。
+
+选择模拟协议的大厅中，各难度统一显示「作战提示」。创建后，单人准备界面或同盟等待室的房主可通过等级轮盘查看当前规则与应对提示；同盟等级同步到全房间。协议定义见 `shared/difficulty.js`，由界面与浏览器 / 服务端战斗模拟共用。
+
+### 后期商店扩展
+
+所有难度的商店均在初始额外提供 **1 个干员招募位**，第 4 回合开始时再增加 1 个，第 9 回合开始时再增加 1 个，累计额外提供 **3 个干员招募位**，与调度中心等级独立；购买、刷新、冻结及 AI 招募逻辑已适配扩展后的数量。装备位与公共卡池规则沿用原有机制。
+
 ## 快速开始
 
 ### 本扩展：Windows 免安装整合包（推荐）
 
-1. 到 [莱茵项目的 Releases](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine/releases/latest) 下载 **`Stronghold-Protocol-Rhine-v0.2.4-rhine.5-Windows-x64.zip`**。不要选择 GitHub 自动生成的 `Source code` 下载项，它不包含运行环境和素材。
-2. **完整解压到新文件夹**，双击 **`启动莱茵科研版.bat`**。包内已包含官方 Node.js 24、运行依赖和游戏素材，首次启动也无需下载安装。
+1. 到 [本仓库 Releases](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/releases) 下载最新的 Windows x64 整合包（文件名形如 `Stronghold-Protocol-Rhine-DLC-*-Windows-x64.zip`）；若 Releases 尚未提供整合包，直接按下面的「从源码运行」。不要选择 GitHub 自动生成的 `Source code` 下载项，它不包含运行环境和素材。
+2. **完整解压到新文件夹**，双击 **`启动莱茵科研版.bat`**（源码目录里对应 `scripts/start-windows.bat`）。整合包内已包含官方 Node.js、运行依赖和游戏素材；从源码运行时首次启动需要 `npm run setup` 下载素材。
 3. 浏览器会自动打开游戏；保持启动窗口开启。朋友只需访问房主分享的游戏网址，不必各自下载整合包。
 
 适用于 Windows x64。首次安装解压到新目录；之后结束对局并关闭旧服务，双击原目录的 **更新旧版.bat** 或 **联网更新.bat**，即可自动下载正式最新版、备份和原地更新，保留配置。较早版本用户只需下载独立 **Rhine-Update-Tool-Windows.zip** 一次，首次指定旧安装目录。不要直接解压覆盖。具体步骤与冲突处理见 [保配置更新说明](docs/RHINE-UPDATE.md)。若旧版正在使用 3000 端口，启动器会提示先关闭旧服务，或选择其他端口。关闭启动窗口会结束服务及当前全部对局。更多联机、端口和使用说明见 [整合包说明](docs/RHINE-BUNDLE.md)。素材和第三方组件的许可及声明随包保留，详见 [NOTICE.md](NOTICE.md) 与 [第三方声明](THIRD-PARTY-NOTICES.md)。
@@ -137,17 +174,20 @@ npm start          # 启动服务器：http://localhost:3000
 
 也可以直接运行启动脚本（Windows `scripts\start-windows.bat`，macOS / Linux `scripts/start.sh`）：首次会自动安装依赖、下载素材，然后启动服务器并打开浏览器。
 
-- **本地客户端素材（可选）**：官方 3D 棋盘、部分官方界面图标（交流按钮与表情面板的边框、模组类型图标等）、灼热 / 炽焰源石虫和 39 个召唤物（多数自选召唤物）的官方模型需要从本机的《明日方舟》PC 客户端提取（Windows 原生客户端、macOS 的 CrossOver 或 PlayCover）。`npm run setup` 检测到客户端时会询问是否提取（需要 Python 3.8+，依赖装在项目内的 `.venv-extract`，不影响系统）；之后可以用 `node tools/setup.mjs --local` 重新提取，或用 `--game "<…/StreamingAssets/AB/Windows>"` 指定路径。没有客户端时游戏照常运行，这几样换成替代样式：2D 棋盘、样式相近的图标、染色的普通源石虫、召唤物头像。表情和「玩法说明」的教程图随上面的素材一起从公开镜像下载，不需要客户端。没有客户端的服务器（例如 Linux VPS）也可以从**同一版本**的整合包（完整包；精简包没有）里复制 `public/assets/local/` 和 `data/local-assets.json`，见 [docs/DEPLOY.md](docs/DEPLOY.md) 的「本地客户端素材」。
+- **本地客户端素材（可选）**：官方 3D 棋盘、官方战斗特效（0.3.0「官方特效」）、部分官方界面图标（交流按钮与表情面板的边框、模组类型图标等）、灼热 / 炽焰源石虫和 39 个召唤物（多数自选召唤物）的官方模型需要从本机的《明日方舟》PC 客户端提取（Windows 原生客户端、macOS 的 CrossOver 或 PlayCover）。`npm run setup` 检测到客户端时会询问是否提取（需要 Python 3.8+，依赖装在项目内的 `.venv-extract`，不影响系统）；之后可以用 `node tools/setup.mjs --local` 重新提取，或用 `--game "<…/StreamingAssets/AB/Windows>"` 指定路径。没有客户端时游戏照常运行，这几样换成替代样式：2D 棋盘、样式相近的图标、染色的普通源石虫、召唤物头像。表情和「玩法说明」的教程图随上面的素材一起从公开镜像下载，不需要客户端。没有客户端的服务器（例如 Linux VPS）也可以从**同一版本**的整合包（完整包；精简包没有）里复制 `public/assets/local/` 和 `data/local-assets.json`，见 [docs/DEPLOY.md](docs/DEPLOY.md) 的「本地客户端素材」。
 - 素材下载优先使用 GitHub，失败时自动改用 jsDelivr 镜像。
 - `npm run doctor`（即 `node tools/doctor.mjs`）可以随时诊断：Node 版本、素材是否完整、端口占用、局域网地址和防火墙。
+- **整合包**：如使用整合包，请确认包含本 fork 的扩展代码与收藏品图标；上游整合包不包含这些扩展。
+
+也可从 DLC 线仓库运行：`git clone https://github.com/UNDFFIO/Stronghold-Protocol-dlc.git`，然后 `npm install`、`npm run setup`、`npm start`，打开 [http://localhost:3000](http://localhost:3000)；命令与上面的本扩展源码流程等价。
 
 ### 系统要求
 
 | 项目 | 要求 |
 |---|---|
-| 开服的电脑 | Windows / macOS / Linux，Node.js 22 或 24（LTS）；磁盘约 700–850 MB（素材、依赖与本地提取贴图：完整包解压后约 790 MB）；内存空闲约 100 MB，每局再加几 MB |
+| 开服的电脑 | Windows / macOS / Linux，Node.js 22 或 24（LTS）；磁盘约 1.2–1.4 GB（素材、依赖与本地提取的贴图、场景和特效：完整包解压后约 1.16 GB）；内存空闲约 100 MB，每局再加几 MB |
 | 玩家 | 支持 WebGL 的现代浏览器（Chrome / Edge / Firefox / Safari 最新版），电脑、手机或平板（横屏） |
-| 网络 | 首次进入游戏时，每位玩家要从开服的电脑下载几十 MB 素材（之后走浏览器缓存）；对局中流量很小 |
+| 网络 | 首次进入游戏时，每位玩家要从开服的电脑下载几十 MB 素材（之后走浏览器缓存）；对局中流量很小。已有素材的玩家可以在标题画面点「导入素材包」（「下载完整素材」旁边），从素材包 zip、完整包 zip 或自己的 `public/assets` 文件夹导入，这部分美术不再从开服的电脑下载；需要 HTTPS 或 localhost（[docs/DEPLOY.md](docs/DEPLOY.md) 2.5 节）。0.3.0 的素材包 `Stronghold-Protocol-v0.3.0-assets.zip` 由维护者另行提供下载，不在 Releases 附件里 |
 
 显卡较弱时可以在「设置」里调低画质，或在网址后加 `?board=2d`（强制 2D 棋盘）/ `?render=fallback`（不用 WebGL 的简化画面）。
 
@@ -161,6 +201,7 @@ npm start          # 启动服务器：http://localhost:3000
 | `HOST` | `::` | 监听地址。默认 `::` 是双栈：同一个端口同时接受 IPv6 和 IPv4；`0.0.0.0` = 只 IPv4；`127.0.0.1` = 只允许本机，放在反向代理后面时使用 |
 | `SP_COMBAT` | `client` | `client`：各玩家浏览器模拟自己的战斗（服务器负载极低）；`server`：由服务器模拟并推流 |
 | `SP_VERIFY` | `off` | 服务器复算客户端上报的战斗结果：`off` / `sample`（约 1/8 抽查）/ `all`（全部复算，更耗 CPU） |
+| `SP_BOT_REHEARSAL` | 不设（服务器试算） | 仅 `host` 让房主浏览器帮 AI 队友试算布阵（同源 Worker，只回候选序号）；不设或 `server` 仍由服务器试算。房主无法完成时服务器用同一批候选接手。玩法插件房间始终由服务器试算。真人「AI 托管」和正式战斗不受影响 |
 | `TRUST_PROXY` | `auto` | 是否信任 `X-Forwarded-For` 等转发头：`auto` 只信任来自本机 / 内网的代理；`1` 总是；`0` 从不 |
 | `DEBUG` | 空 | 设为任意值输出详细日志 |
 | `SP_NO_BROWSER` | 空 | 设为 `1` 时启动脚本不自动打开浏览器 |
@@ -178,22 +219,16 @@ npm start          # 启动服务器：http://localhost:3000
 
 刷新页面或断线后，同盟模拟 10 分钟内、独立模拟 24 小时内重新打开即可回到原座位。服务器把房间和对局都保存在内存里，**重启服务器会结束所有对局**。
 
-## 联机方式
+## 插件
 
-朋友不在同一个局域网时，下面是几类常见做法，按自己的情况选一种即可。这里只做简单介绍，提到的工具和服务只是举例，本项目与它们没有任何关系，也不做推荐；具体的安装、费用和使用规则请以各自的官方说明为准。部署细节（防火墙、开机自启、反向代理与 HTTPS、Docker）见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。
+0.3.0 的上游插件系统已同步；**不开插件时仍启用本 fork 的莱茵／卡兹戴尔扩展、收藏品、商店扩展及所选超限协议**，不等于上游原版规则。
 
-| 方式 | 怎么做 | 适合 |
-|---|---|---|
-| **同一局域网直连** | 把启动窗口里的局域网地址发给朋友 | 同一个家、宿舍或网吧 |
-| **组网工具（虚拟局域网）** | 例如 Tailscale、ZeroTier、EasyTier、蒲公英：开服的人和朋友都安装同一个工具并加入同一个网络，朋友用开服电脑的虚拟 IP 访问 `http://<虚拟 IP>:3000` | 固定的几个熟人；不暴露到公网。朋友也要装客户端，部分工具需要注册账号；跨地区时可能走中继而变慢 |
-| **内网穿透 / 隧道** | 只有开服的人运行客户端，朋友直接打开网址。例如自建的 frp（需要一台有公网 IP 的服务器）、Cloudflare 的 `cloudflared tunnel --url http://localhost:3000`（临时地址，每次启动都会变；国内访问延迟可能较高）、国内的樱花 frp 一类公共穿透服务（通常需要实名，大陆节点承载网页可能有备案要求） | 不想改路由器、没有公网 IP；免费线路带宽小时，首次加载素材会慢一些 |
-| **云服务器 / VPS 直接部署** | 在 VPS 上运行整合包，或用仓库自带的 `Dockerfile`；用 Caddy / Nginx 加上 HTTPS。选离玩家近、线路好的地区（面向大陆玩家时，境外机房要关注回程线路，否则晚高峰延迟可能很高；大陆服务器绑定域名需要 ICP 备案） | 想长期开服、玩家分布在不同地区 |
+- **服主安装**：将插件文件夹放进服务器的 `plugins/`，或用 `node tools/plugin.mjs install <zip路径或HTTPS地址>` 安装；远程地址需带 `--sha256`。工作台也支持从社区目录安装和导入 Forge 工坊包。服主可在 `plugins/config.json` 限定可用插件。
+- **房主开启**：在房间顶部的「原版 / 插件 ×N」面板里选外观或玩法插件、修改插件设置、选择插件模式。这里「原版」指未叠加插件的本 fork 内容。玩法插件由所有玩家下载并校验，房间标为「非官方」，统计总览默认不计入。
+- **玩家个人设置**：「设置 → 外观插件 / 界面插件」只影响自己的浏览器；个人不能另装玩法插件改变房间规则。外观插件只换画面与声音，界面插件只读允许的对局信息。
+- **自己制作**：打开启动窗口 `Studio:` 行的地址，在 `/studio/` 选模板、按官方名称选目标、拖放素材、实时预览、试一场并回放，最后打包分享。工作台限本机和局域网，修改需要钥匙。
 
-通用注意事项：
-
-- 游戏是**单个常驻 Node.js 进程 + WebSocket**（路径 `/ws`），只能跑一个实例，必须部署在域名根路径；Vercel 之类的 Serverless 平台和 GitHub Pages 之类的静态托管都不适用。反向代理要转发 WebSocket 升级。
-- 游戏没有账号系统，**知道地址的人都能进来**。请只把地址发给朋友，不要公开发布，也不要搭建公开大厅；这同时能降低素材版权方面的风险。
-- 有公网 IPv4 时也可以在路由器上做端口转发，但这会把家里的电脑直接暴露在公网上，优先考虑上面的方式。
+脚本执行默认关闭。服主可用 `SP_PLUGIN_SCRIPTS=sandbox` 开启沙箱脚本（或启动时加 `--scripts sandbox`；Windows 双击 `scripts\start-windows-sandbox.bat`）；原生受信任模式还需审查、固定锁文件哈希和玩家同意，公网部署需 `trusted-force`。开服设置见 [部署指南](docs/DEPLOY.md)，作者从[插件新手指南](docs/PLUGIN-GUIDE.md)开始，格式与限制见[插件参考](docs/PLUGINS.md)，接口列表见[插件 API 表](docs/PLUGIN-API.md)。
 
 ## 操作
 
@@ -205,7 +240,7 @@ npm start          # 启动服务器：http://localhost:3000
 | 出售 / 撤退 / 销毁装备 | 点击单位所在的格子 → 底部按钮「出售 +1」「撤退」；也可以把棋盘上的干员拖回整备区撤退。整备区里的装备与法术只能「销毁」，已配发的装备锁定在干员身上（干员出售或合成精锐时退回整备区） |
 | 装备 | 把装备拖到干员所在的格子上（每人 2 件；满了会弹出替换窗口，被替换的一件会被销毁）；法术拖到地块上并选方向 |
 | 查看详情 | 右键或长按单位 / 卡牌（属性为实时数值，高于基础值为绿色、低于为红色） |
-| 快捷键 | `R` 刷新 · `F` 冻结 · `D` 升级 · `Q` 撤退 / `X` 出售选中的干员 · `Space` 准备就绪 · `Esc` 取消 / 关闭；除 `Esc` 外都可以在「设置 → 快捷键」里改成别的键（[玩法指南 §11](docs/PLAYING.md#11-快捷键)） |
+| 快捷键 | `W` 购买鼠标指向的商品（无需点击） · `R` 刷新 · `F` 冻结 · `D` 升级 · `Q` 撤退 / `X` 出售鼠标指向的干员（无需点击） · `Space` 准备就绪 · `Esc` 取消 / 关闭；除 `Esc` 外都可以在「设置 → 快捷键」里改成别的键（[玩法指南 §11](docs/PLAYING.md#11-快捷键)） |
 | 方向轮盘键盘操作 | 方向键预览 · `Enter` 确认 · `Esc` 取消 |
 | 暂停（独立模拟） | 作战中（含最终攻势 / 隐秘核心）点顶栏的「暂停」或按 `Space`，再点「继续作战」（或 `Space`）继续；同盟模拟的作战不能暂停 |
 | 表情 | 左下角「交流」，左右滑动（或方向键）换主题，冷却 1 秒 |
@@ -214,19 +249,19 @@ npm start          # 启动服务器：http://localhost:3000
 
 完整的规则、数值和小技巧见 **[docs/PLAYING.md](docs/PLAYING.md)**（游戏内左下角也有「玩法说明」）。
 
+选择单位按地上的方格；漏怪时顶栏用红字 + 「−N」标记待扣的目标生命值，主数值保持当前生命值，结算时再扣除。藏品护盾抵消扣血，时间机器则以「+N」标记本场结算待恢复的生命值。
+
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
-| [CHANGELOG.md](CHANGELOG.md) | 上游版本更新记录 |
+| [CHANGELOG.md](CHANGELOG.md) | 上游版本更新记录与本 fork 的同步记录 |
+| [docs/RHINE-DLC-SYNC-0.3.0.md](docs/RHINE-DLC-SYNC-0.3.0.md) | 本轮把上游 0.3.0、莱茵 0.3.0 与 DLC 0.3.0 合入本 fork 的范围、冲突取舍与验证记录 |
+| [docs/COLLECTIBLES.md](docs/COLLECTIBLES.md) | Fork 收藏品清单、奖励概率、增益与护盾规则 |
 | [docs/RHINE.md](docs/RHINE.md) | 莱茵扩展：干员、盟约、科研装置、装备、开发与运行 |
 | [docs/RHINE-CHANGES.md](docs/RHINE-CHANGES.md) | 扩展修改范围、上游关系与测试边界 |
-| [docs/KAZDEL.md](docs/KAZDEL.md) | 卡兹戴尔扩展：盟约、魂灵、巨炮与舍身装备 |
-| [docs/COLLECTIBLES.md](docs/COLLECTIBLES.md) | DLC 收藏品：三选一奖励规则、掉落与进度、护盾与本地图鉴 |
-| [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md) | 多人版说明：六席、BAN 减免、最终攻势分组与信标供给 |
-| [docs/RHINE-DLC-SYNC-0.2.6.md](docs/RHINE-DLC-SYNC-0.2.6.md) | 本次同步报告：上游 v0.2.6、莱茵 v0.2.4-rhine.5 与 DLC 战线的合并范围、验证数字、剩余问题与踩坑 |
-| [docs/RHINE-DLC-SYNC-0.2.4.md](docs/RHINE-DLC-SYNC-0.2.4.md) | 上一轮同步报告：上游 v0.2.4 与莱茵 v0.2.2-rhine.3 的合并范围、验证数字、剩余问题与踩坑 |
 | [docs/PLAYING.md](docs/PLAYING.md) | 玩法指南：流程、经济、招募与晋升、摆阵、联防、盟约、最终攻势、结算称号 |
+| [docs/PLUGINS.md](docs/PLUGINS.md) · [docs/PLUGIN-GUIDE.md](docs/PLUGIN-GUIDE.md) · [docs/PLUGIN-API.md](docs/PLUGIN-API.md) | 插件格式、安装与服主策略；中文工作台入门、DSL、接口列表与对战试验 |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | 部署指南：Windows 开服与开机自启、防火墙、组网 / 隧道、反向代理与 HTTPS、Docker、systemd、排错 |
 | [docs/WINDOWS.md](docs/WINDOWS.md) | Windows 便携包：怎么打一份「零安装」包（`scripts/make-windows-bundle.mjs`）、包里放了什么、授权注意事项 |
 | [docs/DESIGN.md](docs/DESIGN.md) | 架构与契约（英文）：索引，按章节号找到文件；现行规则在 `docs/design/`（范围与目录分工、坐标与时间、战斗引擎、对局、网络协议、渲染与 UI），各次试玩和各版本的规则修订与依据在 `docs/history/` |
@@ -256,8 +291,11 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 - 性能测试：`/dev/battle-perf.html` 在浏览器里跑一场真实战斗（对局用的战斗运行器、模拟和渲染），实时显示帧率与逐帧耗时；在手机上打开后点击「开始测量（10 秒）」，生成的报告可以复制后附在反馈中。用到的战斗来自 `node tools/capture-specs.mjs` 从固定种子的机器人对局里截取的数据（`public/dev/perf/`）。
 - 只重构、不改玩法的提交不能改变 `test/golden/*.json`；有意改变玩法时运行 `npm run golden:update`，检查差异后随改动一起提交（见 [test/golden/README.md](test/golden/README.md)）。
 - GitHub Actions（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 与 Windows、Node 22 / 24 上运行 `npm ci`、`node --test` 和服务器冒烟测试。
-- 2026-10-17 本地全量测试记录：7411 项，7361 通过、0 失败、50 项条件跳过（原始数据缓存或可选浏览器环境），这是合并上游 v0.2.6 与莱茵 v0.2.4-rhine.5 之后的数字；同日把两个计时型用例改成与主机负载无关（`test/lobby.test.js` 的限流 / 泛洪用例各起一个调小 `ratePerSec`、`abuseDropsPerSec` 的独立服务器；`test/sim/robustness.test.js` 的重型首领战场基准由 `test/helpers/perfBudget.js` 在并行测试进程里按 `SUITE_LOAD = 6` 放宽 —— 同一战场空闲机 0.22 ms/tick、全量并行时约 1.0 ms/tick，`SP_PERF_FACTOR=1` 回到串行口径）。同批 `tsc --noEmit`（0 error）、ESLint（0 error / 152 warning）、`tools/check-imports.mjs`（3 条 allowed note）、i18n 严格检查（en 1611/1611）、`node tools/ci.mjs --only setup,smoke,imports,typecheck` 与服务器冒烟（`/healthz` ok、app 0.2.6、首页 200）均通过。此记录不等同于完整人工多人实机验收，也不预先代表 GitHub Actions 已运行通过。
-- 2026-10-11 本地全量测试记录（上一轮）：6859 项，6820 通过、1 失败、38 项条件跳过，合并上游 0.2.4 与莱茵 v0.2.2-rhine.3 之后的数字。
+- 2026-10-17 本地全量测试记录：8790 项，8721 通过、0 失败、69 项条件跳过（原始数据缓存或可选浏览器环境）。本次以 `node --test --test-concurrency=4` 运行（与 4 核 CI 相同的并发度）：测试里嵌套启动子进程的用例对并发敏感，并发 8 时会有 5 项因冷启动超时而假失败，单跑或并发 4 全部通过，见 [docs/design/overview.md](docs/design/overview.md)。独立本机 HTTP／WebSocket 与开发场景检查通过；此记录不等同于完整人工多人实机验收，也不预先代表 GitHub Actions 已运行通过。
+- 2026-10-03 本地全量测试记录：3488 项，3479 通过、0 失败、9 项条件跳过（原始数据缓存或可选浏览器环境）。独立本机 HTTP／WebSocket 与开发场景检查通过；此记录不等同于完整人工多人实机验收，也不预先代表 GitHub Actions 已运行通过。
+- 代码怎么分层、改某个规则该从哪个文件入手，见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+
+代码主要分布在 `server/`（大厅、对局与共用战斗模拟）、`shared/`（协议、难度与藏品定义）、`public/`（浏览器客户端）。素材工具在 `tools/`，启动脚本在 `scripts/`。官方游戏数据通过 `npm run build-data` 生成，不要手工修改生成的数据文件；扩展定义维护在 `shared/difficulty.js` 与 `shared/relics.js`。
 
 ## 项目结构
 
@@ -285,16 +323,15 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 - 素材来源：[yuanyan3060/ArknightsGameResource](https://github.com/yuanyan3060/ArknightsGameResource)、[fexli/ArknightsResource](https://github.com/fexli/ArknightsResource)、[isHarryh/Ark-Models](https://github.com/isHarryh/Ark-Models)、[ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2)；字体来自 [TimWangZi/The-font-of-Arknights](https://github.com/TimWangZi/The-font-of-Arknights) 与 Google Fonts（Noto Sans SC）。详见 [docs/ASSETS.md](docs/ASSETS.md)。
 - 规则核对参考：[PRTS 明日方舟中文 Wiki](https://prts.wiki/)。
 - LZ4AK 解包：`tools/local-extract/aklz4.py` 的算法来自 [isHarryh/Ark-Unpacker](https://github.com/isHarryh/Ark-Unpacker)（BSD-3-Clause，经 MooncellWiki/UnityPy）；解析 Unity 资源使用 [UnityPy](https://github.com/K0lb3/UnityPy)（MIT）。
-- 库：[PixiJS](https://pixijs.com/)（MIT）、[pixi-spine](https://github.com/pixijs/spine)（MIT；其中包含的 Spine Runtime 另受 [Spine Runtimes License](https://esotericsoftware.com/spine-runtimes-license) 约束）、[three.js](https://threejs.org/)（MIT）、[Preact](https://preactjs.com/) + [htm](https://github.com/developit/htm)（MIT）、[ws](https://github.com/websockets/ws)（MIT）。
+- 库：[PixiJS](https://pixijs.com/)（MIT）、[pixi-spine](https://github.com/pixijs/spine)（MIT；其中包含的 Spine Runtime 另受 [Spine Runtimes License](https://esotericsoftware.com/spine-runtimes-license) 约束）、[three.js](https://threejs.org/)（MIT）、[Preact](https://preactjs.com/)（MIT）、[htm](https://github.com/developit/htm)（Apache-2.0）、[ws](https://github.com/websockets/ws)（MIT）。
 
 感谢以上项目的作者与维护者，以及鹰角网络带来的这款游戏。
 
 ## 贡献
 
-欢迎在 [本 fork 的 Issues](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/issues) 反馈扩展 bug 或改进建议，也欢迎提交 Pull Request。莱茵扩展是自定义规则，请不要将其专有问题直接报给上游；如问题能在未修改的上游版本复现，再按上游贡献要求提交最小复现：
+欢迎在 [本 fork 的 Issues](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/issues) 反馈扩展 bug 或改进建议，也欢迎提交 Pull Request。莱茵与 DLC 扩展都是自定义规则，请不要将其专有问题直接报给上游；如问题能在未修改的上游版本复现，再按上游贡献要求提交最小复现：
 
-- 准备环境、运行测试、忠实原则和提交约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-- 提交前请运行 `node --test`，并同步更新相关文档；文档使用简体中文，代码与注释使用英文。
+- 提交前运行 `node --test`、`npm run lint`、`npm run check:imports`、`npm run typecheck`，并同步更新相关文档；玩家文档使用简体中文，代码、注释与技术文档使用英文。开发约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 - 提交的代码将以 GPL-3.0-or-later 发布。
 - 请不要提交任何游戏素材文件（`public/assets/` 等目录已被 `.gitignore` 排除）。
 - 本项目坚持非商业：请不要提交广告、付费、打赏等任何形式的变现功能。
@@ -305,9 +342,14 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 
 An **unofficial, non-commercial fan remake** of Arknights' seasonal auto-chess tower-defense mode *Stronghold Protocol: Alliance*, played in the browser: solo, or 1–6 player co-op (AI teammates can fill seats). Combat is simulated in each player's browser, so a low-power PC can host.
 
-- **Fork:** this unofficial Rhine + DLC integration fork is maintained at [qwertyuiop612/Stronghold-Protocol-Rhine_DLC](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC), based on [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) **v0.2.6** (`488db49f`), merged with the Rhine expansion **v0.2.4-rhine.5** (bundle `b159e574`) and the DLC line (`3fd0be02`: superlimit difficulty protocol, collectibles, low-HP scaling, host combat-speed control). Synced on 2026-10-14; the per-file merge scope, verification numbers and remaining issues are in [docs/RHINE-DLC-SYNC-0.2.6.md](docs/RHINE-DLC-SYNC-0.2.6.md). It is not an upstream or official game release; report expansion issues to this fork. The Windows portable bundle is published by the Rhine project.
+**Rhine + DLC fork:** based on upstream 0.3.0 (`c24e17ee`), this fork merges the Rhine Lab / Kazdel / Rim Billiton faction expansion with the DLC line: 46 match-scoped collectibles, comeback rewards and a next-round shield after three consecutive leaking rounds, cumulative Ascension levels 0–20, and one extra operator offer initially plus one more at rounds 4 and 9 (three extra from round 9). Collectibles and the shop expansion also apply to the four base difficulties. DLC is this fork's label, not an official Arknights release.
+
+- **Fork:** this unofficial *Faction Expansion* (Rhine Lab, Kazdel and Rim Billiton) with the Alliance DLC additions (collectibles, ascension simulation, late-wave shop expansion) is maintained by [qwertyuiop612](https://github.com/qwertyuiop612), based on [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) v0.3.0 (`c24e17ee`) and merges the Rhine line `v0.3.0-rhine.9` (`bec8e325`) and the DLC line `0.3.0` (`d8d10f19`). Synced on 2026-10-18. It is not an upstream or official game release; report expansion issues to this fork.
 - **Run this expansion:** clone this fork, install Node.js 22 or 24, then run `npm ci`, `npm run setup`, and `npm start`. Setup includes the Rhine resource plan; `node tools/fetch-rhine-assets.mjs` can supplement an existing asset download. The [upstream all-in-one bundle](https://github.com/sganggs/Stronghold-Protocol/releases/latest) contains the original game only, not this expansion. The official 3D board needs a local Arknights client to extract; otherwise the 2D board is used.
 - **Play with friends:** create a co-op room and share the 4-letter key or the `?room=KEY` link. On a LAN, use the address printed at start; otherwise use a virtual-LAN tool, a tunnel or a VPS — see [docs/DEPLOY.md](docs/DEPLOY.md).
+- **Plugins:** upstream 0.3.0 plugins, the browser studio, official battle effects, additional voice languages and local asset import are included. With no plugins selected, this fork's DLC rules still apply. See [PLUGINS.md](docs/PLUGINS.md) and [PLUGIN-GUIDE.md](docs/PLUGIN-GUIDE.md).
+- **Rules:** see [PLAYING.md](docs/PLAYING.md) and [COLLECTIBLES.md](docs/COLLECTIBLES.md); hosting details are in [DEPLOY.md](docs/DEPLOY.md).
+- **Languages:** Chinese (the default), English, 日本語, 한국어 and 繁體中文 — switch on the title screen or in Settings. Game texts come from the official clients; the Japanese, Korean and Traditional Chinese interface strings are machine translations (corrections welcome: [docs/I18N.md](docs/I18N.md)).
 - **Disclaimer:** not affiliated with or endorsed by Hypergryph or Yostar. All Arknights names, art, audio, text and data are © their respective owners and are **not** covered by this project's GPL licence. For study and personal non-commercial use only — no selling, paid distribution, paid servers or monetisation of any kind. Content will be removed on request of the rights holders. Provided "as is", without warranty.
 - **License:** code GPL-3.0-or-later ([LICENSE](LICENSE)); game assets excluded.
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) (an English summary at its end); the code map is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

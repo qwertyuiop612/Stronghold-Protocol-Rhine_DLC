@@ -165,7 +165,10 @@ function applyDocument(lang) {
 }
 
 // `{ dn }` params and tName(): Chinese game-data names → the current language (data/i18n/<lang>.json names)
-setNameResolver((name) => data.localeName(name));
+setNameResolver((name) => {
+  const localized = data.localeName(name);
+  return localized !== name ? localized : t(name);
+});
 
 /** A development page (a dev build, or served from this machine): report translations t() skips (shared/i18n.js). */
 function isDevPage() {

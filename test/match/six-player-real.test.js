@@ -13,20 +13,22 @@ test('six real client simulations traverse rounds 1–14 and settle every player
     for (let round = 1; round <= 14; round++) assert.ok(rounds.has(round), `${pid} participated in round ${round}`);
     assert.ok(client.log.some((msg) => msg.t === 'b.result'), `${pid} uploaded normal battle results`);
   }
-  // Pairing is shuffled per match (upstream 0.2.6), so the replica seat is not fixed: locate the boss field whose
-  // two clients both opened a round-14 start, then check that exactly one of them owns the field.
-  const byField = new Map();
-  for (const [, client] of h.clients) {
-    for (const s of client.starts) {
-      if (!s.fieldId || s.watch || s.spec.round !== 14) continue;
-      if (!byField.has(s.fieldId)) byField.set(s.fieldId, []);
-      byField.get(s.fieldId).push(s);
+  const groups = new Map();
+  for (const [pid, client] of h.clients) {
+    const start = client.starts.find(s => !s.watch && s.spec.kind === 'boss' && s.spec.round === 14);
+    assert.ok(start, `${pid} received its own paired boss field`);
+    assert.ok(start.spec.players.some(p => p.playerId === pid));
+    assert.deepEqual(start.spec.players.map(p => p.side), ['L', 'R']);
+    if (!groups.has(start.fieldId)) groups.set(start.fieldId, []);
+    groups.get(start.fieldId).push({ pid, start });
+  }
+  assert.equal(groups.size, 3);
+  for (const entries of groups.values()) {
+    assert.equal(entries.length, 2, 'both browsers receive each paired field');
+    const pair = entries.map(({ pid }) => pid).sort();
+    for (const { pid, start } of entries) {
+      assert.deepEqual(start.spec.players.map(p => p.playerId).sort(), pair);
+      assert.equal(start.authoritative, pid === pair[0], 'the lowest connected seat controls its actual seeded pair');
     }
   }
-  const paired = [...byField.values()].find((starts) => starts.length === 2);
-  assert.ok(paired, 'one boss field carries both members of a pair');
-  assert.equal(paired.filter((s) => s.authoritative).length, 1, 'exactly one client owns the paired field');
-  const replica = paired.find((s) => !s.authoritative);
-  assert.equal(replica.spec.players.length, 2, 'the replica receives both members of the pair');
-  assert.deepEqual([...new Set(replica.spec.players.map((p) => p.side))].sort(), ['L', 'R']);
 });

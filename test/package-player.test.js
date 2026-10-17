@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PLAYER_MARKDOWN, PLAYER_NPM_SCRIPTS, playerPackageJson, playerPackageProblems, releaseTag, rewritePlayerDoc,
+  GITHUB_REPO, PLAYER_MARKDOWN, PLAYER_NPM_SCRIPTS, playerPackageJson, playerPackageProblems, releaseTag, rewritePlayerDoc,
   selectTracked, trackedFiles,
 } from '../tools/package.mjs';
 
@@ -63,9 +63,9 @@ test('packaged copies of the shipped docs point unshipped relative links at the 
   const shipped = new Set(selectTracked(trackedFiles(ROOT)).keep);
   const version = pkg.version;
   const tag = releaseTag(version);
-  const host = 'https://github.com/sganggs/Stronghold-Protocol';
+  const host = GITHUB_REPO;
   const focus = new Set(['README.md', 'docs/PLAYING.md', 'docs/DEPLOY.md']);
-  let fileRewrites = 0;
+  const rewrittenFiles = new Set();
   assert.ok(PLAYER_MARKDOWN.includes('README.md') && PLAYER_MARKDOWN.includes('docs/PLAYING.md') && PLAYER_MARKDOWN.includes('docs/DEPLOY.md'));
   for (const rel of PLAYER_MARKDOWN) {
     const md = readFileSync(path.join(ROOT, rel), 'utf8');
@@ -97,10 +97,20 @@ test('packaged copies of the shipped docs point unshipped relative links at the 
       if (/\.(?:png|jpe?g|gif|webp|svg)(?:#|$)/i.test(before[i][2])) {
         assert.match(after[i][2], new RegExp(`^${host}/raw/${tag}/`));
       } else {
-        fileRewrites++;
+        rewrittenFiles.add(linkTarget(rel, before[i][2]));
         assert.match(after[i][2], new RegExp(`^${host}/(?:blob/${tag}/|releases/)`));
       }
     }
   }
-  assert.ok(fileRewrites >= 23, `README / PLAYING / DEPLOY rewrote ${fileRewrites} file links, want at least 23`);
+  // Shipping more expansion guides legitimately reduces the rewrite count. Pin actual unshipped targets instead.
+  for (const file of ['docs/WINDOWS.md', 'docs/DESIGN.md', 'docs/PACKS.md', 'docs/research/00-INDEX.md']) {
+    assert.ok(rewrittenFiles.has(file), `unshipped ${file} must link to the repository`);
+  }
+});
+
+test('fork docs can pin the exact source commit independently of the upstream compatibility version', () => {
+  const commit = 'a'.repeat(40);
+  const text = '[audit](docs/RHINE-030-POOL-AUDIT.md)';
+  assert.equal(rewritePlayerDoc(text, 'README.md', new Set(), '0.3.0', commit),
+    `[audit](${GITHUB_REPO}/blob/${commit}/docs/RHINE-030-POOL-AUDIT.md)`);
 });

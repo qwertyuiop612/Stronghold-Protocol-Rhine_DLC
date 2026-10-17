@@ -11,10 +11,62 @@ import { MatchMessaging } from '../server/match/match/messaging.js';
 import { addMessages, setLang, setMessages, translateWire, msg, dn } from '../shared/i18n.js';
 import { makeMatch, give, DATA } from './match/harness.js';
 import { createRegistry } from '../server/match/effectsMeta.js';
+import { drawAscensionLottery } from '../server/match/ascensionLottery.js';
+import { grantRelic, reviveSelf } from '../server/match/relics.js';
+import { getRelic, RELIC_TIERS } from '../shared/relics.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EN_UI = JSON.parse(readFileSync(path.join(ROOT, 'public/i18n/en.json'), 'utf8'));
 const realFetch = globalThis.fetch;
+
+test('DLC lottery, collectible and self-revival messages localize after Chinese server delivery', async () => {
+  for (const code of ['en', 'ja', 'ko', 'zh-TW']) {
+    const pack = JSON.parse(readFileSync(path.join(ROOT, `public/i18n/${code}.json`), 'utf8'));
+    addMessages(code, pack);
+    for (const [kind, seed] of Object.entries({ coins: 1, operators: 4, relics: 7, legendary: 10 })) {
+      setLang('zh');
+      const h = makeMatch({ mode: 'solo', difficulty: 'ASCENSION', seed, fake: true }).start();
+      try {
+        h.toPrep();
+        const ps = h.ps('p_0');
+        h.m.round = 4;
+        const reward = drawAscensionLottery(ps);
+        assert.equal(reward.kind, kind);
+        const notice = h.allTo('p_0', 'm.toast').at(-1);
+        assert.equal(notice.text, `超限模拟 · 第 4 回合抽奖：${reward.text}`, 'older clients retain the Chinese result');
+        const view = ps.privateView().ascensionLottery;
+        if (view.params?.[0]?.length) {
+          view.params[0][0].dn = 'forged';
+          assert.notEqual(reward.params[0][0].dn, 'forged', 'message params in private views are detached');
+        }
+        setLang(code);
+        await data.setLocale(code);
+        const local = translateWire(reward);
+        assert.ok(translateWire(notice).startsWith(pack['超限模拟 · 第 4 回合抽奖']), `${code}/${kind}`);
+        assert.ok(!/\{(?:0|1|bondName)\}/.test(local), `${code}/${kind}: ${local}`);
+        if (kind === 'coins') assert.equal(local, pack['15 金币']);
+        if (kind === 'relics' || kind === 'legendary') for (const id of reward.ids) assert.ok(local.includes(pack[getRelic(id).name]), `${code}: ${local}`);
+        if (kind === 'operators') for (const id of reward.ids) assert.ok(local.includes(data.lookup('chess', id).name), `${code}: ${local}`);
+      } finally { h.m.dispose(); setLang('zh'); await data.setLocale('zh'); }
+    }
+    const h = makeMatch({ mode: 'solo', fake: true }).start();
+    try {
+      h.toPrep();
+      const ps = h.ps('p_0');
+      grantRelic(ps, 'relic_003');
+      const acquired = h.allTo('p_0', 'm.toast').at(-1);
+      grantRelic(ps, 'relic_233');
+      ps.lp = 0;
+      assert.equal(reviveSelf(ps), true);
+      const revived = h.allTo('p_0', 'm.toast').at(-1);
+      setLang(code);
+      await data.setLocale(code);
+      assert.ok(translateWire(acquired).includes(pack['橙味风暴']), code);
+      assert.ok(translateWire(acquired).includes(pack[RELIC_TIERS[0].name] || RELIC_TIERS[0].name), code);
+      assert.equal(translateWire(revived), pack['「时光之末」已自动使用，恢复 {lp} 点目标生命值'].replace('{lp}', '11'), code);
+    } finally { h.m.dispose(); setLang('zh'); await data.setLocale('zh'); }
+  }
+});
 
 let lang;
 let data;

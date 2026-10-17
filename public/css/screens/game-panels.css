@@ -738,6 +738,88 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .relic-card__used { color: var(--text-lo); font-size: max(calc(.14 * var(--t)), 10px); }
 .relic-card__revive { display: flex; flex-wrap: wrap; align-items: center; gap: .08rem; margin: .06rem 0; }
 .relic-card__revive > .relic-panel__note { flex-basis: 100%; }
+
+/* Fourth-round lottery: three mechanical reels reveal one server-granted reward. */
+.modal--ascension-lottery { z-index: calc(var(--z-toast) + 1); }
+.ascension-lottery { box-shadow: 0 .3rem .9rem #000a, 0 0 .5rem #ffc60012; }
+.ascension-lottery .modal__body { min-height: 0; overscroll-behavior: contain; touch-action: pan-y; }
+.ascension-lottery .modal__title { font-size: max(calc(.26 * var(--t)), 17px); }
+.lottery-machine {
+  --cell: max(108px, 1.5rem);
+  position: relative; margin: .12rem 0 0; padding: .12rem .2rem .1rem;
+  border: 1px solid #b9984d; background: linear-gradient(135deg, #665130, #25251e 24%, #171c19 76%, #5c4b2b);
+  box-shadow: inset 0 0 0 3px #111713, 0 .06rem .15rem #0005;
+}
+.lottery-machine__lamps { display: flex; justify-content: space-around; gap: .1rem; margin: .02rem .04rem .12rem; }
+.lottery-machine__lamps i {
+  width: max(4px, .055rem); height: max(4px, .055rem); border-radius: 50%; background: var(--gold-2);
+  box-shadow: 0 0 6px #ffc60088; animation: lottery-lamp 700ms ease-in-out infinite alternate; animation-delay: calc(var(--i) * -90ms);
+}
+.lottery-machine__reels { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .08rem; }
+.lottery-reel {
+  position: relative; min-width: 0; height: calc(var(--cell) + .48rem); overflow: hidden;
+  background: linear-gradient(90deg, #111714, #29302a 50%, #111714); border: 1px solid #0a100c;
+  box-shadow: inset 0 0 .12rem #000; transition: border-color 200ms;
+}
+.lottery-reel::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(#080e0bf5, #080e0b00 30% 70%, #080e0bf5); border: 1px solid #ffffff0a;
+}
+.lottery-reel__strip {
+  transform: translateY(.24rem); will-change: transform;
+  animation: lottery-roll var(--duration) cubic-bezier(.12, .65, .18, 1) both;
+}
+.lottery-reel.is-stopped { border-color: #d3ad58; }
+.lottery-reel.is-stopped .lottery-reel__strip {
+  animation: none; transform: translateY(calc(.24rem - var(--stop) * var(--cell))); will-change: auto;
+}
+.lottery-symbol { height: var(--cell); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .035rem; padding: .08rem; text-align: center; }
+.lottery-symbol > .icon, .lottery-symbol > .coin-glyph { flex: none; width: max(32px, .46rem); height: max(32px, .46rem); fill: currentColor; }
+.lottery-symbol > b { font-size: max(25px, .34rem); line-height: 1; text-shadow: 0 0 .15rem currentColor; }
+.lottery-symbol > span { color: var(--text-md); font-size: max(calc(.13 * var(--t)), 10px); line-height: 1.3; overflow-wrap: anywhere; }
+.lottery-symbol.lottery-symbol--relic { color: var(--relic-tone); gap: .05rem; }
+.lottery-symbol > .lottery-symbol__art { display: grid; place-items: center; width: max(48px, .7rem); height: max(48px, .7rem); flex: none; }
+.lottery-symbol__art > img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 .08rem #0009); }
+.lottery-symbol__art > .icon { width: .4rem; height: .4rem; color: var(--relic-tone); }
+.lottery-symbol__name { max-width: 100%; font-size: max(calc(.16 * var(--t)), 11px); line-height: 1.3; overflow-wrap: anywhere; }
+.lottery-symbol > .lottery-symbol__tier { color: var(--relic-tone); font-size: max(calc(.12 * var(--t)), 9px); }
+.lottery-prize--coins { --prize: var(--gold-2); color: var(--prize); }
+.lottery-prize--operators { --prize: var(--ice); color: var(--prize); }
+.lottery-prize--relics { --prize: #d3a6fb; color: var(--prize); }
+.lottery-prize--legendary { --prize: var(--gold-2); color: var(--prize); }
+.lottery-machine__payline { position: absolute; inset: .24rem -.08rem; pointer-events: none; border-block: 1px solid #ffc60066; }
+.lottery-machine__payline::before, .lottery-machine__payline::after {
+  content: ''; position: absolute; top: 50%; width: .09rem; height: .09rem; background: var(--gold-2); transform: translateY(-50%) rotate(45deg);
+}
+.lottery-machine__payline::before { left: -.04rem; }
+.lottery-machine__payline::after { right: -.04rem; }
+.lottery-machine__stops { display: flex; justify-content: center; gap: .1rem; margin-top: .11rem; }
+.lottery-machine__stops i { width: .3rem; height: 3px; background: #121a15; transition: background 200ms, box-shadow 200ms; }
+.lottery-machine__stops .is-on { background: var(--gold-2); box-shadow: 0 0 .09rem var(--gold-a20); }
+.lottery-result { min-height: max(70px, .96rem); display: grid; align-items: center; text-align: center; padding: .16rem .1rem; }
+.lottery-result__pending { display: flex; flex-direction: column; gap: .06rem; }
+.lottery-result__pending b { color: var(--gold-2); font-size: max(calc(.2 * var(--t)), 15px); letter-spacing: .1em; }
+.lottery-result__pending > span { color: var(--text-lo); font-size: max(calc(.13 * var(--t)), 11px); }
+.lottery-result__win { display: flex; justify-content: center; align-items: center; gap: .12rem; animation: lottery-reveal 350ms var(--ease-out) both; }
+.lottery-result__win > b { color: var(--gold-2); font-size: max(calc(.22 * var(--t)), 15px); line-height: 1.5; overflow-wrap: anywhere; }
+.lottery-result__icon { display: flex; flex: none; }
+.lottery-result__icon > svg { width: max(26px, .36rem); height: max(26px, .36rem); fill: currentColor; }
+.ascension-lottery.is-revealed .lottery-machine { box-shadow: inset 0 0 0 3px #111713, 0 0 .25rem var(--gold-a20); }
+.ascension-lottery.is-revealed .lottery-machine__lamps i { animation: none; }
+@keyframes lottery-roll {
+  from { transform: translateY(.24rem); }
+  to { transform: translateY(calc(.24rem - var(--stop) * var(--cell))); }
+}
+@keyframes lottery-lamp { to { opacity: .3; box-shadow: none; } }
+@keyframes lottery-reveal { from { opacity: 0; transform: translateY(.09rem) scale(.97); } }
+@media (max-width: 520px) {
+  .lottery-machine { padding-inline: .14rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ascension-lottery, .ascension-lottery .lottery-reel__strip, .ascension-lottery .lottery-machine__lamps i,
+  .ascension-lottery .lottery-result__win { animation: none; }
+  .ascension-lottery .lottery-reel__strip { transform: translateY(calc(.24rem - var(--stop) * var(--cell))); }
+}
 /* 图鉴与局内收藏列表复用左图右文布局。 */
 .relic-card--illustrated {
   display: grid; grid-template-columns: max(.64rem, 48px) minmax(0, 1fr);

@@ -13,8 +13,11 @@ test('five real client simulations traverse rounds 1–14 and settle all five pl
     for (let round = 1; round <= 14; round++) assert.ok(rounds.has(round), `${pid} participated in round ${round}`);
     assert.ok(client.log.some((msg) => msg.t === 'b.result'), `${pid} uploaded battle results`);
   }
-  // Pairing is shuffled per match (upstream 0.2.6), so the singleton seat is not fixed: find the field's owner.
-  const singles = [...h.clients].filter(([, client]) => client.starts.some((s) => s.fieldId === 'b3'));
-  assert.equal(singles.length, 1, 'exactly one browser runs the singleton boss field');
-  assert.ok(singles[0][1].starts.some((s) => s.fieldId === 'b3' && s.authoritative), 'the singleton browser controls its boss field');
+  const bosses = [...h.clients].flatMap(([pid, client]) => client.starts
+    .filter(s => !s.watch && s.spec.kind === 'boss').map(s => ({ pid, start: s })));
+  assert.equal(new Set(bosses.map(({ start }) => start.fieldId)).size, 3, 'five players share two paired fields and one singleton');
+  const singletons = bosses.filter(({ start }) => start.spec.players.length === 1);
+  assert.equal(singletons.length, 1, 'upstream seeded pairing leaves exactly one singleton browser');
+  assert.equal(singletons[0].start.authoritative, true);
+  assert.equal(singletons[0].start.spec.players[0].playerId, singletons[0].pid, 'the singleton browser controls its own boss field');
 });

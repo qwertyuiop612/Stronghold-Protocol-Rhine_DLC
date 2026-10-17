@@ -31,7 +31,6 @@ function randomIntent(rng, m, ps) {
     case 'g.sell': case 'g.destroy': return { t, uid: uid() };
     case 'g.move': return { t, uid: uid(), to: to() };
     case 'g.equip': return { t, itemUid: uid(), targetUid: uid() };
-    case 'g.remRally': return { t, row: 9 + rng.int(4), col: 2 + rng.int(9) };
     case 'g.art': return { t, itemUid: uid(), row: rng.int(19), col: rng.int(21) };
     case 'g.reward': case 'g.choice': return { t, idx: rng.int(6) };
     case 'g.relic': return { t, offerId: ps?.relicOffer && rng() < 0.8 ? ps.relicOffer.id : 'missing_offer', idx: rng.int(3) };
@@ -41,7 +40,6 @@ function randomIntent(rng, m, ps) {
     case 'g.watch': return { t, fieldId: rng.pick(['n:p_0', 'n:p_1', 'n:ai_0', 'u', 'b1', 'b2', 'zz', '']) };
     case 'g.autoplay': return { t, on: rng() < 0.05 };
     case 'g.pause': return { t, on: rng() < 0.5 };
-    case 'g.setCombatSpeed': return { t, speed: 1 + rng.int(3), mode: rng() < 0.8 ? 'attack' : 'power' };
     default: return { t };
   }
 }

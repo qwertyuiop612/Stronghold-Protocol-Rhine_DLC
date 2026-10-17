@@ -9,6 +9,33 @@ import { bossPoolHp } from '../../server/match/finalAssault.js';
 
 const STATUSES = ['acting', 'ready', 'deciding', 'combat', 'done', 'helping', 'left', 'dead'];
 
+test('public throttling starts at broadcast time even when building the previous snapshot was delayed', () => {
+  let now = 100;
+  let revision = 0;
+  const sent = [];
+  const timers = [];
+  const match = {
+    _lastPubAt: 0,
+    sched: {
+      now: () => now,
+      setTimeout: (fn, delay) => { timers.push({ fn, at: now + delay }); return timers.length; },
+    },
+    publicView: () => {
+      if (revision === 0) now += 16;
+      return { t: 'm.public', serverNow: now, revision: ++revision };
+    },
+    broadcast: (view) => sent.push(view.serverNow),
+    _maybeSendPublic: Match.prototype._maybeSendPublic,
+  };
+  match._maybeSendPublic(false);
+  now = 200;
+  match._maybeSendPublic(false);
+  assert.deepEqual(sent, [116], 'the second frame waits for the full interval after the first broadcast');
+  now = timers[0].at;
+  timers[0].fn();
+  assert.deepEqual(sent, [116, 216]);
+});
+
 test('constructor validation mirrors the stub; start() sends the first m.public and one m.private per human', () => {
   assert.throws(() => new Match({ seats: [] }), TypeError);
   assert.throws(() => new Match({ seats: [{ seat: 0, playerId: 'a', name: 'a', isBot: false, connected: true }] }), TypeError);
@@ -44,7 +71,7 @@ test('m.private shape in PREP matches DESIGN §8.3 (pieces, slots, bonds, effect
   h.flushAll();
   const priv = h.lastTo('p_0', 'm.private');
   assert.equal(priv.funds, 4);
-  assert.equal(priv.shop.slots.length, 4);
+  assert.equal(priv.shop.slots.length, 5);
   for (const s of priv.shop.slots) {
     assert.deepEqual(Object.keys(s).sort(), ['basePrice', 'frozen', 'id', 'kind', 'price', 'sold']);
     assert.equal(s.frozen, false);

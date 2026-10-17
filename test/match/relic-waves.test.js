@@ -74,6 +74,16 @@ test('解压玩具：触发回合预览、实际波次和两端模拟均为 9 / 
       assert.equal(count(m.nextEnemiesFor(player)), expected);
       assert.equal(count(opts.spawns), expected);
       assert.deepEqual(m._normalOpts(player).spawns, opts.spawns);
+      const waveBefore = structuredClone(m.wave);
+      const boardBefore = structuredClone(player.board);
+      for (let i = 0; i < 2; i++) {
+        const preview = m._normalOpts(player, { preview: true });
+        assert.deepEqual(preview.spawns, opts.spawns, 'bot rehearsals use the actual redistributed wave');
+        assert.deepEqual(preview.players, opts.players);
+        preview.spawns[0].time += 999;
+      }
+      assert.deepEqual(m.wave, waveBefore, 'preview edits do not reach the live wave');
+      assert.deepEqual(player.board, boardBefore, 'preview construction does not change placement');
       const spec = buildBattleSpec({ ...opts, players: [{ ...player.battleInput(), units: [] }], content: m.battleContent, battleId: `toy:overload:${player.playerId}` });
       const a = createBattleFromSpec(spec, m.gd), b = createBattleFromSpec(JSON.parse(JSON.stringify(spec)), m.gd);
       a.runToEnd(120); b.runToEnd(120);

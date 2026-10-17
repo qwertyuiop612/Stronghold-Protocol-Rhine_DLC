@@ -118,8 +118,7 @@ describe('the 自选 summon models from the local client are an optional overlay
     for (const id of IDS) {
       assert.deepEqual(MANIFEST.tokens[id].spineLocal, { group: `spine/token/${id}`, ...COMMITTED[id] }, `${id}: the committed metadata`);
       const web = MANIFEST.tokens[id].spine;
-      if (id === 'token_10031_swire2_gdtrap') assert.ok(validSpine(web), 'champagne keeps its web skin fallback');
-      else if (RHINE_WEB_FALLBACKS.has(id)) assert.ok(validSpine(web), `${id}: the Rhine expansion ships a web model`);
+      if (id === 'token_10031_swire2_gdtrap' || RHINE_WEB_FALLBACKS.has(id)) assert.ok(validSpine(web), 'champagne keeps its web skin fallback');
       else assert.equal(web, undefined, `${id}: no web model`);
       assert.deepEqual(spineEntry(MANIFEST, id), web || null, `${id}: without local art keep the existing fallback`);
     }

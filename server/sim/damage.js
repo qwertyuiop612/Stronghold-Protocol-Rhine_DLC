@@ -336,9 +336,6 @@ export function dealDamage(battle, source, target, dmgIn) {
   if (!target || !target.alive || target.removed || target.hidden || !target.deployed) return 0;
   const dmg = dmgIn && dmgIn._norm ? dmgIn : makeDamageInfo(dmgIn);
   if (kazdelCannonImmune(battle, source, target, dmg)) return 0;
-  if (battle.combatSpeedMode === 'power' && dmg.isAttack && battle.attackPowerMultiplier > 1) {
-    dmg.amount *= battle.attackPowerMultiplier;
-  }
   if (dmg.type === 'element') return applyElement(battle, source, target, dmg);
   // 无来源 (dmg.sourceless, element bursts): hooks see no source — nothing keyed on "damage dealt by X" (ATK-up vs a
   // tag, 伤害提升 items / bonds / modules, reflect, "受到来自…的伤害") can recognise it; `credit` names the unit that still
@@ -374,9 +371,9 @@ export function dealDamage(battle, source, target, dmgIn) {
   // The red test compares that 1 (or 0) with the ordinary expected damage: 特殊生命值机制均不考虑 on the expected side.
   if (ts.flags.hitCount || ts.flags.hitCountArts) {
     const counts = !(ts.flags.hitCountArts && !ts.flags.hitCount && type === 'phys');
-    const instance = counts ? 1 : 0;
+    const instance = guardDifficultyDamage(battle, source, target, counts ? 1 : 0, dmg);
     const mark = officialDamageMark(instance, officialExpectedAmount(dmg, type, ts, target));
-    return applyHpLoss(battle, source, target, absorbShields(battle, target, guardDifficultyDamage(battle, source, target, instance, dmg), type), dmg, mark);
+    return applyHpLoss(battle, source, target, absorbShields(battle, target, instance, type), dmg, mark);
   }
   // 无来源 damage (element bursts) takes nothing from its source's stats; the source still gets the credit below
   const ss = source && source.s && !dmg.sourceless ? source.s : null;

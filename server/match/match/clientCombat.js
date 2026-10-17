@@ -29,13 +29,15 @@ export class MatchClientCombat {
     f.verifyJob = null;
   }
 
-  /** A client-combat field record: the JSON BattleSpec of its Battle options plus the authority / result state. */
+  /**
+   * A client-combat field record: the JSON BattleSpec of its Battle options plus the authority / result state. The spec
+   * names the room's content set (`cs`, opts.cs — DESIGN §32) when the match was given one.
+   */
   _ccField({ fieldId, kind, players, opts, boss = null }) {
     const seq = `${this.battlePrefix}.${this.round}.${++this._battleSeq}`;
     // protocol ids are ≤ 64 chars (shared/protocol.js isId): the field id is informational, the sequence is unique
     const battleId = seq.length + 1 + String(fieldId).length <= 64 ? `${seq}.${fieldId}` : seq;
-  const spec = buildBattleSpec({ ...opts, battleId, fieldId, kind, content: this.battleContent, boss, difficultyLevel: this.difficultyLevel,
-    combatSpeed: this.gameSpeed, combatSpeedMode: this.combatSpeedMode });
+    const spec = buildBattleSpec({ ...opts, battleId, fieldId, kind, content: this.battleContent, boss, difficultyLevel: this.difficultyLevel, cs: this.cs, vs: this.vs });
     Object.defineProperties(spec, {
       rhineEnabled: { value: this.rhineEnabled, enumerable: true },
       dataProfile: { value: this.dataProfile, enumerable: true },
@@ -100,7 +102,6 @@ export class MatchClientCombat {
       authoritative: !!(!f.done && !f.verifyJob && f.mode === 'client' && f.authority === pid && !watch),
       startAt: f.startAt, serverNow: this.sched.now(), elapsed: Math.round(this._fieldElapsed(f) * 1000) / 1000,
       speed: this.gameSpeed, watch: !!watch, done: !!f.done,
-      speedMode: this.combatSpeedMode,
     };
   }
 

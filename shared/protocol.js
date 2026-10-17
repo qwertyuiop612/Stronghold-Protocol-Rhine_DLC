@@ -1,10 +1,12 @@
 // Normative message catalogue (DESIGN §8). Used by server (validation) and client (building requests).
 // Every client→server message is `{ t, rid?, ...fields }`. Unknown `t` or invalid fields ⇒ ERR.BAD_MSG.
 
-import { DIFFICULTIES, MAX_DIFFICULTY_LEVEL, NAME_MAX_LEN, ROOM_CODE_LEN, MAX_SEATS, EMOTES, GEO, COMBAT_SPEEDS, COMBAT_SPEED_MODES, COMBAT_DURATION_MULTIPLIERS } from './constants.js';
+import { DIFFICULTIES, MAX_DIFFICULTY_LEVEL, NAME_MAX_LEN, ROOM_CODE_LEN, ROOM_PASSWORD_MAX_LEN, MAX_SEATS, EMOTES, GEO } from './constants.js';
 import { isDroppableChess } from './standIn.js';
 import { diySlotIds, validateDiyPicks } from './diy.js';
-import { cultivatedStats, isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from './potential.js';
+import { cultivatedStats, isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT, hasPotentialData } from './potential.js';
+import { isContentHash } from './plugins/identity.js';
+import { isPluginId } from './plugins/manifest.js';
 
 // ---- tiny validators -------------------------------------------------------
 const isInt = (v, lo = -Infinity, hi = Infinity) => Number.isInteger(v) && v >= lo && v <= hi;
@@ -25,6 +27,7 @@ const isMap = (v, max, key, val) => {
   return true;
 };
 const isList = (v, max, item) => Array.isArray(v) && v.length <= max && v.every(item);
+const isScalar = (v) => isStr(v, 64) || isNum(v) || isBool(v);
 
 // ---- client-side combat (DESIGN §14): b.progress / b.result payloads -------------------------------------------
 
@@ -48,6 +51,8 @@ const isPerPlayer = (p) => isPlain(p) && isInt(p.killed, 0, 1e5) && isInt(p.tota
   // knock-out — a runtime split child / summon too — and may therefore exceed `total`, which counts only the round's own
   // scheduled enemies (server/match/fields.js validateClientResult bounds it against maxTotal instead).
   && optional((x) => isInt(x, 0, 1e5))(p.resolved)
+  && optional((x) => isInt(x, 0, 1e9))(p.creditedKills)
+  && optional((x) => isInt(x, 0, 1e9))(p.remSurvivalTicks)
   && isList(p.leaked, RESULT_LIMITS.leaked, isLeak) && isBool(p.perfect)
   && isMap(p.layerGains, RESULT_LIMITS.layerGains, isId, (v) => isNum(v, 0, 1e4))
   && isStat(p.coins) && isStat(p.damageDealt) && isStat(p.bossDamage) && isStat(p.healingDone) && isStat(p.deaths)
@@ -209,14 +214,38 @@ export function cultivationCharIds(chess, backups = null) {
 }
 
 /**
+ * Whether a non-default potential changes this operator. Official characters always may: a PRESET without `potDown`
+ * (char_616_pithst) is stored as written and changes no stat, and that stays allowed. A plugin `char_x_` with no
+ * `potDown` and no chained talent curve does not. [ASSUMED] only the plugin prefix is restricted (DESIGN §32.5).
+ * @param {{ chess?: Record<string, any>, backups?: any }|null|undefined} data
+ * @param {string} charId
+ */
+export function charPotentialChanges(data, charId) {
+  if (typeof charId !== 'string' || !charId.startsWith('char_x_')) return true;
+  const chess = data?.chess;
+  if (chess && typeof chess === 'object') {
+    for (const c of Object.values(chess)) if (c?.charId === charId && hasPotentialData(c)) return true;
+  }
+  const unit = data?.backups?.units?.[charId];
+  if (unit) {
+    if (hasPotentialData(unit)) return true;
+    for (const f of Object.values(unit.forms ?? {})) if (hasPotentialData(f)) return true;
+  }
+  return false;
+}
+
+/**
  * Semantic check + normalisation of `room.loadout.ops` (0.2.2) — strict like checkLoadout: an operator `isOperator` does
  * not know (cultivationCharIds) rejects the whole message. Entries equal to the defaults (潜能 6, 练度 3) are dropped, the
  * rest stored complete `{ potential, cultivate }`. `undefined` / `null` = no settings (`{}`).
+ * `changesWithPotential(charId)`, when passed, rejects a non-default potential for an operator whose record has no curve.
+ * Callers that omit it keep the previous behaviour.
  * @param {any} ops
  * @param {(charId: string) => boolean} isOperator
+ * @param {(charId: string) => boolean} [changesWithPotential]
  * @returns {{ ok: true, ops: Record<string, { potential: number, cultivate: number }> } | { error: 'BAD_MSG'|'BAD_TARGET', detail: string }}
  */
-export function checkLoadoutOps(ops, isOperator) {
+export function checkLoadoutOps(ops, isOperator, changesWithPotential = null) {
   if (ops == null) return { ok: true, ops: {} };
   if (!isLoadoutOps(ops)) return { error: 'BAD_MSG', detail: 'bad operator settings' };
   const out = {};
@@ -224,6 +253,9 @@ export function checkLoadoutOps(ops, isOperator) {
     if (typeof isOperator !== 'function' || !isOperator(id)) return { error: 'BAD_TARGET', detail: `unknown operator ${id}` };
     const potential = ops[id].potential ?? POTENTIAL_DEFAULT;
     const cultivate = ops[id].cultivate ?? CULTIVATE_DEFAULT;
+    if (potential !== POTENTIAL_DEFAULT && typeof changesWithPotential === 'function' && changesWithPotential(id) === false) {
+      return { error: 'BAD_TARGET', detail: `potential does not change ${id}` };
+    }
     if (potential === POTENTIAL_DEFAULT && cultivate === CULTIVATE_DEFAULT) continue;
     out[id] = { potential, cultivate };
   }
@@ -389,7 +421,9 @@ export const C2S = {
     noReplace: isBool, claimAt: (v) => isNum(v, 0, Number.MAX_SAFE_INTEGER), $optional: ['token', 'version', 'noReplace', 'claimAt'] },
   ping: { c: (v) => typeof v === 'number' && Number.isFinite(v) },
   'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), rhineEnabled: isBool, difficultyLevel: (v) => isInt(v, 0, MAX_DIFFICULTY_LEVEL), $optional: ['rhineEnabled', 'difficultyLevel'] },
-  'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
+  'room.list': { subscribe: isBool, $optional: ['subscribe'] },
+  'room.setSettings': { isPublic: isBool, password: (v) => isStr(v, ROOM_PASSWORD_MAX_LEN), $optional: ['password'] },
+  'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v), password: (v) => isStr(v, ROOM_PASSWORD_MAX_LEN), $optional: ['password'] },
   'room.leave': {},
   'room.ready': { ready: isBool },
   'room.setDifficulty': { difficulty: (v) => DIFFICULTIES.includes(v), difficultyLevel: (v) => isInt(v, 0, MAX_DIFFICULTY_LEVEL), $optional: ['difficultyLevel'] },
@@ -397,7 +431,6 @@ export const C2S = {
   // the co-op room option 「AI 队友最后选择」 (GitHub #338; host, before the match): the strategy and 机变 drafts order every
   // human seat before every AI seat (server/match/match/phases.js humansFirst); room.state.aiPicksLast
   'room.setAiPicksLast': { on: isBool },
-  'room.setCombatSpeed': { speed: (v) => COMBAT_SPEEDS.includes(v), mode: (v) => COMBAT_SPEED_MODES.includes(v), durationMultiplier: (v) => COMBAT_DURATION_MULTIPLIERS.includes(v), $optional: ['mode', 'durationMultiplier'] },
   'room.addBot': {},
   'room.removeBot': { seat: (v) => isInt(v, 0, MAX_SEATS - 1) },
   // the host removes another human before the match (server/lobby.js kick; community report #17); playerId = the one the
@@ -418,8 +451,24 @@ export const C2S = {
   // spectator seats (remake feature, community report #26; MAX_SPECTATORS): take one of a co-op room's spectator seats —
   // in its lobby or while its match runs — never a player seat; the host frees one by playerId (the spectator gets
   // room.closed { reason: 'kicked' }). room.leave / g.leave leave a spectator seat like a player seat.
-  'room.spectate': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
+  'room.spectate': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v), password: (v) => isStr(v, ROOM_PASSWORD_MAX_LEN), $optional: ['password'] },
   'room.removeSpectator': { playerId: isId },
+  // the room's plugins (DESIGN §32, P1a; host, before the match — like a difficulty change it un-readies the others):
+  // the plugins of this server the room switches on, in any order (the server closes the set over their requirements
+  // and sorts it: shared/plugins/order.js); [] = the original content. Cosmetic plugins (art: the room's visual set,
+  // `vs`) and, from P1c (DESIGN §32.6), content plugins (gameplay: the room's content set, a `cs` of its own); `settings`
+  // is for the classes that have settings (a cosmetic plugin has none, so it is ignored). room.state.content names the set
+  'room.setPlugins': { plugins: (v) => isList(v, 32, (p) => isPlain(p) && isPluginId(p.id)
+    && (p.settings === undefined || isMap(p.settings, 32, (k) => isStr(k, 32), isScalar))) },
+  // the room's mode (DESIGN §32.6, P1c; host, before the match — like a difficulty change it un-readies the others): an
+  // official mode of the room's type (the one of a difficulty: it sets the difficulty) or a mode a plugin of the room's
+  // content set provides (room.state.content.modes; room.state.content.modeId while it is chosen)
+  'room.setMode': { modeId: isId },
+  // the page has loaded and checked the room's content set (DESIGN §32.6): `cs` = the room.state.content.cs it checked —
+  // every data file's bytes against /cs/<cs16>/index.json, that manifest's composition against `cs`; `ok: false` = it
+  // could not (the seat shows it). A room with gameplay plugins starts only once every player's page sent it for its cs
+  'room.consent': { cs: isContentHash, accept: isBool },
+  'room.contentReady': { cs: isContentHash, ok: isBool, $optional: ['ok'] },
 
   // match
   'g.infoReady': { setupRevision: (v) => isInt(v, 0, 2 ** 31), $optional: ['setupRevision'] },
@@ -435,7 +484,6 @@ export const C2S = {
   'g.levelUp': {},
   'g.sell': { uid: isUid },
   // dir: the facing chosen on the deploy wheel for a board target (absent ⇒ RIGHT; the piece's own tile ⇒ re-orient)
-  'g.remRally': { row: (v) => isInt(v, 9, 12), col: (v) => isInt(v, 2, 10) },
   'g.move': { uid: isUid, to: target, dir: isDir, $optional: ['dir'] },
   // replaceUid: with both of the target's slots used, the equipped item the replace dialog picked (research 09 §1.2
   // UseEquipUp.unloadInstId; absent ⇒ the oldest; not one of the target's items ⇒ BAD_TARGET)
@@ -455,7 +503,6 @@ export const C2S = {
   // solo pause (official PauseUp / ResumeUp, DESIGN §14): freezes the running battle (field clock, deadlines, the
   // browser's local runner) — solo matches only (co-op ⇒ WRONG_PHASE), only while a battle runs; m.public.paused
   'g.pause': { on: isBool },
-  'g.setCombatSpeed': { speed: (v) => COMBAT_SPEEDS.includes(v), mode: (v) => COMBAT_SPEED_MODES.includes(v), durationMultiplier: (v) => COMBAT_DURATION_MULTIPLIERS.includes(v), $optional: ['mode', 'durationMultiplier'] },
   // the stats the own board's units start their next battle with (user playtest #4 item 7; prep phases): answered by
   // the push m.unitStats { seq, round, units: [unitStatsEntry] }; `seq` is echoed so the client keeps the newest answer
   'g.unitStats': { seq: (v) => isInt(v, 0, 2 ** 31), $optional: ['seq'] },
@@ -477,13 +524,27 @@ export const C2S = {
     leaksBy: (v) => isMap(v, RESULT_LIMITS.players, isId, (x) => isNum(x, 0, 1e6)),
     $optional: ['resolved', 'leaks', 'bossDmg', 'by', 'done', 'left', 'leaksBy'],
   },
-  'b.result': { battleId: isId, result: isBattleResult },
+  // `cs` (DESIGN §32, optional): the content hash the reporting browser ran the battle on — its spec's `cs`. In a room
+  // with gameplay plugins (P1c, DESIGN §32.6) the match refuses a result without it or with another one (and runs the
+  // battle itself); a vanilla room's browser sends none
+  'b.result': { battleId: isId, result: isBattleResult, cs: isContentHash, $optional: ['cs'] },
+  // A delegated bot layout rehearsal (DESIGN §14): the match's current host answers the candidates it was handed with
+  // the S2C 'b.rehearsal' frame. `choice` is the index of the candidate its browser picked, in the order the task sent
+  // them — a malicious or buggy client can only name one of the server's own candidate layouts, never a layout or a
+  // match state of its own; `error: true` says this client cannot run the task at all (no module Worker, or the
+  // simulation data did not load), so the server takes the rehearsal over at once instead of waiting for its timeout.
+  // An unknown task, another sender or a task the server already took over is ignored; an invalid `choice` makes the
+  // server run the candidates itself. `choice` stops at 7 because a match rehearses at most 8 candidates.
+  'b.rehearsalResult': {
+    taskId: isId, choice: (v) => v === undefined || isInt(v, 0, 7), error: (v) => v === undefined || v === true,
+    $optional: ['choice', 'error'],
+  },
 };
 
 // Server → client message types (documentation + client dispatch table keys).
 export const S2C = [
   'welcome', 'ok', 'error', 'pong',
-  'room.state', 'room.closed',
+  'room.state', 'room.closed', 'room.list',
   'm.public', 'm.private', 'm.field', 'm.toast', 'm.ticker', 'm.emote', 'm.result',
   // m.layer { playerId, bondId, add } — own live prep layer gain; ephemeral, never replayed on resync.
   'm.layer',
@@ -493,6 +554,11 @@ export const S2C = [
   // speed, watch? } · b.pool { hp, max, teamLp, acked: { [fieldId]: cumulative boss damage counted } } ·
   // b.end { battleId, fieldId, reason }
   'b.start', 'b.pool', 'b.end',
+  // a delegated bot layout rehearsal (DESIGN §14): b.rehearsal { taskId, playerId, cap, specs } — the host's browser
+  // runs the candidate BattleSpecs off the page's main thread and answers with a C2S b.rehearsalResult ·
+  // b.rehearsalCancel { taskId } — the server dropped that task (it timed out, the host changed, the prep ended):
+  // the executor drops it too, and only a running simulation (the Worker) is really stopped
+  'b.rehearsal', 'b.rehearsalCancel',
   // server-run combat streaming (legacy / SP_COMBAT=server only)
   'b.snap', 'b.ev',
 ];
@@ -516,10 +582,12 @@ export function validateC2S(msg) {
   return null;
 }
 
-// Event tuple kinds inside `b.ev` (DESIGN §8.2).
+// Event tuple kinds inside `b.ev` (DESIGN §8.2). 'cast' ['cast', id, slot, dur?] is display only: an enemy uses the skill
+// of that slot of its data record's skills[] (server/sim/content/enemies/helpers.js castSlot; the client's skill clip
+// and official skill effects — render/app.js).
 export const EV = Object.freeze({
   SPAWN: 'spawn', ATK: 'atk', DMG: 'dmg', HEAL: 'heal', SKILL: 'skill', ENGAGE: 'engage', DIE: 'die', LEAK: 'leak',
-  STATUS: 'status', FX: 'fx', LAYER: 'layer', BOUNTY: 'bounty', DEPLOY: 'deploy',
+  STATUS: 'status', FX: 'fx', LAYER: 'layer', BOUNTY: 'bounty', DEPLOY: 'deploy', CAST: 'cast',
 });
 
 /**

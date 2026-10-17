@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "profile": "vanilla",
-  "upstreamVersion": "0.2.4",
-  "source": "build-data before the Rhine overlay",
+  "upstreamVersion": "0.3.0",
+  "source": "c24e17eec3af1e6dedfa9935a6d15245cf2f4586",
   "files": [
     {
       "path": "assets.json",
-      "size": 1281869,
-      "sha256": "bef944cdcfd3ded365d64d5fda84322289aabb28051eb9c1ece37376d04e96bc"
+      "size": 1673010,
+      "sha256": "34e427ff8304ea063f6bbc4eb2d6755b1baa43641c15a67f9c60a59ded4113c6"
     },
     {
       "path": "backups.json",
@@ -36,8 +36,8 @@
     },
     {
       "path": "choices.json",
-      "size": 124486,
-      "sha256": "c49f998503cf0a50cd2e71c71b03aac6b83e3e987eb767d20361ed344b5c6769"
+      "size": 124495,
+      "sha256": "ed4572cac6905a56a14faebfd1f69ab4e2e5710573a27e486bd8e9be4f2b7100"
     },
     {
       "path": "config.json",
@@ -71,23 +71,23 @@
     },
     {
       "path": "i18n/en.json",
-      "size": 2492895,
-      "sha256": "6a92588fa6ad9b318c363dfbc956c0c6a80380d00f18f5055c58827eae523ab7"
+      "size": 2494535,
+      "sha256": "3359e632a6ca9412c0fcfcde32f437fd6d8d557fe91c01be85108cbb171391ed"
     },
     {
       "path": "i18n/ja.json",
-      "size": 2855763,
-      "sha256": "05b97a64dc5164ff407509eb8394776c8cca3b2c40d76f3a677d9df581c6dc76"
+      "size": 2857606,
+      "sha256": "7e4d607833eb48d5f977598d9490100e5fb279db21d11f2866427fa4e9d038ff"
     },
     {
       "path": "i18n/ko.json",
-      "size": 2664330,
-      "sha256": "7a4e46ab28d017797cc371d766e7bc76cd69f31ba5c506a26b6dda6d0261de30"
+      "size": 2666126,
+      "sha256": "d6a20b7f0a7ce7d646ad965ca5f1458d50e878d37211b86806c9bd56ddcc2276"
     },
     {
       "path": "i18n/zh-TW.json",
-      "size": 2231435,
-      "sha256": "18d67dc6b6b1a6b3208bc842356b3c0e90a6356af9bd8aba09d38993d1aabcd8"
+      "size": 2244930,
+      "sha256": "810e7c5fa53cb901f51dac07016b0bb185e4964ae18ce3574a6ca04244316252"
     },
     {
       "path": "items.json",

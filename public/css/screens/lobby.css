@@ -1,18 +1,54 @@
 /* ==========================================================================================
-   screens/lobby.css — mode cards (独立/同盟), difficulty cards, create button, join panel.
+    screens/lobby.css — setup controls followed by public discovery, with soft scroll snapping.
    ========================================================================================== */
 
 .lobby-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: .5rem;
+  flex-basis: 0;
   width: 100%;
   max-width: 19.2rem;
   margin: 0 auto;
   padding: .36rem .6rem .4rem;
+  scroll-snap-type: y proximity;
+  scroll-padding-top: .36rem;
+}
+.lobby-setup {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: .5rem;
+  min-height: 100%;
   align-content: start;
+  scroll-snap-align: start;
 }
 .lobby-left, .lobby-right { display: flex; flex-direction: column; min-width: 0; }
+
+/* Each section fills at least the scrollport so even an empty hall can settle below the setup area. */
+.public-hall { min-width: 0; min-height: 100%; margin-top: .5rem; scroll-snap-align: start; }
+.public-hall__head { display: flex; align-items: center; justify-content: space-between; gap: .16rem; }
+.public-hall__head .section-label { margin-bottom: 0; }
+.public-hall__count { color: var(--mint-400); margin-left: .08rem; }
+.public-hall__empty { display: flex; align-items: center; justify-content: center; gap: .16rem; min-height: 1.1rem; margin-top: .14rem; padding: .2rem; border: 1px dashed var(--line-2); color: var(--text-lo); font-size: calc(.17 * var(--t)); }
+.public-hall__empty > .icon { width: .3rem; height: .3rem; color: var(--mint-500); }
+.public-hall__empty strong { color: var(--text-md); }
+.public-hall__empty p { margin: .06rem 0 0; font-size: calc(.15 * var(--t)); }
+.public-hall__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .16rem; margin-top: .14rem; }
+.public-room { --bk-c: var(--mint-700); padding: .2rem .24rem; background: rgba(10, 15, 13, .78); border: 1px solid var(--line-2); min-width: 0; }
+.public-room__name { display: flex; align-items: center; flex-wrap: wrap; gap: .12rem; font-size: calc(.2 * var(--t)); }
+.public-room__name strong { overflow-wrap: anywhere; }
+.public-room__code { color: var(--mint-400); letter-spacing: .14em; }
+.public-room__lock { margin-left: auto; color: var(--amber); font-size: calc(.14 * var(--t)); }
+.public-room__meta { display: flex; align-items: center; flex-wrap: wrap; gap: .1rem .18rem; margin: .12rem 0 .16rem; color: var(--text-lo); font-size: calc(.15 * var(--t)); }
+.public-room__meta > span, .public-room__lock { display: inline-flex; align-items: center; gap: .05rem; }
+.public-room__meta .icon, .public-room__lock .icon { width: .16rem; height: .16rem; }
+.public-room__actions { display: flex; justify-content: flex-end; gap: .12rem; }
+.room-access__code { margin: 0 0 .18rem; color: var(--text-lo); }
+.room-access__code b { color: var(--mint-400); letter-spacing: .14em; margin-left: .14rem; }
+.room-form__error { color: var(--red); margin-top: .14rem; font-size: calc(.17 * var(--t)); }
+@media (max-width: 760px) {
+  .public-hall__list { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-body { scroll-snap-type: none; }
+}
 
 /* ---- mode cards ------------------------------------------------------------------------------------ */
 .mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: .24rem; margin-bottom: .34rem; }
@@ -198,7 +234,7 @@
 .diff-card__effects { grid-column: 1; display: flex; flex-wrap: wrap; gap: .04rem .2rem; font-size: calc(.14 * var(--t)); color: var(--text-lo); }
 .diff-card__effects span::before { content: '·'; margin-right: .05rem; color: var(--d-color); font-weight: 900; }
 /* battlefield pool note (config.json modes[].stages): 战场固定为 战场#01 / 战场随机（共N张） — the last item of the
-   effects row (no extra card height: the lobby must not scroll at 1280×720 / 1920×1080) */
+   effects row, keeping the setup compact above its separate public-room section. */
 .diff-card__effects .diff-card__stage { display: inline-flex; align-self: flex-start; align-items: center; gap: .05rem; }
 .diff-card__effects .diff-card__stage::before { content: none; }
 .diff-card__stage .icon { flex: none; width: .15rem; height: .15rem; color: var(--d-color); opacity: .85; }

@@ -41,24 +41,13 @@ async function player(name, token) {
 const ok = async (c, msg) => { const r = await c.request(msg); assert.equal(r.t, 'ok', `${msg.t}: ${JSON.stringify(r)}`); return r; };
 
 async function chooseRelic(c) {
-  // 单人结算的藏品选择不限时：只有本场完美作战（或连续三场漏怪）才发奖励，所以有奖励时才选择，
-  // 没有奖励就直接放行到下一回合。日志里存的是整条消息。
-  const waitFor = (pred, ms) => new Promise((resolve) => {
-    const t0 = Date.now();
-    const tick = () => {
-      let v = null;
-      try { v = pred(); } catch { v = null; }
-      if (v) return resolve(v);
-      if (Date.now() - t0 > ms) return resolve(null);
-      setTimeout(tick, 25);
-    };
-    tick();
-  });
-  const offer = await waitFor(() => c.log.findLast((x) => x.t === 'm.private' && x.relicOffer)?.relicOffer, 20000);
-  if (!offer) return;
+  // 单人结算选择不限时，收到真实奖励后选择，才能推进到下一回合。
+  const priv = await c.waitFor('m.private', (p) => !!p.relicOffer, 10000);
+  const offer = priv.relicOffer;
   assert.equal(offer.options.length, 3);
   await ok(c, { t: 'g.relic', offerId: offer.id, idx: 0 });
-  await waitFor(() => c.log.some((x) => x.t === 'm.private' && Array.isArray(x.relics) && x.relics.length === 1 && !x.relicOffer), 10000);
+  const selected = await c.waitFor('m.private', (p) => !p.relicOffer && p.relics?.length === 1, 10000);
+  assert.equal(selected.relics[0].id, offer.options[0]);
 }
 
 /** Pick from the current public draft, including the AI's choices; never rely on a timeout after a refused pick. */
@@ -275,8 +264,7 @@ test('co-op spectator removed by the host while the match runs: room.closed {kic
   s2.log.length = 0;
   await ok(a, { t: 'g.ready', ready: true });
   await s2.waitFor('b.start', (x) => x.kind === 'normal', 10000);
-  // the DLC settle can wait for a collectible choice before the next round
-  await chooseRelic(a);
+  await chooseRelic(a); // One human with AI has an untimed DLC reward choice before the next prep.
   await a.waitFor('m.public', (p) => p.phase === 'PREP' && p.round === 2, 15000);
   assert.deepEqual(s1.log.slice(mark).filter((x) => x.t !== 'pong').map((x) => x.t), [], 'nothing reaches the removed spectator');
   assert.ok(s2.log.some((x) => x.t === 'm.public'), 'the other spectator still gets the match');

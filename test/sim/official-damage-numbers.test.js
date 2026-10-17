@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { officialDamageMark } from '../../server/sim/damage.js';
+import { difficultyEffects } from '../../shared/constants.js';
 import { makeBattle, chessRec, enemyRec } from '../helpers/battleHarness.js';
 
 const approx = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) <= eps, `${a} ≈ ${b}`);
@@ -73,6 +74,27 @@ test('a landed hit is marked only when the pre-shield total reaches 1.5× the pe
   const blocked = added(h, 'dmg', () => h.b.dealDamage(null, e, { amount: 1000, type: 'phys' }));
   assert.equal(blocked.result, 600);
   assert.equal(blocked.ev[0].length, 4, 'the same hit without penetration is not red');
+});
+
+test('Ascension guards apply before the official red-number test without spending wards twice', () => {
+  const h = field();
+  const e = h.enemy('enemy_dummy'), op = h.unit('t_a');
+  h.b.difficulty = difficultyEffects(6);
+  h.b.addBuff(op, { key: 'dealt', mods: { dmgDealtMul: 2 } });
+  const attack = () => h.b.dealDamage(op, e, { amount: 100, type: 'arts', canDodge: false });
+  const ward = added(h, 'dmg', attack);
+  assert.equal(ward.result, 0);
+  assert.equal(ward.ev.length, 0);
+  assert.equal(e.difficultyFirstHitUsed, true);
+  const deflected = added(h, 'dmg', attack);
+  assert.equal(deflected.result, 140, 'longshot applies once to the 200-damage hit');
+  assert.deepEqual(deflected.ev[0], ['dmg', e.id, 140, 'arts'], 'deflection drops it below the 1.5× red threshold');
+  h.b.removeBuff(op, 'dealt');
+  h.b.addBuff(op, { key: 'dealt', mods: { dmgDealtMul: 3 } });
+  h.b.addBuff(e, { key: 'shield', shield: 50 });
+  const red = added(h, 'dmg', attack);
+  assert.equal(red.result, 160);
+  assert.deepEqual(red.ev[0], ['dmg', e.id, 160, 'arts', 'r'], 'classification uses 210 before the HP shield');
 });
 
 test('shields, hit-count husks, sub-threshold reds and element fills do not invent events', () => {

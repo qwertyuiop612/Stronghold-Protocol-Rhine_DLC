@@ -88,3 +88,6 @@
 .rcard__relicshint { color: var(--text-lo); margin-left: auto; font-size: max(calc(.12 * var(--t)), 9px); }
 .rcard__relics .relic-list { margin-top: .06rem; }
 .rcard__relics .relic-card { padding: .07rem .1rem; }
+
+/* a match with gameplay plugins (DESIGN §32.6): the unofficial mark under the headline */
+.result__modmark { align-self: flex-start; margin-top: .06rem; }

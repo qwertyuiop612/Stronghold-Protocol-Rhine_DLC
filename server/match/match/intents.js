@@ -6,7 +6,7 @@
 
 import { autoSelectRelic } from '../relics.js';
 import { unitStatsEntry } from '../../../shared/protocol.js';
-import { PHASE, ERR, EMOTES, EMOTE_COOLDOWN_MS, GEO, COMBAT_SPEEDS, COMBAT_SPEED_MODES, COMBAT_DURATION_MULTIPLIERS } from '../../../shared/constants.js';
+import { PHASE, ERR, EMOTES, EMOTE_COOLDOWN_MS, GEO } from '../../../shared/constants.js';
 import { deriveSeed } from '../../sim/rng.js';
 import { OK, fail } from './common.js';
 import { onHumanEmote } from '../botEmotes.js';
@@ -31,7 +31,6 @@ export class MatchIntents {
       case 'g.levelUp': return ps.levelUp();
       case 'g.sell': return ps.sell(msg.uid);
       // dir: the deploy wheel's facing (DESIGN §3; absent ⇒ PlayerState reads to.dir, then RIGHT)
-      case 'g.remRally': return ps.setRemRally(msg.row, msg.col);
       case 'g.move': return ps.move(msg.uid, msg.to, msg.dir);
       case 'g.equip': return ps.equip(msg.itemUid, msg.targetUid, msg.replaceUid ?? null);
       case 'g.art': return ps.useArt(msg.itemUid, msg.row, msg.col, msg.dir);
@@ -48,12 +47,14 @@ export class MatchIntents {
       case 'g.watch': return this.watch(ps, msg.fieldId, msg.playerId ?? null);
       case 'g.autoplay': return this.setAutoplay(ps, !!msg.on);
       case 'g.pause': return this.setPause(ps, !!msg.on);
-      case 'g.setCombatSpeed': return this.setCombatSpeed(ps, msg.speed, msg.mode, msg.durationMultiplier);
       // the stats the board's units start their next battle with (the detail card in prep, user playtest #4 item 7)
       case 'g.unitStats': return this.unitStats(ps, msg.seq ?? null);
       case 'g.leave': this.onLeave(ps.playerId); return OK;
       case 'b.progress': return this._onProgress(ps, msg);
       case 'b.result': return this._onResult(ps, msg);
+      // the host's answer to a delegated bot layout rehearsal (DESIGN §14): a report, never an error — an unknown,
+      // expired or foreign task is ignored (MatchRehearsal._onRehearsalResult)
+      case 'b.rehearsalResult': this._onRehearsalResult(ps, msg); return OK;
       default: return fail(ERR.BAD_MSG);
     }
   }
@@ -75,20 +76,6 @@ export class MatchIntents {
     this.markPublic();
     if (on) this.kickBot(ps);
     if (on && this.phase === PHASE.SETTLE && ps.relicOffer) { autoSelectRelic(ps); this._completeRelicChoices(); }
-    return OK;
-  }
-
-  setCombatSpeed(ps, speed, mode = this.combatSpeedMode, durationMultiplier = this.combatDurationMultiplier) {
-    if (ps.playerId !== this.hostId) return fail(ERR.NOT_HOST);
-    if (![PHASE.INFO_CHECK, PHASE.BAND_DRAFT, PHASE.SP_DRAFT, PHASE.ROUND_START, PHASE.PREP, PHASE.BATTLE_CHECK].includes(this.phase)) {
-      return fail(ERR.WRONG_PHASE);
-    }
-    if (!COMBAT_SPEEDS.includes(speed) || !COMBAT_SPEED_MODES.includes(mode) || !COMBAT_DURATION_MULTIPLIERS.includes(durationMultiplier)) return fail(ERR.BAD_MSG);
-    this.gameSpeed = speed;
-    this.combatSpeedMode = mode;
-    this.combatDurationMultiplier = durationMultiplier;
-    this.attackPowerMultiplier = mode === 'power' ? speed : 1;
-    this.markPublic();
     return OK;
   }
 

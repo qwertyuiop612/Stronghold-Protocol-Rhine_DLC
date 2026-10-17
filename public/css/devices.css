@@ -142,7 +142,9 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 @media (max-height: 460px) {
   .dhead__art { height: 1.66rem; }
   .dhead__en { display: none; }
-  .lobby-body { padding-top: .2rem; padding-bottom: .2rem; gap: .36rem; }
+  .lobby-body { padding-top: .2rem; padding-bottom: .2rem; scroll-padding-top: .2rem; }
+  .lobby-setup { gap: .36rem; }
+  .public-hall { margin-top: .36rem; }
   .mode-cards { margin-bottom: .2rem; }
   .mode-card { min-height: 0; gap: .12rem; padding: .22rem .26rem .2rem; }
   .mode-card__icon { width: .66rem; height: .66rem; }

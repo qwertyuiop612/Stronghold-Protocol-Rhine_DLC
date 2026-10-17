@@ -1,7 +1,7 @@
 import { getRelic, pickRelicChoices, RELIC_TIERS } from '../../shared/relics.js';
 import { normalizeDifficultyLevel } from '../../shared/difficulty.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
-import { t, msg } from '../../shared/i18n.js';
+import { msg, dn } from '../../shared/i18n.js';
 
 /** Process the owner's completed battle once; rescue and shields do not erase personal leaks. */
 export function settleRelics(ps, result, { completed = false } = {}) {
@@ -55,7 +55,7 @@ export function grantRelic(ps, id, { round = ps.m.round, battleRound = round + 1
   ps.relicReward = reward;
   ps.dirty();
   const tier = RELIC_TIERS[r.tier - 1];
-  ps.m.toast(ps, 'success', msg('获得{tier}收藏品「{name}」', { tier: tier.name, name: r.name }));
+  ps.m.toast(ps, 'success', msg('获得{tier}收藏品「{name}」', { tier: dn(tier.name), name: dn(r.name) }));
   return reward;
 }
 
@@ -109,7 +109,7 @@ export function reviveSelf(ps) {
   if (!effect) return false;
   ps.lp = effect.lp;
   ps.dirty();
-  ps.m.toast(ps, 'success', t('「时光之末」已自动使用，恢复 {lp} 点目标生命值', { lp: effect.lp }));
+  ps.m.toast(ps, 'success', msg('「时光之末」已自动使用，恢复 {lp} 点目标生命值', { lp: effect.lp }));
   return true;
 }
 

@@ -8,9 +8,10 @@ import { validateClientResult } from '../../server/match/fields.js';
 import { bossPoolHp, pairPlayers } from '../../server/match/finalAssault.js';
 import { DATA, makeMatch, checkInvariants, give, legalTileFor, chessOfTier } from './harness.js';
 import { FakeBattle } from './fakeBattle.js';
+import { createRng, deriveSeed } from '../../server/sim/rng.js';
 
 const ids = ['p_0', 'p_1', 'p_2', 'p_3', 'p_4'];
-const pairs = [['p_0', 'p_1'], ['p_2', 'p_3'], ['p_4']];
+const sequentialPairs = [['p_0', 'p_1'], ['p_2', 'p_3'], ['p_4']];
 const finishFake = (m, f) => {
   const b = createBattleFromSpec(f.spec, m.ds, { BattleClass: FakeBattle });
   while (!b.finished) b.step();
@@ -144,16 +145,13 @@ for (const clientCombat of [false, true]) {
         leakEvents: b.fieldId === 'b3' ? [{ at: 1, lpr: 7 }] : [] } : {},
     }).start();
     const m = h.m;
+    const pairs = pairPlayers(m.order, createRng(deriveSeed(m.seed, 'boss-pairs'))).map(g => g.map(p => p.playerId));
     h.toPrep(14);
     ids.forEach((pid, i) => { h.ps(pid).lp = 10 * (i + 1); });
-    const groups = m.bossWaves.map((w) => w.players);
-    const lowest = (group) => group.slice().sort((a, b) => h.ps(a).seat - h.ps(b).seat)[0];
-    assert.deepEqual(groups.map((g) => g.length), [2, 2, 1], 'prep previews already include the singleton');
-    assert.deepEqual(groups.flat().slice().sort(), ids.slice().sort(), 'every seat lands on exactly one field');
-    const solo = groups[2][0];
+    assert.deepEqual(m.bossWaves.map((w) => w.players), pairs, 'prep previews already include the singleton');
     h.drive(() => m.phase === PHASE.FINAL_ASSAULT);
     assert.equal(m.teamLp, 150);
-    assert.deepEqual(m.fields.map((f) => [f.fieldId, f.players]), [['b1', groups[0]], ['b2', groups[1]], ['b3', groups[2]]]);
+    assert.deepEqual(m.fields.map((f) => [f.fieldId, f.players]), [['b1', pairs[0]], ['b2', pairs[1]], ['b3', pairs[2]]]);
     const opts = m.fields.map((f) => clientCombat ? f.spec : f.battle.opts);
     assert.deepEqual(opts.map((o) => o.players.map((p) => p.side)), [['L', 'R'], ['L', 'R'], ['L']]);
     assert.ok(/_s$/.test(opts[2].waveId));
@@ -161,18 +159,18 @@ for (const clientCombat of [false, true]) {
     assert.equal(m.bossPool.maxHp, bossPoolHp(m.gd, m.bossId, 5));
     assert.ok(opts.every((o) => o.flags.layerGainsEnabled === false));
     if (clientCombat) {
-      assert.deepEqual(m.fields.map((f) => f.authority), groups.map(lowest), 'the lowest seat of each group runs the field');
-      assert.equal(h.lastTo(lowest(groups[2]), 'b.start').fieldId, 'b3');
-      assert.equal(h.lastTo(lowest(groups[2]), 'b.start').authoritative, true);
+      assert.deepEqual(m.fields.map((f) => f.authority), pairs.map(g => [...g].sort()[0]));
+      assert.equal(h.lastTo('p_4', 'b.start').fieldId, `b${pairs.findIndex(g => g.includes('p_4')) + 1}`);
+      assert.equal(h.lastTo('p_4', 'b.start').authoritative, pairs.find(g => g.includes('p_4')).every(id => id >= 'p_4'));
     }
-    assert.equal(m.handle(solo, { t: 'g.watch', fieldId: 'b1' }).error, 'BAD_TARGET');
+    assert.equal(m.handle('p_4', { t: 'g.watch', fieldId: `b${pairs.findIndex(g => !g.includes('p_4')) + 1}` }).error, 'BAD_TARGET');
     const result = h.runToEnd();
     assert.equal(result.victory, true);
     assert.equal(result.roundsPassed, 14);
     assert.deepEqual(result.players.map((p) => p.playerId), ids);
     assert.equal(result.teamLp, 143);
     assert.equal(result.players.reduce((sum, p) => sum + p.lp, 0), 143);
-    assert.ok(result.players.find((p) => p.playerId === solo).stats.bossDamage > 0, 'the singleton credits its damage to the shared pool');
+    assert.ok(result.players[4].stats.bossDamage > 0, 'the singleton credits its damage to the shared pool');
     for (const pid of ids) assert.equal(h.lastTo(pid, 'm.result').playerId, pid);
     assert.equal(m.errorCount, 0);
     assert.equal(m.verifyStats.rejected, 0);
@@ -185,21 +183,20 @@ for (const clientCombat of [false, true]) {
       script: (b) => b.kind === 'boss' || b.kind === 'hidden' ? { bossDps: b.sharedBoss.maxHp / 18 } : {},
     }).start();
     const m = h.m;
+    const pairs = pairPlayers(m.order, createRng(deriveSeed(m.seed, 'boss-pairs'))).map(g => g.map(p => p.playerId));
     h.toPrep(14);
     ids.forEach((pid, i) => { const p = h.ps(pid); p.bondCountBonus.yanShip = 3; p.layers.yanShip = i === 4 ? 1 : 300; p.recompute(); });
     h.drive(() => m.phase === PHASE.FINAL_ASSAULT);
     assert.equal(m.hiddenLayerSum, 1201, 'first four contribute only the 1200 threshold; the fifth crosses it');
-    const groups = m.bossWaves.map((w) => w.players);
-    const solo = groups[2][0];
     h.toPrep(15);
     assert.equal(m.hiddenReached, true);
-    assert.deepEqual(m.bossWaves.map((w) => w.players), groups, 'the Hidden Core keeps the Final Assault pairs');
+    assert.deepEqual(m.bossWaves.map((w) => w.players), pairs);
     const teamLp = m.teamLp;
     h.drive(() => m.phase === PHASE.HIDDEN_CORE);
-    assert.deepEqual(m.fields.map((f) => f.players), groups);
+    assert.deepEqual(m.fields.map((f) => f.players), pairs);
     assert.equal(m.teamLp, teamLp);
     assert.equal(m.bossPool.maxHp, bossPoolHp(m.gd, m.hiddenBossId, 4));
-    if (clientCombat) assert.equal(h.lastTo(solo, 'b.start').fieldId, 'b3');
+    if (clientCombat) assert.equal(h.lastTo('p_4', 'b.start').fieldId, `b${pairs.findIndex(g => g.includes('p_4')) + 1}`);
     const result = h.runToEnd();
     assert.equal(result.hiddenCleared, true);
     assert.equal(result.roundsPassed, 15);
@@ -212,12 +209,8 @@ for (const clientCombat of [false, true]) {
   });
 }
 
-test('odd five-player pairing shuffles once, then keeps carried pairs and re-pairs the leftovers', () => {
+test('odd five-player pairing sorts seats and keeps the fifth survivor when another player leaves', () => {
   const alive = ids.map((playerId, seat) => ({ playerId, seat })).reverse();
-  // the seeded shuffle decides the first pairing; this stand-in keeps the seat order so the assertions stay readable
-  const rng = { shuffle: (a) => a.slice().sort((x, y) => x.seat - y.seat) };
-  assert.deepEqual(pairPlayers(alive, rng).map((g) => g.map((p) => p.playerId)), pairs);
-  const left = alive.filter((p) => p.playerId !== 'p_1');
-  assert.deepEqual(pairPlayers(left, rng, pairs).map((g) => g.map((p) => p.playerId)), [['p_2', 'p_3'], ['p_0', 'p_4']],
-    'the intact pair stays; the bereaved and the fifth survivor re-pair');
+  assert.deepEqual(pairPlayers(alive).map((g) => g.map((p) => p.playerId)), sequentialPairs);
+  assert.deepEqual(pairPlayers(alive.filter((p) => p.playerId !== 'p_1')).map((g) => g.map((p) => p.playerId)), [['p_0', 'p_2'], ['p_3', 'p_4']]);
 });

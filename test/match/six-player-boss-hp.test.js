@@ -136,13 +136,13 @@ test('six-seat client authority takeover keeps the existing doubled pool without
   try {
     const m = h.m, f = m.fields[0], pool = m.bossPool;
     const expected = new GameData(DATA, m.modeId, 4).bossPoolHp(m.bossId, 4) * 2;
-    // the 0.2.6 pairing shuffles the seats before Final Assault, so take the two players this field actually holds
-    // (the lowest seat is the client authority) instead of assuming the first two seats landed together
-    const first = f.authority, second = f.players.find((id) => id !== first);
-    m.onDisconnect(first);
-    assert.equal(f.authority, second);
-    assert.equal(h.lastTo(second, 'b.start').spec.boss.poolMax, expected);
-    m.onDisconnect(second);
+    assert.equal(f.players.length, 2);
+    const authority = f.authority;
+    const partner = f.players.find(pid => pid !== authority);
+    m.onDisconnect(authority);
+    assert.equal(f.authority, partner, 'the actual seeded partner takes over');
+    assert.equal(h.lastTo(partner, 'b.start').spec.boss.poolMax, expected);
+    m.onDisconnect(partner);
     assert.equal(f.mode, 'server');
     assert.strictEqual(f.battle.sharedBoss.pool, pool, 'the server takeover credits the existing shared pool');
     assert.equal(f.battle.sharedBoss.maxHp, expected);

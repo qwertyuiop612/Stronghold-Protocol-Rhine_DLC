@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeMatch } from './harness.js';
-import { drawAscensionLottery } from '../../server/match/ascensionLottery.js';
+import { drawAscensionLottery, LOTTERY_RELIC_WEIGHTS, LOTTERY_LEGENDARY_WEIGHTS } from '../../server/match/ascensionLottery.js';
 import { grantRelic, activeReverseLp } from '../../server/match/relics.js';
-import { RELICS, getRelic } from '../../shared/relics.js';
+import { RELICS, getRelic, pickRelic, dropWeights } from '../../shared/relics.js';
 
-const seeds = { coins: 1, operators: 4, relics: 7, heal: 10 };
+const seeds = { coins: 1, operators: 4, relics: 7, legendary: 10 };
 function setup(seed = 1, opts = {}) {
   const h = makeMatch({ mode: 'solo', difficulty: 'ASCENSION', seed, fake: true, ...opts }).start();
   h.toPrep();
@@ -40,14 +40,21 @@ test('ASCENSION: only round four, including level zero, grants once and publishe
   } finally { h.m.dispose(); }
 });
 
-test('healing draw restores exactly eight target LP and publishes it', () => {
-  const h = setup(seeds.heal);
+test('rare collectible draw grants exactly one legendary, without healing or multiplying its effect', () => {
+  const h = setup(seeds.legendary);
   try {
     const ps = h.ps('p_0'); ps.lp = 5;
     h.m.startRound(4);
-    assert.equal(ps.ascensionLottery.kind, 'heal');
-    assert.equal(ps.lp, 13);
-    assert.equal(h.m.publicView().players.find((p) => p.playerId === ps.playerId).lp, 13);
+    assert.equal(ps.ascensionLottery.kind, 'legendary');
+    assert.equal(ps.ascensionLottery.ids.length, 1);
+    const [id] = ps.ascensionLottery.ids;
+    assert.equal(getRelic(id).tier, 5);
+    assert.deepEqual(ps.relics, [{ id, round: 4 }]);
+    assert.deepEqual(ps.battleInput().relics, [id], 'three matching reel pictures represent one effective collectible');
+    assert.equal(ps.lp, 5);
+    assert.equal(h.m.publicView().players.find((p) => p.playerId === ps.playerId).lp, 5);
+    assert.equal(drawAscensionLottery(ps), null);
+    assert.equal(ps.relics.length, 1);
     h.invariants();
   } finally { h.m.dispose(); }
 });
@@ -87,7 +94,7 @@ test('operator draw ties choose one highest-layer bond and both operators share 
   }
 });
 
-test('relic draw grants two distinct unowned fourth-round collectibles without replacing choice offers', () => {
+test('relic draw grants three distinct unowned collectibles without replacing choice offers', () => {
   const h = setup(seeds.relics);
   try {
     const ps = h.ps('p_0');
@@ -96,12 +103,12 @@ test('relic draw grants two distinct unowned fourth-round collectibles without r
     h.m.startRound(4);
     assert.equal(ps.ascensionLottery.kind, 'relics');
     const ids = ps.ascensionLottery.ids;
-    assert.equal(ids.length, 2); assert.equal(new Set(ids).size, 2);
+    assert.equal(ids.length, 3); assert.equal(new Set(ids).size, 3);
     assert.ok(!ids.includes('relic_003'));
     for (const id of ids) { assert.ok(getRelic(id).tier <= 3); assert.ok(!getRelic(id).multiplayerOnly); }
-    assert.equal(ps.relics.length, 3);
+    assert.equal(ps.relics.length, 4);
     assert.equal(ps.relicOffer, offer);
-    assert.equal(ps.battleInput().relics.length, 3);
+    assert.equal(ps.battleInput().relics.length, 4);
     h.invariants();
   } finally { h.m.dispose(); }
 });
@@ -145,7 +152,7 @@ for (const clientCombat of [false, true]) test(`normal round progression reaches
     h.toPrep(4);
     const reward = h.ps('p_0').ascensionLottery;
     assert.equal(reward.kind, 'relics');
-    assert.equal(reward.ids.length, 2);
+    assert.equal(reward.ids.length, 3);
     h.toPrep(5);
     assert.equal(h.ps('p_0').ascensionLottery, reward);
     h.invariants();
@@ -162,4 +169,39 @@ test('same seed and seat give deterministic rewards', () => {
     }
     assert.deepEqual(draws[0], draws[1]);
   }
+});
+
+test('supply-specific tier weights are exactly 5/65/30 and legendary-only; ordinary drops keep their own weights', () => {
+  assert.deepEqual(LOTTERY_RELIC_WEIGHTS, [5, 65, 30, 0, 0]);
+  assert.deepEqual(LOTTERY_LEGENDARY_WEIGHTS, [0, 0, 0, 0, 100]);
+  assert.deepEqual(dropWeights(4), [60, 28, 12, 0, 0]);
+  for (const [roll, expected] of [[0, 1], [0.04999, 1], [0.05, 2], [0.69999, 2], [0.7, 3], [0.99999, 3]]) {
+    let calls = 0;
+    const rng = () => calls++ === 0 ? roll : 0;
+    assert.equal(pickRelic(4, [], rng, { tierWeights: LOTTERY_RELIC_WEIGHTS }).tier, expected);
+  }
+  assert.equal(pickRelic(4, [], () => 0, { tierWeights: LOTTERY_LEGENDARY_WEIGHTS }).tier, 5);
+});
+
+test('supply pools exclude owned collectibles and never substitute a disallowed tier when exhausted', () => {
+  for (const kind of ['relics', 'legendary']) {
+    const h = setup(seeds[kind]);
+    try {
+      const ps = h.ps('p_0');
+      ps.relics = RELICS.filter((r) => kind === 'relics' ? r.tier <= 3 : r.tier === 5).map((r) => ({ id: r.id, round: 1 }));
+      const count = ps.relics.length;
+      h.m.startRound(4);
+      assert.equal(ps.ascensionLottery.kind, kind);
+      assert.deepEqual(ps.ascensionLottery.ids, []);
+      assert.equal(ps.relics.length, count);
+    } finally { h.m.dispose(); }
+  }
+  const h = setup(seeds.legendary);
+  try {
+    const ps = h.ps('p_0');
+    const only = RELICS.find((r) => r.tier === 5).id;
+    ps.relics = RELICS.filter((r) => r.tier === 5 && r.id !== only).map((r) => ({ id: r.id, round: 1 }));
+    h.m.startRound(4);
+    assert.deepEqual(ps.ascensionLottery.ids, [only]);
+  } finally { h.m.dispose(); }
 });

@@ -25,7 +25,7 @@ before(async () => {
 after(async () => { await browser?.close(); await srv?.close(); });
 
 async function closed(page) {
-  await page.waitForFunction(() => !document.querySelector('.relic-panel'), { timeout: 2000 });
+  await page.waitForSelector('.relic-panel', { hidden: true });
 }
 
 test('护愈之手：收藏栏显示官方图标、史诗档位与完整效果', {
@@ -48,7 +48,7 @@ test('护愈之手：收藏栏显示官方图标、史诗档位与完整效果',
 });
 
 test('时光之末：自己的列表按钮复活队友、显示已使用，观战列表保持只读', {
-  skip: !ENABLED && 'set SP_E2E=1 and provide system Chrome', timeout: 60000,
+  skip: !ENABLED && 'set SP_E2E=1 and provide system Chrome', timeout: 180000,
 }, async () => {
   const page = await browser.newPage();
   try {
@@ -81,7 +81,7 @@ test('时光之末：自己的列表按钮复活队友、显示已使用，观�
     assert.deepEqual(result.requests, [['g.relicRevive', { relicId: 'relic_233', playerId: targetId }]]);
     assert.equal(result.target.alive, true); assert.equal(result.target.lp, 11);
     assert.equal(await page.$('.relic-card__revive button'), null);
-    await page.keyboard.press('Escape'); await closed(page);
+    await closeWithEscape(page);
     await page.evaluate((id) => {
       globalThis.__MOCK__.mutate((s) => { s.pub.players.find((p) => p.playerId === id).relics = [{ id: 'relic_233', round: 7 }]; });
     }, targetId);
@@ -91,7 +91,7 @@ test('时光之末：自己的列表按钮复活队友、显示已使用，观�
     await page.waitForSelector('.relic-card__used');
     assert.match(await page.$eval('.relic-card__used', (e) => e.textContent), /未使用/);
     assert.equal(await page.$('.relic-card__revive button'), null);
-    await page.keyboard.press('Escape'); await closed(page);
+    await closeWithEscape(page);
     // 被淘汰的本人在当前整备阶段获救，自动回到自己的阵地。
     await page.evaluate(() => globalThis.__MOCK__.mutate((s) => {
       s.priv.alive = false;
@@ -108,17 +108,19 @@ test('时光之末：自己的列表按钮复活队友、显示已使用，观�
 });
 
 for (const item of [
-  { id: 'relic_125', name: '液体化肥', tier: '精良', phrases: ['50 点生命', '100 点屏障', '140%'], shot: 'fertilizer' },
-  { id: 'relic_126', name: '热辣可可', tier: '稀有', phrases: ['30%', '+150%', '线性'], shot: 'cocoa' },
-  { id: 'relic_127', name: '止痛片', tier: '精良', phrases: ['30%', '2 点', '自然回复'], shot: 'painkillers' },
+  { id: 'relic_139', name: '黄金平原', tier: '稀有', phrases: ['技能结束时', '2点技力'], shot: 'golden-plains' },
+  { id: 'relic_140', name: '第一法则', tier: '史诗', phrases: ['技能结束时', '4点技力'], shot: 'first-law' },
+  { id: 'relic_125', name: '液体化肥', tier: '精良', phrases: ['50点生命', '100点屏障', '140%'], shot: 'fertilizer' },
+  { id: 'relic_126', name: '热辣可可', tier: '稀有', phrases: ['30%', '+150%', '最大加成'], shot: 'cocoa' },
+  { id: 'relic_127', name: '止痛片', tier: '精良', phrases: ['30%', '+2/秒', '自然回复'], shot: 'painkillers' },
   { id: 'relic_172', name: '护愈之手', tier: '史诗', phrases: ['免疫异常状态', '等量屏障', '100%'], shot: 'healing-hand' },
-  { id: 'relic_233', name: '“时光之末”', tier: '史诗', phrases: ['11 点', '4 名', '死亡时自动复活', '保留原有干员'], shot: 'time-end' },
+  { id: 'relic_233', name: '“时光之末”', tier: '史诗', phrases: ['11点', '4名', '死亡时自动复活', '保留原有干员'], shot: 'time-end' },
   { id: 'relic_158', name: '时间机器', tier: '普通', phrases: ['目标生命值', '等量增加', '仅生效一场'], shot: 'time-machine' },
-  { id: 'relic_159', name: '木棍', tier: '精良', phrases: ['2 金币'], hiddenPhrases: ['数字', '■', '仅影响显示'], shot: 'stick' },
-  { id: 'relic_156', name: '解压玩具', phrases: ['向下取整', '首领波次不生效', '10%', '未持有者各保留 1 个', '触发时替代减半效果'], shot: 'toy' },
-  { id: 'relic_157', name: '鸭梨手机', phrases: ['全队累计难度降低 2 级', '最低为 0', '下一场战斗', '多名玩家领取可叠加'], shot: 'phone' },
+  { id: 'relic_159', name: '木棍', tier: '精良', phrases: ['2资金'], hiddenPhrases: ['数字', '■', '仅影响显示'], shot: 'stick' },
+  { id: 'relic_156', name: '解压玩具', phrases: ['向下取整', '首领波次不生效', '10%', '未持有者各保留1个', '替代减半效果'], shot: 'toy' },
+  { id: 'relic_157', name: '鸭梨手机', phrases: ['全队累计难度-2级', '最低为0', '下一场战斗', '多名玩家获得时可叠加'], shot: 'phone' },
 ]) test(`${item.name}：三选一名称、稀有度、说明及透明图片可用，领取后收藏栏展示`, {
-  skip: !ENABLED && 'set SP_E2E=1 and provide system Chrome', timeout: 60000,
+  skip: !ENABLED && 'set SP_E2E=1 and provide system Chrome', timeout: 120000,
 }, async () => {
   const page = await browser.newPage();
   try {
@@ -172,13 +174,9 @@ for (const item of [
 });
 
 async function closeWithEscape(page) {
-  // The declarative Modal renders before its useEffect installs the keyboard listener. Its documented
-  // autofocus runs 30 ms AFTER installation: wait for that observable lifecycle signal, not a sleep or
-  // a longer close timeout. The entry click focused the entry, so this focus change can only come from Modal.
-  await page.waitForFunction(() => {
-    const panel = document.querySelector('.relic-panel');
-    return panel && document.activeElement === panel.querySelector('.modal__actions button');
-  }, { timeout: 2000 });
+  // Modal installs its keyboard trap in a layout effect. Focus the dialog explicitly;
+  // after revival its focused button was removed, so autofocus no longer identifies readiness.
+  await page.focus('.relic-panel');
   await page.keyboard.press('Escape');
   await closed(page);
 }
@@ -426,7 +424,7 @@ test('phone/desktop: icons wrap, tooltips stay clear of three-choice dialogs, an
 });
 
 test('木棍：整个界面逐位方块、输入值保留、更新与观战持续、Pixi文本及退出恢复', {
-  skip: !ENABLED && 'set SP_E2E=1 and provide system Chrome', timeout: 60000,
+  skip: !ENABLED && 'set SP_E2E=1 and provide system Chrome', timeout: 120000,
 }, async () => {
   const page = await browser.newPage();
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));

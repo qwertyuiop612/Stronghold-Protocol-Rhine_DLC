@@ -5,6 +5,7 @@
 
 import { ROWS, COLS, DOWN_STATE } from '../constants.js';
 import { localOrder, localBefore } from '../dir.js';
+import { isRemMobile } from '../remMobile.js';
 
 export class BattleTiles {
   /** Toggle a ground obstacle (enemies re-read their flow field). `kind` 'block' (default, impassable) | 'crate'. */
@@ -19,6 +20,8 @@ export class BattleTiles {
     const k = r * COLS + c;
     if (this._occ[k] && this._occ[k] !== unit && this._occ[k].alive) return false;
     if (this.downOn(r, c)) return false;
+    delete unit.mem?.remLeg;
+    delete unit.mem?.remPlanAt;
     const anchor = unit.remTransitAnchor;
     const ok = anchor ? anchor[0] * COLS + anchor[1] : unit.tileR * COLS + unit.tileC;
     if (this._occ[ok] === unit) this._occ[ok] = null;
@@ -27,7 +30,7 @@ export class BattleTiles {
     if (unit.obstacle) this.grid.setObstacle(unit.tileR, unit.tileC, false, unit.obstacleKind);
     unit.tileR = r; unit.tileC = c; unit.x = c; unit.y = r;
     unit.ground = this.grid.isLow(r, c) && !this._elevated?.has(k);
-    this._occ[k] = unit;
+    if (!isRemMobile(unit)) this._occ[k] = unit;
     if (unit.obstacle) this.grid.setObstacle(r, c, true, unit.obstacleKind);
     this._refreshRange(unit); // current + base range, CUSTOM_RANGE trigger keys
     return true;

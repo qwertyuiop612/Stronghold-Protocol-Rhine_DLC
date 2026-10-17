@@ -65,9 +65,7 @@
 .room-level { flex: none; width: min(12rem, calc(100% - 1.2rem)); margin: 0 auto .24rem; }
 .room-level .level-picker--integrated { height: 3.4rem; }
 .room-screen.has-level .seats:not(.seats--solo) { grid-template-rows: minmax(0, 1fr); max-height: 4.68rem; padding-top: .24rem; padding-bottom: .24rem; }
-/* The seats shrink while the level picker is open. The avatar keeps the room screen's own sizing
-   (room.css `.seat__art .avatar`, with its short-viewport media queries) — no container queries
-   (test/client-static.test.js forbids @container / container-type / @layer in public/css). */
-.room-screen.has-level .seats:not(.seats--solo) .seat__art { min-height: 0; }
+/* ResizeObserver supplies the art height without container queries (Safari 15 / Firefox ESR). */
+.room-screen.has-level .seats:not(.seats--solo) .seat__art .avatar { --av: min(2.1rem, calc(var(--seat-art-height, 2.1rem) * .85)); }
 .room-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
 .room-bar .dpick__opt { padding: 0 .16rem; }

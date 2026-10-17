@@ -1,8 +1,8 @@
 {
   "name": "stronghold-protocol-rhine-dlc",
-  "version": "0.2.6",
+  "version": "0.3.0",
   "private": true,
-  "description": "基于 sganggs/Stronghold-Protocol v0.2.6 的非官方莱茵、卡兹戴尔与雷姆必拓扩展（含 DLC 战线）：科研装置、众魂、战争巨炮与超限模拟（1–6 人合作）",
+  "description": "基于 sganggs/Stronghold-Protocol v0.3.0 的非官方莱茵、卡兹戴尔与雷姆必拓扩展（含 DLC 战线）：科研装置、众魂、战争巨炮与超限模拟（1–6 人合作）",
   "license": "GPL-3.0-or-later",
   "homepage": "https://github.com/sganggs/Stronghold-Protocol#readme",
   "repository": {
@@ -50,8 +50,10 @@
     "pixi-spine": "^4.0.6",
     "pixi.js": "^7.4.2",
     "preact": "^10.29.8",
+    "ses": "2.3.0",
     "three": "^0.186.1",
-    "ws": "^8.22.0"
+    "ws": "^8.22.0",
+    "acorn": "8.18.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

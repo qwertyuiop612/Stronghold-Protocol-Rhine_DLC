@@ -7,6 +7,24 @@ import { RESIST_STATUSES } from '../buffs.js';
 const KEY = 'relic:collection';
 const healingHandInstalled = new WeakSet();
 const fertilizerInstalled = new WeakSet();
+const skillEndSpInstalled = new WeakSet();
+
+function installSkillEndSp(battle, byPlayer) {
+  const refunds = new Map();
+  for (const [pid, ids] of byPlayer) {
+    const amount = ids.reduce((sum, id) => sum + (getRelic(id).skillEndSp ?? 0), 0);
+    if (amount > 0) refunds.set(pid, amount);
+  }
+  if (!refunds.size || skillEndSpInstalled.has(battle)) return;
+  skillEndSpInstalled.add(battle);
+  // PRTS No.139/140: forced SP recovery bypasses 阻回, retaining the runtime's charge/cost caps.
+  // [ASSUMED] Only a living, deployed operator receives the refund; death/retreat is not a completed cast.
+  battle.on('skillEnd', ({ unit: u, skill, reason }) => {
+    const amount = refunds.get(u?.ownerId);
+    if (!amount || u?.kind !== 'op' || !onField(u) || u.removed || reason === 'death') return;
+    skill.gainSp(amount, 'relic', false, { ignoreLock: true });
+  });
+}
 
 function installFertilizer(battle, owners) {
   if (!owners.size || fertilizerInstalled.has(battle)) return;
@@ -63,6 +81,7 @@ export function install(battle) {
   if (!byPlayer.size) return;
   installHealingHand(battle, new Set([...byPlayer].filter(([, ids]) => ids.includes('relic_172')).map(([pid]) => pid)));
   installFertilizer(battle, new Set([...byPlayer].filter(([, ids]) => ids.includes('relic_125')).map(([pid]) => pid)));
+  installSkillEndSp(battle, byPlayer);
 
   const apply = (unit) => {
     if (!unit || unit.kind !== 'op') return;

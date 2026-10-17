@@ -62,7 +62,8 @@ test('the commands match ci.yml: the run lines, the npm scripts ci.yml calls, th
   // here, so that smoke() in tools/ci.mjs is looked at and this copy updated with it.
   const normalized = smokeRun.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
   assert.deepEqual(normalized, SMOKE_CI_RUN, "ci.yml's smoke step changed: update smoke() in tools/ci.mjs and SMOKE_CI_RUN");
-  // job env: ci.yml's job test env is CI_TEST_ENV; any other job has none (stepEnv gives the tooling steps nothing)
+  // Explicit job env: ci.yml's job test env is CI_TEST_ENV; tooling has no job-specific defaults.
+  // GitHub Actions' implicit runner-level CI=true is tested separately below.
   for (const [job, j] of Object.entries(workflow.jobs)) {
     assert.deepEqual(j.env, job === 'test' ? CI_TEST_ENV : {}, `env of job ${job}`);
   }
@@ -107,11 +108,17 @@ test('arguments: --keep-going, --only (comma list, repeated, = form) in workflow
   assert.throws(() => parseArgs(['--fast']), /unknown option --fast/);
 });
 
-test("env: the job test steps get ci.yml's env for unset keys only; the tooling steps get the caller's env as is", () => {
+test("env: all steps default to GitHub Actions' CI flag; only job test gets ci.yml's browser defaults", () => {
   const test_ = STEPS.find((s) => s.id === 'test');
   const lint = STEPS.find((s) => s.id === 'lint');
-  assert.deepEqual(stepEnv(test_, { PATH: 'p', SP_E2E: '1' }), { PATH: 'p', SP_E2E: '1', SP_REAL_E2E: '0', RENDER_E2E: '0', NO_COLOR: '1' });
-  assert.deepEqual(stepEnv(lint, { PATH: 'p' }), { PATH: 'p' });
+  assert.deepEqual(stepEnv(test_, { PATH: 'p', SP_E2E: '1' }), { PATH: 'p', CI: 'true', SP_E2E: '1', SP_REAL_E2E: '0', RENDER_E2E: '0', NO_COLOR: '1' });
+  assert.deepEqual(stepEnv(lint, { PATH: 'p' }), { PATH: 'p', CI: 'true' });
+  for (const step of STEPS) {
+    const base = { CI: undefined, SP_E2E: '1' };
+    assert.equal(stepEnv(step, base).CI, 'true', step.id);
+    assert.equal(base.CI, undefined, 'the caller env is not mutated');
+    for (const CI of ['', '0', 'false', 'true']) assert.equal(stepEnv(step, { CI }).CI, CI, `${step.id}: explicit CI=${CI}`);
+  }
 });
 
 test('summary: one row per step (status, name, duration, note), the failed steps named; durations', () => {

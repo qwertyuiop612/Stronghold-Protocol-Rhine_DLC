@@ -29,6 +29,16 @@ function makeFx(views) {
   return { fx, settings };
 }
 
+test('damage bitmap fonts support both the DLC number mask and upstream MISS labels', () => {
+  const calls = [];
+  const original = fake.P.BitmapFont.from;
+  fake.P.BitmapFont.from = (name, style, options) => { calls.push({ name, chars: options.chars }); };
+  try { FX.ensureDamageFonts(); } finally { fake.P.BitmapFont.from = original; }
+  assert.ok(calls.length > 0);
+  assert.ok(calls.every(c => c.chars.some(chars => typeof chars === 'string' && chars.includes('■'))));
+  assert.ok(calls.find(c => c.name === 'sp-dmg-miss').chars.includes('MISS'));
+});
+
 test('official mode hides ordinary hits and heals, and draws a marked red number without merging', () => {
   const v = unit(1, 4, 9);
   const { fx, settings } = makeFx([v]);

@@ -76,7 +76,7 @@ test('shop slots per level (+ the item slot), buy prices by tier, SOLD_OUT, NO_F
   h.toPrep(1);
   const m = h.m;
   const ps = h.ps('p_0');
-  const counts = { 1: 3, 2: 4, 3: 4, 4: 5, 5: 5, 6: 5 };
+  const counts = { 1: 4, 2: 5, 3: 5, 4: 6, 5: 6, 6: 6 };
   for (let lv = 1; lv <= 6; lv++) {
     ps.shop.level = lv;
     ps.rollShop();
@@ -120,52 +120,55 @@ test('shop slots per level (+ the item slot), buy prices by tier, SOLD_OUT, NO_F
   m.dispose();
 });
 
-test('two extra operator slots unlock in R9, keep frozen offers, and support purchases and refreshes', () => {
-  for (const modeId of ['mode_single_funny', 'mode_multi_normal', 'mode_multi_abyss']) {
+test('every mode gains one operator slot initially, another in R4, and another in R9; item slots stay unchanged', () => {
+  for (const [modeId, mode] of Object.entries(DATA.config.modes)) {
     const gd = new GameData(DATA, modeId);
     for (let level = 1; level <= 6; level++) {
-      const base = gd.shopSlots(level, 1);
-      assert.deepEqual(gd.shopSlots(level, 8), base);
-      for (const round of [9, 10, 15]) {
-        assert.deepEqual(gd.shopSlots(level, round), { chess: base.chess + 2, item: base.item });
+      const base = mode.shopSlots[level];
+      assert.deepEqual(gd.shopSlots(level), { chess: base.chess + 1, item: base.item });
+      for (const [round, extra] of [[1, 1], [3, 1], [4, 2], [8, 2], [9, 3], [10, 3], [15, 3]]) {
+        assert.deepEqual(gd.shopSlots(level, round), { chess: base.chess + extra, item: base.item }, `${modeId} L${level} R${round}`);
       }
     }
   }
+});
+
+for (const round of [4, 9]) test(`R${round} adds one operator slot, keeps frozen offers, and supports purchases and refreshes`, () => {
   const h = makeMatch({ mode: 'solo', seed: 8 }).start();
   h.toPrep(1);
   const m = h.m;
   const ps = h.ps('p_0');
   try {
-    m.round = 8;
-    ps.startRound(8);
+    assert.deepEqual(ps.shop.layout, { chess: 4, item: 1 }, 'the initial bonus is already filled');
+    m.round = round - 1;
+    ps.startRound(round - 1);
     const before = { ...ps.shop.layout };
     assert.deepEqual(m.handle('p_0', { t: 'g.freeze' }), { ok: true });
     const kept = ps.shop.slots.map((s) => s.id);
     ps.clearUnfrozenShop();
-    m.round = 9;
-    ps.startRound(9);
-    assert.deepEqual(ps.shop.layout, { chess: before.chess + 2, item: before.item });
+    m.round = round;
+    ps.startRound(round);
+    assert.deepEqual(ps.shop.layout, { chess: before.chess + 1, item: before.item });
     assert.deepEqual(ps.shop.slots.slice(0, before.chess).map((s) => s.id), kept.slice(0, before.chess));
-    assert.deepEqual(ps.shop.slots.slice(before.chess + 2).map((s) => s.id), kept.slice(before.chess));
+    assert.deepEqual(ps.shop.slots.slice(before.chess + 1).map((s) => s.id), kept.slice(before.chess));
     assert.ok(ps.shop.slots.every((s) => s && !s.frozen));
-    assert.equal(ps.privateView().shop.slots.length, before.chess + before.item + 2);
+    assert.equal(ps.privateView().shop.slots.length, before.chess + before.item + 1);
     ps.funds = 100;
-    for (const slot of [before.chess, before.chess + 1]) {
-      const funds = ps.funds;
-      const price = ps.privateView().shop.slots[slot].price;
-      assert.deepEqual(m.handle('p_0', { t: 'g.buy', slot }), { ok: true });
-      assert.equal(ps.funds, funds - price);
-      assert.equal(ps.shop.slots[slot].sold, true);
-    }
+    const slot = before.chess;
+    const funds = ps.funds;
+    const price = ps.privateView().shop.slots[slot].price;
+    assert.deepEqual(m.handle('p_0', { t: 'g.buy', slot }), { ok: true });
+    assert.equal(ps.funds, funds - price);
+    assert.equal(ps.shop.slots[slot].sold, true);
     assert.deepEqual(m.handle('p_0', { t: 'g.refresh' }), { ok: true });
-    assert.equal(ps.shop.slots.length, before.chess + before.item + 2);
+    assert.equal(ps.shop.slots.length, before.chess + before.item + 1);
     assert.ok(ps.shop.slots.every((s) => s && !s.sold));
     assert.deepEqual(m.handle('p_0', { t: 'g.levelUp' }), { ok: true });
     assert.deepEqual(m.handle('p_0', { t: 'g.refresh' }), { ok: true });
-    assert.deepEqual(ps.shop.layout, m.gd.shopSlots(ps.shop.level, 9));
-    m.round = 10;
-    ps.startRound(10);
-    assert.deepEqual(ps.shop.layout, m.gd.shopSlots(ps.shop.level, 10));
+    assert.deepEqual(ps.shop.layout, m.gd.shopSlots(ps.shop.level, round));
+    m.round = round + 1;
+    ps.startRound(round + 1);
+    assert.deepEqual(ps.shop.layout, m.gd.shopSlots(ps.shop.level, round + 1));
     checkInvariants(m);
   } finally {
     m.dispose();
@@ -205,14 +208,28 @@ test('refresh: 1 fund, free refreshes first, rerolls every slot; freeze: one tog
   assert.deepEqual(ps.shop.slots.slice(1, keep.length + 1).map((s) => s && s.id), keep);
   assert.equal(ps.shop.frozen, false, 'the freeze is consumed at the round start');
   assert.ok(ps.shop.slots.every((s) => !s || !s.frozen));
-  // refresh while frozen rerolls everything; the new slots stay frozen until the next round
+  // a refresh that fails (no funds, no free refresh) leaves the freeze on (GitHub #584)
   m.handle('p_0', { t: 'g.freeze' });
+  ps.funds = 0; ps.shop.freeRefreshes = 0;
+  assert.deepEqual(m.handle('p_0', { t: 'g.refresh' }), { error: ERR.NO_FUNDS });
+  assert.equal(ps.shop.frozen, true, 'a failed refresh keeps the freeze');
+  assert.ok(ps.shop.slots.every((s) => !s || s.sold || s.frozen));
+  // a manual refresh while frozen rerolls everything and cancels the freeze: the new cards are not frozen (official)
   ps.funds = 50;
   const before = ps.shop.slots.map((s) => s && s.id).join();
-  let changed = false;
+  assert.deepEqual(m.handle('p_0', { t: 'g.refresh' }), { ok: true });
+  assert.equal(ps.shop.frozen, false, 'the refresh cancels the freeze');
+  assert.ok(ps.shop.slots.every((s) => !s || !s.frozen), 'the new cards are not frozen');
+  assert.equal(ps.funds, 50 - h.m.gd.refreshPrice);
+  let changed = ps.shop.slots.map((s) => s && s.id).join() !== before;
   for (let i = 0; i < 5 && !changed; i++) { m.handle('p_0', { t: 'g.refresh' }); changed = ps.shop.slots.map((s) => s && s.id).join() !== before; }
-  assert.ok(changed, 'refresh rerolls frozen slots');
-  assert.ok(ps.shop.slots.every((s) => !s || s.frozen));
+  assert.ok(changed, 'refresh rerolls the frozen slots');
+  // a free refresh cancels it too
+  m.handle('p_0', { t: 'g.freeze' });
+  ps.shop.freeRefreshes = 1;
+  assert.deepEqual(m.handle('p_0', { t: 'g.refresh' }), { ok: true });
+  assert.equal(ps.shop.frozen, false, 'a free refresh cancels the freeze as well');
+  assert.ok(ps.shop.slots.every((s) => !s || !s.frozen));
   m.dispose();
 });
 
@@ -236,18 +253,17 @@ test('selling: +1 (normal and elite, board or hand), items return to the hand, i
   assert.ok(!ps.hand.some((p) => p && p.uid === it.uid));
   assert.equal(ps.funds, 1, 'destroying pays nothing');
   assert.deepEqual(m.handle('p_0', { t: 'g.sell', uid: 424242 }).error, ERR.BAD_TARGET);
-  // a board chess carrying equipment is not sold while neither the hand nor the temp slots can take the equipment back
+  // Returned equipment queues even when the visible bench cannot fit both items.
   const b = give(m, ps, chessOfTier(4).find((x) => m.pool.has(x)), 'board', [10, 3]);
   b.items.push(ps.newPiece('item', 'chess_item_1_01_e_a'), ps.newPiece('item', 'chess_item_3_03_e_a'));
   const fill = chessOfTier(1).filter((x) => m.pool.has(x));
   for (let i = 0; ps.hand.some((p) => p == null); i++) give(m, ps, fill[i]);
   const fill2 = chessOfTier(2).filter((x) => m.pool.has(x));
   for (let i = 0; i < 4; i++) give(m, ps, fill2[i], 'temp');
-  assert.equal(m.handle('p_0', { t: 'g.sell', uid: b.uid }).error, ERR.HAND_FULL, '2 items, 1 free temp slot');
-  assert.ok(ps.find(b.uid) && b.items.length === 2, 'nothing lost');
-  ps.resolveTemp();
+  const returned = [...b.items];
   assert.deepEqual(m.handle('p_0', { t: 'g.sell', uid: b.uid }), { ok: true });
-  assert.equal(ps.temp.filter(Boolean).length, 2, 'the equipment overflowed into temp');
+  assert.equal(ps.temp.filter(Boolean).length, 6, 'both items retained beyond the five visible slots');
+  for (const item of returned) assert.equal(ps.find(item.uid).piece, item);
   checkInvariants(m);
   m.dispose();
 });

@@ -15,7 +15,8 @@
 //   lint       eslint .                                   (npm run lint; warnings do not fail it)
 //   imports    node tools/check-imports.mjs               (npm run check:imports)
 //   typecheck  tsc --noEmit --checkJs -p jsconfig.json    (npm run typecheck)
-// The job `test` steps get ci.yml's env (SP_E2E=0, SP_REAL_E2E=0, RENDER_E2E=0, NO_COLOR=1) unless already set.
+// Every step defaults CI=true (GitHub Actions' implicit runner env), unless the caller already set it.
+// The job `test` steps also get ci.yml's env (SP_E2E=0, SP_REAL_E2E=0, RENDER_E2E=0, NO_COLOR=1) unless already set.
 //
 // Not mirrored: actions/checkout and actions/setup-node (GitHub runner setup) and `npm ci` (the install — run it
 // yourself; replacing node_modules is not a check). The OS × Node matrix is whatever this machine has.
@@ -188,9 +189,10 @@ export function selectSteps(only) {
   return only ? STEPS.filter((s) => only.includes(s.id)) : STEPS.slice();
 }
 
-/** A child's env: `base` plus ci.yml's job env for the keys `base` does not set. */
+/** A child's env: `base` plus GitHub Actions' implicit CI flag and ci.yml's job env for unset keys. */
 export function stepEnv(step, base = process.env) {
   const env = { ...base };
+  if (env.CI === undefined) env.CI = 'true';
   if (step.ci.job === 'test') for (const [k, v] of Object.entries(CI_TEST_ENV)) if (env[k] === undefined) env[k] = v;
   return env;
 }

@@ -68,6 +68,9 @@ for (const clientCombat of [false, true]) {
     assert.equal(m.sp.family, 'bounty');
     assert.equal(m.spTurn(), 'p_0');
     assert.equal(m.sp.cards[0].name, '悬赏·持续III');
+    // Isolate the bounty-view regression from rewards earned while reaching R3:
+    // the DLC toy can redistribute and split ordinary spawn groups in the preview.
+    for (const ps of m.order) { ps.relics = []; ps.recompute(); }
     for (const pid of ['p_1', S]) assert.deepEqual(m.handle(pid, { t: 'g.watch', fieldId: 'n:p_0' }), { ok: true });
     h.flushAll();
     const before = h.lastTo(S, 'm.field');
@@ -82,14 +85,17 @@ for (const clientCombat of [false, true]) {
       assert.deepEqual(after.units, before.units, 'no board, hand or temp piece changed');
       assert.deepEqual(after.effects.map((e) => e.name), [...before.effects.map((e) => e.name), '悬赏·持续III']);
       assert.deepEqual(after.nextEnemies.filter((e) => e.tag === 'bounty').map((e) => [e.enemyKey, e.count]), [['enemy_1272_nhtank', 1]]);
-      // the DLC relic-wave redistribution can split the same enemy key into a further action after the choice:
-      // what must hold is that the wave's own enemy total stays put, every wave enemy stays previewed and the
-      // choice adds exactly its bounty.
-      const sum = (list) => list.filter((e) => e.tag !== 'bounty').reduce((n, e) => n + e.count, 0);
-      assert.equal(sum(after.nextEnemies), sum(before.nextEnemies), 'the choice does not change the wave total');
-      const waveKeys = (list) => new Set(list.filter((e) => e.tag !== 'bounty').map((e) => e.enemyKey));
-      const beforeKeys = waveKeys(before.nextEnemies);
-      for (const key of waveKeys(after.nextEnemies)) assert.ok(beforeKeys.has(key), `${key} stays a wave enemy`);
+      // Bounties re-time and split the host spawn action (withBounties); ordinary
+      // enemy identities, gates and totals are conserved even when preview rows change.
+      const counts = (rows) => {
+        const out = new Map();
+        for (const { enemyKey, gate, fly, elite, boss, source, tag, count } of rows) {
+          const key = JSON.stringify([enemyKey, gate, fly, elite, boss, source, tag]);
+          out.set(key, (out.get(key) || 0) + count);
+        }
+        return [...out].sort(([a], [b]) => a.localeCompare(b));
+      };
+      assert.deepEqual(counts(after.nextEnemies.filter((e) => e.tag !== 'bounty')), counts(before.nextEnemies));
       assert.deepEqual(after, m.prepFieldMeta(h.ps('p_0')), 'the watcher receives the current public view');
       assert.equal(Object.hasOwn(after, 'funds'), false);
       assert.equal(Object.hasOwn(after, 'shop'), false);

@@ -29,7 +29,7 @@
 .guide__head { display: flex; align-items: center; gap: .3rem; min-height: .62rem; }
 .guide__titles { display: flex; flex-direction: column; gap: .02rem; min-width: 2.4rem; }
 .guide__title { margin: 0; font-size: calc(.3 * var(--t)); font-weight: 900; letter-spacing: .12em; color: var(--text-hi); line-height: 1.1; }
-.guide__chapters { display: flex; gap: .06rem; margin: 0 auto; }
+.guide__chapters { display: flex; gap: .06rem; margin: 0 auto; min-width: 0; }
 .guide__chapter {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .01rem;
   min-width: 1.5rem; height: .56rem; padding: 0 .22rem;

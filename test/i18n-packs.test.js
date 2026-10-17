@@ -16,7 +16,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
-import { APP_VERSION } from '../shared/constants.js';
+import { APP_VERSION, DIFFICULTY_RULES } from '../shared/constants.js';
 import {
   t, tc, tParts, setLang, getLang, addMessages, setMessages, setI18nWarn, registerLangs, getLangs, langChain, langInfo, normalizeLang,
   checkTranslation, parsePluralForms, pluralCategory, format,
@@ -39,7 +39,24 @@ const MT_NOTE = '当前语言的界面文字为机器翻译，可能不够准确
 afterEach(() => {
   setLang('zh');
   setI18nWarn(null);
-  for (const l of ['en', 'qaa', 'qab', 'pt', 'pt-BR', 'zh-TW', 'ru']) setMessages(l, {});
+  for (const l of ['en', 'ja', 'ko', 'qaa', 'qab', 'pt', 'pt-BR', 'zh-TW', 'ru']) setMessages(l, {});
+});
+
+test('Ascension descriptions follow the active language after the shared rules have loaded', () => {
+  const first = DIFFICULTY_RULES[0];
+  const chinese = first.description;
+  const params = JSON.stringify(DIFFICULTY_RULES.map(rule => rule.params));
+  const msgid = '所有非领袖单位登场后{duration}秒内移动速度+{percent}%，被阻挡时失去该效果';
+  for (const code of ['en', 'ja', 'ko', 'zh-TW']) {
+    const pack = JSON.parse(fs.readFileSync(path.join(ROOT, `public/i18n/${code}.json`), 'utf8'));
+    addMessages(code, pack);
+    setLang(code);
+    assert.equal(first.description, format(pack[msgid], { duration: 5, percent: 50 }), code);
+    assert.notEqual(first.description, chinese, `${code} must not retain the initial Chinese description`);
+    assert.equal(JSON.stringify(DIFFICULTY_RULES.map(rule => rule.params)), params, 'language changes keep the rules unchanged');
+  }
+  setLang('zh');
+  assert.equal(first.description, chinese, 'switching back restores Chinese');
 });
 
 const tmpdir = (tag) => fs.mkdtempSync(path.join(os.tmpdir(), `sp-packs-${tag}-`));

@@ -4,6 +4,39 @@ import { RESIST_STATUSES } from './buffs.js';
 import { hypot } from './detmath.js';
 
 const P = Object.fromEntries(DIFFICULTY_RULES.map(r => [r.key, r.params]));
+const negativeStatuses = new Set([...RESIST_STATUSES, 'palsy', 'fragile', 'artsFragile', 'physFragile', 'elemFragile',
+  'weaken', 'aspdDown', 'defDown', 'resDown', 'reveal', 'burnBurst', 'neuralBurst', 'necrosisBurst', 'apoptosisBurst', 'erosionBurst']);
+const negativeFlags = ['stun', 'freeze', 'sleep', 'silence', 'disarm', 'fear', 'cold', 'reveal', 'bind', 'noHeal',
+  'noMove', 'noSp', 'noBlock', 'tremble', 'attract', 'levitate', 'groundbind', 'isolated', 'healFree'];
+const negativeAdd = ['atkFlat', 'atkPct', 'atkFinal', 'defFlat', 'defPct', 'hpFlat', 'hpPct', 'resFlat', 'aspd',
+  'blockCnt', 'rangeExtend', 'moveFlat', 'massFlat', 'hpRegen', 'hpRegenRatio', 'spRecoveryFlat', 'dodgePhys', 'dodgeArts'];
+const negativeMul = ['atkMul', 'defMul', 'hpMul', 'resMul', 'moveMul', 'dmgDealtMul', 'physDealtMul', 'artsDealtMul',
+  'atkScaleMul', 'healingDealtMul', 'healingTakenMul', 'spRecoveryMul'];
+const negativeIncrease = ['batPct', 'spCostFlat', 'redeployMul', 'dmgTakenMul', 'physTakenMul', 'artsTakenMul',
+  'trueTakenMul', 'elemTakenMul', 'elementalTakenMul'];
+
+// [ASSUMED] The DLC has no official debuff catalogue: classify harmful statuses, stat changes and tagged DoTs.
+// Enemy-authored forms/passives and field state are not operator debuffs. Permanent effects have no timer to shorten.
+function isTimedDebuff(effect) {
+  if (!Number.isFinite(effect.timeLeft) || !(effect.timeLeft > 0)) return false;
+  if (effect.source?.side === 'enemy' || effect.flags?.selfBound || effect.key.startsWith('terrain:')) return false;
+  if (negativeStatuses.has(effect.status ?? effect.key) || effect.tags.includes('dot')) return true;
+  if (negativeFlags.some(k => effect.flags?.[k])) return true;
+  const m = effect.mods;
+  return !!m && (negativeAdd.some(k => m[k] < 0) || negativeMul.some(k => m[k] < 1)
+    || negativeIncrease.some(k => m[k] > (k.endsWith('Mul') ? 1 : 0)));
+}
+
+function shortenDebuffs(b, target) {
+  const remaining = 1 - P.debuffDecay.reduction;
+  for (const effect of target.buffs) if (isTimedDebuff(effect)) {
+    effect.timeLeft *= remaining;
+    // Strongest-value effects may resume weaker applications with absolute expiry times.
+    for (let tail = effect.data.tail; tail; tail = tail.tail) {
+      if (Number.isFinite(tail.until) && tail.until > b.time) tail.until = b.time + (tail.until - b.time) * remaining;
+    }
+  }
+}
 const leader = e => e.isBoss || e.bossPool || e.def.rank === 'BOSS';
 const ordinary = e => e.side === 'enemy' && !e.isBoss && !e.bossPool && e.def.rank === 'NORMAL' && e.tag !== 'part';
 const op = u => u?.side === 'ally' && u.kind === 'op';
@@ -23,20 +56,6 @@ export function guardDifficultyDamage(b, source, target, amount, dmg) {
     b.removeBuff(target, 'asc:first');
     fx(b, 'shieldBreak', target);
     first = true;
-  }
-  const relay = target.difficultyRelay;
-  if (relay && b.time < relay.until) {
-    // A summon and its operator are one participant. Unowned/environmental damage cannot unlock a relay.
-    let owner = source;
-    for (let i = 0; owner?.ownerUnit && i < 16; i++) owner = owner.ownerUnit;
-    const id = op(owner) ? owner.id : null;
-    if (id != null && relay.sourceId == null) relay.sourceId = id;
-    else if (id != null && relay.sourceId !== id) {
-      target.difficultyRelay = null;
-      b.removeBuff(target, 'asc:relay');
-      fx(b, 'shieldBreak', target);
-    }
-    if (target.difficultyRelay) return 0;
   }
   if (first) return 0;
   if (rules.escort && ['phys', 'arts', 'true'].includes(dmg.type)
@@ -139,7 +158,11 @@ export function installDifficulty(b) {
     }
   });
   if (rules.skillFatigue) b.on('skillEnd', ({ unit: u, reason }) => {
-    if (op(u) && u.alive && reason !== 'death') buff(b, u, 'fatigue', null, P.skillFatigue.duration, { noSp: true });
+    if (!op(u) || !u.alive || reason === 'death') return;
+    const p = P.skillFatigue, reduction = b.round > p.afterRound ? p.lateReduction : p.reduction;
+    // [ASSUMED] Repeated triggers refresh all stacks together, using the engine's additive stacking convention.
+    b.addBuff(u, { key: 'asc:fatigue', mods: { atkPct: -reduction }, duration: p.duration,
+      refresh: 'stack', maxStacks: p.maxStacks, visible: true });
   });
   if (rules.skillDebt) b.on('skillStart', ({ unit: u }) => {
     if (op(u)) buff(b, u, 'debt', { healingTakenMul: 0 }, P.skillDebt.duration);
@@ -157,18 +180,22 @@ export function installDifficulty(b) {
     });
   });
   if (rules.goalStealth) b.every(0.25, () => {
-    for (const e of b.aliveEnemies()) if (ordinary(e) && e.motion !== 'FLY' && !e.hidden
-        && b.remainingDistance(e) < P.goalStealth.distance) {
-      if (!e.findBuff('asc:goal')) buff(b, e, 'goal', null, Infinity, { stealth: true });
-    }
-  });
-  if (rules.relay) b.every(P.relay.period, () => {
     for (const e of b.aliveEnemies()) {
-      const relay = { sourceId: null, until: b.time + P.relay.duration };
-      e.difficultyRelay = relay;
-      b.addBuff(e, { key: 'asc:relay', duration: P.relay.duration, flags: { ascensionShield: true }, visible: true,
-        onExpire: () => { if (e.difficultyRelay === relay) e.difficultyRelay = null; } });
-      fx(b, 'ascRelay', e);
+      // Match the enemy-side exclusions in _checkBlock, including temporary unblockable states.
+      const f = e.s.flags;
+      if (f.unblockable || f.levitate || f.fear || f.sleep) {
+        b.removeBuff(e, 'asc:goal');
+        continue;
+      }
+      if (ordinary(e) && e.motion !== 'FLY' && !e.hidden && b.remainingDistance(e) < P.goalStealth.distance) {
+        if (!e.findBuff('asc:goal')) buff(b, e, 'goal', null, Infinity, { stealth: true });
+      }
     }
   });
+  if (rules.debuffDecay) b.on('damaged', ({ target, amount, type, dmg }) => {
+    // HP loss is not damage; gauge fills and fully absorbed/cancelled hits do not trigger this protocol.
+    if (target.side === 'enemy' && target.hp > 0 && amount > 0 && type !== 'element' && !dmg?.tags?.includes('hpLoss')) {
+      shortenDebuffs(b, target);
+    }
+  }, { priority: -1000 });
 }

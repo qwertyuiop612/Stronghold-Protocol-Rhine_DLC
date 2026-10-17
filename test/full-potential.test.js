@@ -87,8 +87,9 @@ test('every chess, 自选 form and stand-in form: the raw keyframes plus every p
     n++;
     if (Object.keys(steps(c.charId)).length) withSteps++;
   }
-  // 258 upstream chess; the Rhine/Kazdel expansion adds its own (all compiled by the same generator)
-  assert.ok(n >= 258, `${n} non-自选 chess with a character`);
+  // the corpus of this fork: the official 258 records plus the Rhine/Kazdel/Rem extension records that map onto an
+  // official character (42 more — the count guards against a silent corpus change either way)
+  assert.equal(n, 300);
   assert.ok(withSteps >= 220, `chess with potential steps: ${withSteps}`);
   let forms = 0;
   for (const [charId, u] of Object.entries(backups.units)) {
@@ -110,9 +111,9 @@ test('talent candidates: every chess talent is the last one unlocked at its stat
   let potentialTalents = 0;
   for (const c of Object.values(chess)) {
     if (c.isDiy || !c.charId) continue;
-    // the Rhine/Kazdel chess carry the expansion's own talent blackboards (梅尔's device layers, 伊芙利特's
-    // ATK inheritance …), so the official candidate list is not their source of truth
-    if (String(c.chessId).startsWith('chess_rhine_') || String(c.chessId).startsWith('chess_kazdel_')) continue;
+    // the Rhine line retunes 梅尔 (char_242_otter) to 1–2 机械水獭 for its own mode (tools/rhine-data.mjs), so the
+    // record deliberately differs from the official 3/4/5 candidates
+    if (c.charId === 'char_242_otter') continue;
     const base = c.talentsBase ?? c.talents;
     (CT[c.charId].talents || []).forEach((t, index) => {
       const cands = (t.candidates || []).filter((x) => ok(x, c.status.phase, c.status.level));

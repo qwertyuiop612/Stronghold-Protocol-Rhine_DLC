@@ -1,6 +1,5 @@
-// Real production Match + Battle, legal normal intents from an empty board. Seed 216 fixes the shop/wave route
-// (upstream's seed 8 works on upstream's smaller roster; this fork's Rhine/Kazdel/Rem/DLC additions move the
-// tier-1 and tier-2 rolls, so the route looks the two operators up by id instead of by slot).
+// Real production Match + Battle, legal intents from an empty board. Seed 673 retains Rockrock under the current
+// opening bans and fixes a shop/wave route with a real knockout, band revival and a fresh hit on the same enemy.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Battle } from '../../server/sim/Battle.js';
@@ -11,7 +10,7 @@ test('Rockrock killed by a real enemy and automatically revived by Ermengard sta
   class ObservedBattle extends Battle {
     constructor(opts) {
       super(opts);
-      const log = { round: opts.round, deaths: [], deploys: [], firstHits: [] };
+      const log = { round: opts.round, deaths: [], deploys: [], firstHits: [], hits: [] };
       observed.push(log);
       const seen = new Set(), launches = new Map();
       this.on('death', c => {
@@ -33,6 +32,7 @@ test('Rockrock killed by a real enemy and automatically revived by Ermengard sta
       this.on('damaged', c => {
         const u = c.source;
         const launch = launches.get(c.dmg?.attackId);
+        if (u?.defId === 'chess_char_2_10_a' && launch) log.hits.push({ t: this.time, seq: launch.seq });
         if (u?.defId !== 'chess_char_2_10_a' || seen.has(u.deploySeq) || launch?.seq !== u.deploySeq) return;
         seen.add(u.deploySeq);
         log.firstHits.push({ t: this.time, launchAt: launch.t, seq: u.deploySeq, target: c.target.id,
@@ -40,26 +40,34 @@ test('Rockrock killed by a real enemy and automatically revived by Ermengard sta
       });
     }
   }
-  const h = makeMatch({ mode: 'solo', seed: 216 });
+  const h = makeMatch({ mode: 'solo', seed: 673 });
   h.m.BattleClass = ObservedBattle; // read-only observers, no combat state writes
   const p = h.ps('p_0'), act = msg => assert.deepEqual(h.m.handle('p_0', msg), { ok: true });
-  const slotOf = (id) => { const i = p.shop.slots.findIndex((s) => s.id === id); assert.ok(i >= 0, `${id} is offered`); return i; };
   try {
+    assert.ok(h.m.pool.has('chess_char_2_10_a'), 'the fixed setup keeps Rockrock available under the opening bans');
     h.start().toPrep(1, { band: 'band_ermengard' });
-    act({ t: 'g.buy', slot: slotOf('chess_char_1_09_a') });
+    act({ t: 'g.buy', slot: 0 });
     act({ t: 'g.move', uid: p.hand.find(x => x?.id === 'chess_char_1_09_a').uid,
       to: { area: 'board', row: 12, col: 6 }, dir: 'RIGHT' });
     h.toPrep(2, { band: 'band_ermengard' });
     act({ t: 'g.levelUp' });
     h.toPrep(5, { band: 'band_ermengard' });
-    act({ t: 'g.buy', slot: slotOf('chess_char_2_10_a') });
+    // The staged shop expansion changes the draws, so the fixed slot index is gone; find Rockrock in this round's
+    // slots (paid refreshes are allowed) — when slot 0 already offers him this is the same route as before.
+    const rockrockSlot = () => p.shop.slots.findIndex(s => s?.id === 'chess_char_2_10_a');
+    while (rockrockSlot() < 0 && p.funds > p.gd.chessPrice('chess_char_2_10_a')) act({ t: 'g.refresh' });
+    assert.ok(rockrockSlot() >= 0, 'Rockrock is offered within the round\'s refresh budget');
+    act({ t: 'g.buy', slot: rockrockSlot() });
     act({ t: 'g.move', uid: p.hand.find(x => x?.id === 'chess_char_2_10_a').uid,
       to: { area: 'board', row: 12, col: 8 }, dir: 'RIGHT' });
     h.toPrep(7, { band: 'band_ermengard' });
     const log = observed.find(x => x.round === 6);
     assert.ok(log?.deaths.length > 0);
+    // a drone launched before the knockout still lands and steps the new ramp (professions.js installFunnel), so a pair
+    // with such a landing from the knockout's tick to the fresh drone's hit says nothing about the reset
+    const stale = (d, hit) => log.hits.some(x => x.seq <= d.seq && x.t >= d.t && x.t <= hit.t);
     const paired = log.deaths.map(d => ({ death: d, hit: log.firstHits.find(x => x.seq > d.seq) }))
-      .filter(x => x.hit && x.death.target === x.hit.target && x.death.scale > 0.2);
+      .filter(x => x.hit && x.death.target === x.hit.target && x.death.scale > 0.2 && !stale(x.death, x.hit));
     assert.ok(paired.length > 0, JSON.stringify(log));
     for (const { death, hit } of paired) {
       assert.equal(death.reason, 'killed');

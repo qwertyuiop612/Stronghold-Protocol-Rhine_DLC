@@ -26,6 +26,8 @@ export async function prepareCustomRelicIcons(assetsRoot) {
 }
 
 export const RELIC_ICON_FILES = Object.freeze({
+  "relic_139": "rogue_6_relic_fight_27.png", // 黄金平原，No.139，核对于 2026-10-14
+  "relic_140": "rogue_6_relic_fight_28.png", // 第一法则，No.140
   "relic_125": "rogue_6_relic_fight_13.png", // 液体化肥，No.125，核对于 2026-10-14
   "relic_126": "rogue_6_relic_fight_14.png", // 热辣可可，No.126
   "relic_127": "rogue_6_relic_fight_15.png", // 止痛片，No.127

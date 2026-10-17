@@ -43,6 +43,55 @@ test('all 21 levels inherit ultimate stats and unlock exactly one unique cumulat
   for (const r of DIFFICULTY_RULES) assert.ok(r.description && r.counter);
 });
 
+test('level 10 armor parameters and picker description use a 12-second rotation', () => {
+  const armor = DIFFICULTY_RULES.find(r => r.key === 'rotatingArmor');
+  assert.equal(armor.level, 10);
+  assert.deepEqual(armor.params, { period: 12, taken: 0.9 });
+  assert.equal(armor.description, '所有敌人受到的物理或法术伤害-10%，减伤类型每12秒轮转一次（初始为物理减伤）');
+});
+
+test('level 15 fatigue parameters and description specify ATK loss, round scaling and two stacks', () => {
+  const fatigue = DIFFICULTY_RULES.find(r => r.key === 'skillFatigue');
+  assert.equal(fatigue.level, 15);
+  assert.deepEqual(fatigue.params, { duration: 10, reduction: 0.08, lateReduction: 0.15, afterRound: 10, maxStacks: 2 });
+  assert.equal(fatigue.description, '所有我方干员技能结束后的10秒内攻击力降低8%（第10回合后改为15%），最多叠加2层');
+  assert.equal(fatigue.detail, '重复触发时刷新持续时间，叠层按加算结算');
+  assert.equal(difficultyEffects(14).skillFatigue, false);
+  assert.equal(difficultyEffects(15).skillFatigue, true);
+});
+
+test('serialized battle round preserves level 15 fatigue scaling in both runtimes', () => {
+  for (const round of [10, 11]) {
+    const { spec } = battle(15, { round });
+    for (const input of [spec, JSON.parse(JSON.stringify(spec))]) {
+      const b = createBattleFromSpec(input, data, { quiet: true });
+      b.start();
+      const a = b.allyUnits[0], atk = a.s.atk;
+      b.emit('skillEnd', { unit: a, reason: 'duration' });
+      assert.equal(b.round, round);
+      assert.equal(a.s.atk, atk * (1 - (round > 10 ? 0.15 : 0.08)));
+      assert.equal(a.findBuff('asc:fatigue').duration, 10);
+      assert.equal(!!a.s.flags.noSp, false);
+      assert.deepEqual(b.errors, []);
+    }
+  }
+});
+
+test('level 19 keeps its effect description and explains unblockable exclusion only in the tooltip', () => {
+  const stealth = DIFFICULTY_RULES.find(r => r.key === 'goalStealth');
+  assert.equal(stealth.description, '所有普通地面敌人距离目标点不足2格时获得【隐匿】');
+  assert.equal(stealth.detail, '对不可被阻挡的敌人不生效；被我方单位阻挡时【隐匿】效果解除');
+});
+
+test('level 20 debuff decay parameters and picker description use 35% per damage instance', () => {
+  const decay = DIFFICULTY_RULES.find(r => r.level === 20);
+  assert.equal(decay.key, 'debuffDecay');
+  assert.deepEqual(decay.params, { reduction: 0.35 });
+  assert.equal(decay.description, '所有敌方单位每受到一次伤害后，自身负面效果的剩余持续时间减少35%');
+  assert.equal(difficultyEffects(19).debuffDecay, false);
+  assert.equal(difficultyEffects(20).debuffDecay, true);
+});
+
 test('immunity starts at 5, does not consume zero damage or element fills, and applies independently per enemy', () => {
   for (const n of [0, 4, 5, 9]) {
     const { b, a, e } = battle(n);
@@ -128,6 +177,11 @@ test('room level changes are host-only, unready guests, survive resync, and reac
     assert.equal(state.seats.find((s) => s?.playerId === gw.playerId).ready, false);
     await guest.hello('Guest', gw.token);
     assert.equal((await guest.waitFor('room.state', (s) => s.difficultyLevel === 15)).difficultyLevel, 15);
+    await host.request({ t: 'room.setMode', modeId: 'mode_multi_normal' });
+    const normal = await guest.waitFor('room.state', (s) => s.difficulty === 'NORMAL');
+    assert.equal(normal.difficultyLevel, 0, 'selecting an upstream mode clears the Ascension-only level');
+    await host.request({ t: 'room.setDifficulty', difficulty: 'ASCENSION', difficultyLevel: 15 });
+    await guest.waitFor('room.state', (s) => s.difficultyLevel === 15);
     await guest.request({ t: 'room.ready', ready: true });
     await host.request({ t: 'room.start' });
     const m = srv.lobby.rooms.get(initial.code).match;

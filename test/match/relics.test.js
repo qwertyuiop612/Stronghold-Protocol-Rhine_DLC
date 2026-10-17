@@ -9,6 +9,40 @@ import { makeMatch } from './harness.js';
 import { attachAudit } from '../../server/match/audit.js';
 import { makeBattle, chessRec } from '../helpers/battleHarness.js';
 
+test('黄金平原、第一法则：按指定品质解锁，合法领取后下场技能结束返还技力', () => {
+  for (const [id, tier, round, amount] of [['relic_139', 3, 4, 2], ['relic_140', 4, 7, 4]]) {
+    const h = makeMatch({ mode: 'solo', fake: true }).start();
+    try {
+      const ps = h.ps('p_0');
+      ps.relics = RELICS.filter((r) => r.id !== id).map((r) => ({ id: r.id, round: 1 }));
+      assert.equal(getRelic(id).tier, tier);
+      assert.deepEqual(pickRelicChoices(createRng(19), round - 1, ps.relics), [], '正常掉落不提前解锁');
+      h.toPrep(round);
+      const offer = settleRelics(ps, { perfect: true, leaked: [] }, { completed: true });
+      assert.deepEqual(offer.options, [id]);
+      const battle = (input) => makeBattle({ players: [{ ...input, units: [
+        { uid: 1, kind: 'chess', chessId: 'refund_guard', row: 10, col: 4 },
+      ] }], defs: { chess: { refund_guard: chessRec({ id: 'refund_guard', skill: {
+        duration: 0, spCost: 20, initSp: 0, spType: 'INCREASE_WHEN_ATTACK', trigger: { rule: 'NEVER' },
+      } }) } }, autoFinish: false });
+      const before = battle({ ...ps.battleInput(), relics: [] });
+      before.step();
+      before.unit(1).skill.activate('manual', { free: true });
+      assert.equal(before.unit(1).skill.sp, 0, '候选不提供效果');
+      assert.equal(ps.battleInput().relics.includes(id), false);
+      assert.equal(selectRelic(ps, offer.id, 0).id, id);
+      assert.equal(selectRelic(ps, offer.id, 0), null);
+      const input = ps.battleInput();
+      const next = battle({ ...input, relics: input.relics.filter((r) => r === id) });
+      next.step();
+      next.unit(1).skill.activate('manual', { free: true });
+      assert.equal(next.unit(1).skill.sp, amount);
+      assert.deepEqual(next.b.errors, []);
+      assert.deepEqual(pickRelicChoices(createRng(19), round, ps.relics), [], '已领取不重复掉落');
+    } finally { h.m.dispose(); }
+  }
+});
+
 test('液体化肥、热辣可可、止痛片：按品质进入候选，合法领取后下场生效', () => {
   for (const [id, tier, round] of [['relic_125', 2, 1], ['relic_126', 3, 4], ['relic_127', 2, 1]]) {
     const h = makeMatch({ mode: 'solo', fake: true }).start();
@@ -94,7 +128,7 @@ test('原创收藏品：实际奖励池抽取与领取后下一场战斗生效',
 });
 
 test('collection: every tier is populated, early pools cannot run out during ordinary play, definitions are immutable', () => {
-  assert.equal(RELICS.length, 50);
+  assert.equal(RELICS.length, 52);
   assert.equal(new Set(RELICS.map((r) => r.id)).size, RELICS.length);
   assert.ok(RELICS.filter((r) => r.tier === 1).length >= 9);
   for (const { tier } of RELIC_TIERS) assert.ok(RELICS.some((r) => r.tier === tier));

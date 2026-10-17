@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { buildPlan, VOICE_JP_LANG } from '../tools/assets/plan.mjs';
 import { indexAudio, VOICE_DIRS } from '../tools/assets/audio.mjs';
 import { RAW } from '../tools/assets/sources.mjs';
-import { artPlan, FULL_ZIP_JP_VOICE, JP_VOICE_DIR } from '../tools/package.mjs';
+import { artPlan, FULL_ZIP_JP_VOICE, JP_VOICE_DIR, FULL_ZIP_OPTIONAL_VOICE, OPTIONAL_VOICE_DIRS } from '../tools/package.mjs';
 import { DEFAULT_SETTINGS, VOICE_LANGS, sanitizeSettings } from '../public/js/ui/gameLogic.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -62,7 +62,7 @@ test('plan: audio.voiceJp is the JP dub (ArknightsAssets2 voice/) of the very sl
   assert.ok(plan({ voiceSlots: null }).audio.voiceJp.char_263_skadi.gacha);
 });
 
-test('data/assets.json: voiceJp gives every voiced operator the JP twin of each Chinese line (192 operators, 2688 files); stand-ins, 盟约·辅助干员 and summons have neither', () => {
+test('data/assets.json: native and extension operators have matching Chinese/Japanese voices; stand-ins, 盟约·辅助干员 and summons have neither', () => {
   const m = readJson('data/assets.json');
   const cn = m.audio.voice;
   const jp = m.audio.voiceJp;
@@ -70,14 +70,19 @@ test('data/assets.json: voiceJp gives every voiced operator the JP twin of each 
   assert.deepEqual(Object.keys(jp), Object.keys(cn), 'the same operators');
   assert.equal(m.stats.voiceJpChars, Object.keys(jp).length);
   assert.equal(m.stats.voiceChars, Object.keys(cn).length);
-  // the expansion's operators are voiced too, so the count follows the manifest; the shape checks below stay exact
-  assert.ok(Object.keys(jp).length >= 192, `${Object.keys(jp).length} voiced operators`);
+  const vanilla = readJson('data/vanilla/assets.json');
+  assert.equal(Object.keys(vanilla.audio.voiceJp).length, 192);
+  // the fork's extension roster: the Rhine line's six, plus the seven more operators its 0.3.0 corpus fields with a voice
+  // (the vanilla 192 come from data/vanilla/assets.json)
+  const extensionIds = ['char_242_otter', 'char_219_meteo', 'char_135_halo', 'char_4071_peper', 'char_4131_odda', 'char_4224_turdus',
+    'char_230_savage', 'char_365_aprl', 'char_378_asbest', 'char_4081_warmy', 'char_4236_tmslot', 'char_4237_jcinta', 'char_449_glider'];
+  assert.deepEqual(Object.keys(jp).sort(), [...Object.keys(vanilla.audio.voiceJp), ...extensionIds].sort());
   // the JP tree is the Chinese one with the folder swapped: same slots, same lines in the same order, same file names
   assert.deepEqual(JSON.parse(JSON.stringify(cn).replaceAll('/assets/audio/voice/cn/', '/assets/audio/voice/jp/')), jp);
   const lines = [];
   const walk = (x) => { if (typeof x === 'string') lines.push(x); else if (Array.isArray(x)) x.forEach(walk); else if (x && typeof x === 'object') Object.values(x).forEach(walk); };
   walk(jp);
-  assert.equal(lines.length, 14 * Object.keys(jp).length, 'fourteen lines per voiced operator');
+  assert.equal(lines.length, 2688 + extensionIds.length * 14);
   for (const u of lines) assert.match(u, /^\/assets\/audio\/voice\/jp\/char_[^/]+\/cn_\d+\.mp3$/);
   // no voice: the 17 stand-ins of data/backups.json (预备干员 / 原型干员), the mode's 盟约·辅助干员, every summon
   const backups = readJson('data/backups.json');
@@ -92,18 +97,26 @@ test('data/assets.json: voiceJp gives every voiced operator the JP twin of each 
   if (fs.existsSync(dir)) for (const u of lines) assert.ok(fs.statSync(path.join(ROOT, 'public', u)).size > 0, u);
 });
 
-test('settings 语音语言: 中文 by default, 日本語 kept, nothing else; the row is translated in every language pack', () => {
-  assert.deepEqual([...VOICE_LANGS], ['cn', 'jp']);
-  assert.equal(DEFAULT_SETTINGS.voiceLang, 'cn', 'not tied to the interface language: 中文 until the player picks 日本語');
+test('settings 语音语言: 中文 by default, 日本語 / English / 한국어 kept, nothing else; the row is translated in every language pack', () => {
+  assert.deepEqual([...VOICE_LANGS], ['cn', 'jp', 'en', 'kr']);
+  assert.equal(DEFAULT_SETTINGS.voiceLang, 'cn', 'not tied to the interface language: 中文 until the player picks another dub');
+  assert.equal(DEFAULT_SETTINGS.voiceNative, false);
   assert.equal(sanitizeSettings({}).voiceLang, 'cn');
   assert.equal(sanitizeSettings({ voiceLang: 'jp' }).voiceLang, 'jp');
-  assert.equal(sanitizeSettings({ voiceLang: 'en' }).voiceLang, 'cn', 'no English / Korean dub');
+  assert.equal(sanitizeSettings({ voiceLang: 'en' }).voiceLang, 'en');
+  assert.equal(sanitizeSettings({ voiceLang: 'kr' }).voiceLang, 'kr');
+  assert.equal(sanitizeSettings({ voiceLang: 'native' }).voiceLang, 'cn', 'the own-language dub is a per-operator pick, not a global');
+  assert.equal(sanitizeSettings({ voiceNative: true }).voiceNative, true);
+  assert.equal(sanitizeSettings({ voiceNative: 'yes' }).voiceNative, false);
   const ui = fs.readFileSync(path.join(ROOT, 'public/js/ui/settings.js'), 'utf8');
   assert.match(ui, /updateSettings\(\{ voiceLang: id \}\)/);
-  assert.match(ui, /const VOICE_LANG_NAMES = \{ cn: '中文', jp: '日本語' \};/, 'each dub named in its own language');
+  assert.match(ui, /const VOICE_LANG_NAMES = \{ cn: '中文', jp: '日本語', en: 'English', kr: '한국어' \};/, 'each dub named in its own language');
+  assert.match(ui, /updateSettings\(\{ voiceNative: !s\.voiceNative \}\)/);
+  assert.match(ui, /audio\.setVoiceLang\(s\.voiceLang, s\.voiceOverrides\)/);
   for (const code of ['en', 'ja', 'ko', 'zh-TW']) {
     const pack = readJson(`public/i18n/${code}.json`);
     assert.ok(typeof pack['语音语言'] === 'string' && pack['语音语言'] && pack['语音语言'] !== '语音语言', `${code}: 语音语言`);
+    for (const id of ['voice-lang::本土语言', '有本土语言配音时使用', '试听']) assert.ok(typeof pack[id] === 'string' && pack[id], `${code}: ${id}`);
   }
 });
 
@@ -137,6 +150,35 @@ test('package: the full zip ships the JP dub by default; FULL_ZIP_JP_VOICE off h
   // the update zip keeps a held file out of `removed` (tools/package.mjs buildUpdate)
   const src = fs.readFileSync(path.join(ROOT, 'tools/package.mjs'), 'utf8');
   assert.match(src, /removable: \(rel\) => !removalProblem\(rel\) && !heldBack\.has\(rel\)/);
+});
+
+test('package: FULL_ZIP_OPTIONAL_VOICE ships the EN / KR / own-language dubs by default; off holds them back (not missing, not orphans)', () => {
+  assert.equal(FULL_ZIP_OPTIONAL_VOICE, true, '0.3.0 ships these dubs in the full zip');
+  assert.deepEqual([...OPTIONAL_VOICE_DIRS], ['public/assets/audio/voice/en/', 'public/assets/audio/voice/kr/', 'public/assets/audio/voice/native/']);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-voiceopt-'));
+  try {
+    const rel = {
+      cn: 'public/assets/audio/voice/cn/char_102_texas/cn_021.mp3', jp: 'public/assets/audio/voice/jp/char_102_texas/cn_021.mp3',
+      en: 'public/assets/audio/voice/en/char_102_texas/cn_021.mp3', kr: 'public/assets/audio/voice/kr/char_102_texas/cn_021.mp3',
+      native: 'public/assets/audio/voice/native/char_102_texas_ita/cn_021.mp3',
+    };
+    for (const r of Object.values(rel)) { fs.mkdirSync(path.dirname(path.join(dir, r)), { recursive: true }); fs.writeFileSync(path.join(dir, r), 'ID3'); }
+    fs.mkdirSync(path.join(dir, 'data'));
+    const url = (r) => `/${r.slice('public/'.length)}`;
+    const tree = (r) => ({ char_102_texas: { select: url(r) } });
+    fs.writeFileSync(path.join(dir, 'data', 'assets.json'), JSON.stringify({ audio: { voice: tree(rel.cn), voiceJp: tree(rel.jp),
+      voiceEn: tree(rel.en), voiceKr: tree(rel.kr), voiceNative: tree(rel.native), voiceNativeLangType: { char_102_texas: 'ITA' } } }));
+    const on = artPlan(dir);
+    assert.deepEqual(on.files, Object.values(rel).sort(), 'every dub ships by default');
+    assert.deepEqual([on.held, on.missing, on.orphans], [[], [], []]);
+    const off = artPlan(dir, { optionalVoice: false });
+    assert.deepEqual(off.files, [rel.cn, rel.jp].sort(), 'JP stays; the extra dubs stay out');
+    assert.deepEqual(off.held, [rel.en, rel.kr, rel.native].sort(), 'held back on purpose');
+    assert.deepEqual([off.missing, off.orphans], [[], []], 'neither missing nor orphans');
+    assert.deepEqual(artPlan(dir, { jpVoice: false, optionalVoice: false }).files, [rel.cn], 'both switches off: the Chinese dub only');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('选中干员 on every card tap (review of fb7-voices): two shop / reward cards of one operator are two taps, a re-render is none', async () => {

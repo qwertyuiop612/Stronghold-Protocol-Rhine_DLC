@@ -30,6 +30,16 @@ const effects = load('effects');
 const raw = (f) => JSON.parse(readFileSync(join(CACHE, 'excel', `${f}.json`), 'utf8'));
 const talent = (rec, name) => rec.talents.find((t) => t.name === name);
 
+test('potDown does not create dsl or pluginId leaves', () => {
+  const out = atPotential({ atk: 313, potDown: { '4': { dsl: { dsl: 2 }, pluginId: 'victim', atk: 1 } } }, 5);
+  assert.equal(out.dsl, undefined);
+  assert.equal(out.pluginId, undefined);
+  assert.equal(Object.hasOwn(out, 'dsl'), false);
+  assert.equal(Object.hasOwn(out, 'pluginId'), false);
+  assert.equal(out.atk, 1);
+  assert.equal(out.potDown, undefined);
+});
+
 test('刺玫 at every potential: 潜能1 ATK 413 / cost 17 / 70 s and 土壤基肥改良 8%, each step at its rank, 潜能6 = the record itself', () => {
   const v = chess.chess_char_1_06_a;
   const at = (p) => atPotential(v, p);
@@ -89,13 +99,14 @@ test('every chess and 自选 form at every potential: the raw keyframes plus the
     for (const [k, v] of Object.entries(steps(charId, rank))) exp[k] += v;
     for (const [k, v] of Object.entries(exp)) assert.ok(Math.abs(v - stats[k]) <= 0.5 + 1e-9, `${label} rank ${rank}: ${k} ${stats[k]} vs official ${v}`);
   };
-  const listed = Object.values(chess).filter((c) => !c.isDiy && c.charId);
   let n = 0;
-  for (const c of listed) {
+  for (const c of Object.values(chess)) {
+    // the official table only describes the chess_* records copied from it; the Rhine/Kazdel/rem extension operators
+    // carry the fork's own numbers (data/rhine, data/kazdel, data/rem), so they are checked by their own suites
+    if (c.isDiy || !c.charId || !c.chessId.startsWith('chess_char_')) continue;
     for (let rank = 0; rank <= FULL_RANK; rank++) { const r = atRank(c, rank); check(c.chessId, c.charId, c.status, r.statsBase ?? r.stats, rank); n++; }
   }
-  // the expansion adds 莱茵/卡兹戴尔 records, so keep the count exact without pinning the roster size
-  assert.equal(n, listed.length * (FULL_RANK + 1));
+  assert.equal(n, 258 * 6);
   let forms = 0;
   for (const [charId, u] of Object.entries(backups.units)) {
     for (const f of Object.values(u.forms)) {
@@ -129,10 +140,7 @@ test('talent candidates at every potential: each talent is the last one unlocked
     }
   };
   for (const c of Object.values(chess)) {
-    if (c.isDiy || !c.charId) continue;
-    // 莱茵/卡兹戴尔 records carry their own talent blackboard (the fork's balance changes), so the official
-    // character_table candidates are not their source (the same rule as test/full-potential.test.js).
-    if (/^chess_(rhine|kazdel)_/.test(c.chessId)) continue;
+    if (c.isDiy || !c.charId || !c.chessId.startsWith('chess_char_')) continue;   // official records only, see above
     checkList(c.chessId, c.charId, c.status, c.talentsBase ?? c.talents);
   }
   for (const [charId, u] of Object.entries(backups.units)) for (const f of Object.values(u.forms)) checkList(`${charId}@${f.status.phase}/${f.status.level}`, charId, f.status, f.talents);

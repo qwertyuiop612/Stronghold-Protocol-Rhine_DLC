@@ -5,14 +5,6 @@ import { getDataProfile } from '../../server/data.js';
 import { give, legalTileFor, makeMatch } from './harness.js';
 
 const BEACON = 'chess_item_5_04_e_a';
-// Inert hand/temp filler. It must stay invisible to the shared-inventory invariants, because these tests
-// fill every slot with `newPiece`, which bypasses both the pool and the merge step:
-//   * the pool gives no cap to records that are not shop items (a non-EQUIP, effect-only record is never a
-//     shop item), so the `held <= cap` check skips it;
-//   * the merge check only covers normal mergeable EQUIP records, so a non-EQUIP record never trips it.
-// (A golden EQUIP filler counts 2 per copy against its base record's cap; a normal shop EQUIP filler trips
-// the merge rule. Both were tried and rejected.)
-const FILLER = 'chess_item_6_03_m';
 const QUIET = { info() {}, warn() {}, error() {} };
 const held = (ps) => [...ps.hand, ...ps.temp, ...ps.board.values()].filter(Boolean);
 const beacons = (ps) => held(ps).filter((p) => p.kind === 'item' && p.id === BEACON);
@@ -91,7 +83,7 @@ test('a full hand receives the beacon in temp and can use it during the same pre
     h.toPrep(1);
     const ps = h.ps('p_0');
     ps.bandId = null;
-    for (let i = 0; i < ps.hand.length; i++) ps.hand[i] = ps.newPiece('item', FILLER);
+    for (let i = 0; i < ps.hand.length; i++) ps.hand[i] = ps.newPiece('item', 'chess_item_6_01_m');
     h.m.startRound(10);
     const beacon = ps.temp.find((p) => p?.id === BEACON);
     assert.ok(beacon, 'hand overflow reaches the existing temp inventory');
@@ -103,26 +95,26 @@ test('a full hand receives the beacon in temp and can use it during the same pre
   } finally { h.m.dispose(); }
 });
 
-test('both inventories full retain their contents and report the existing reward warning only once for that milestone', () => {
+test('both visible inventories full retain the beacon in the expandable temp queue, once per milestone', () => {
   const h = makeMatch({ humans: 6, fake: true, seed: 27 }).start();
   try {
     h.toPrep(1);
     const ps = h.ps('p_0');
     ps.bandId = null;
-    for (let i = 0; i < ps.hand.length; i++) ps.hand[i] = ps.newPiece('item', FILLER);
-    for (let i = 0; i < ps.temp.length; i++) ps._putTemp(i, ps.newPiece('item', FILLER));
+    for (let i = 0; i < ps.hand.length; i++) ps.hand[i] = ps.newPiece('item', 'chess_item_6_01_m');
+    for (let i = 0; i < ps.temp.length; i++) ps._putTemp(i, ps.newPiece('item', 'chess_item_6_01_m'));
     const before = held(ps).map((p) => p.uid);
     h.m.startRound(10);
-    assert.equal(beacons(ps).length, 0);
-    assert.deepEqual(held(ps).map((p) => p.uid), before, 'an overflowing reward must not evict an owned item');
+    assert.equal(beacons(ps).length, 1);
+    for (const uid of before) assert.ok(ps.find(uid), 'an overflowing reward must not evict an owned item');
     const warnings = () => h.allTo('p_0', 'm.toast').filter((msg) => JSON.stringify(msg).includes('整备区已满，获得的装备已销毁'));
-    assert.equal(warnings().length, 1, 'the ordinary reward overflow warning is delivered');
+    assert.equal(warnings().length, 0, 'upstream 0.3 keeps overflow instead of destroying it');
     ps.hand[0] = null;
     h.m.startRound(10);
-    assert.equal(beacons(ps).length, 0, 'making room does not grant the same milestone a second time');
-    assert.equal(warnings().length, 1);
+    assert.equal(beacons(ps).length, 1, 'making room does not grant the same milestone a second time');
+    assert.equal(warnings().length, 0);
     h.m.startRound(12);
-    assert.equal(beacons(ps).length, 1, 'full inventory at R10 does not swallow a later normal reward');
+    assert.equal(beacons(ps).length, 2, 'full inventory at R10 does not swallow a later normal reward');
   } finally { h.m.dispose(); }
 });
 
@@ -169,7 +161,7 @@ for (const rhine of [true, false]) for (const golden of [false, true]) {
       const mate = m.gd.visibleChess.find((id) => id !== core && m.gd.chess(id).bonds.includes(bond) && legalTileFor(m, receiver, id));
       assert.ok(mate);
       give(m, receiver, mate, 'board', legalTileFor(m, receiver, mate));
-      for (let i = 0; i < receiver.hand.length; i++) receiver.hand[i] ||= receiver.newPiece('item', FILLER);
+      for (let i = 0; i < receiver.hand.length; i++) receiver.hand[i] ||= receiver.newPiece('item', 'chess_item_6_01_m');
       const original = golden ? m.gd.goldenIdOf(core) : core;
       const target = give(m, sender, original);
       const beacon = beacons(sender).find((p) => p.meta.sixPlayerBeaconRound === 14);
@@ -250,7 +242,7 @@ test('a six-seat R10 reward still sends the original elite after its sender is e
   } finally { h.m.dispose(); }
 });
 
-test('a full R14 recipient keeps the immediate elite gift pending and receives it even after the sender is eliminated', () => {
+test('a full R14 recipient immediately queues the elite gift and sender elimination cannot duplicate it', () => {
   const h = makeMatch({ humans: 6, difficulty: 'HARD', fake: true, seed: 45 }).start();
   try {
     h.toPrep(14);
@@ -261,24 +253,24 @@ test('a full R14 recipient keeps the immediate elite gift pending and receives i
     const mate = m.gd.visibleChess.find((id) => id !== core && m.gd.chess(id).bonds.includes(bond) && legalTileFor(m, receiver, id));
     assert.ok(mate);
     give(m, receiver, mate, 'board', legalTileFor(m, receiver, mate));
-    for (let i = 0; i < receiver.hand.length; i++) receiver.hand[i] ||= receiver.newPiece('item', FILLER);
-    for (let i = 0; i < receiver.temp.length; i++) receiver.temp[i] ||= receiver.newPiece('item', FILLER);
+    for (let i = 0; i < receiver.hand.length; i++) receiver.hand[i] ||= receiver.newPiece('item', 'chess_item_6_01_m');
+    for (let i = 0; i < receiver.temp.length; i++) receiver.temp[i] ||= receiver.newPiece('item', 'chess_item_6_01_m');
     const original = m.gd.goldenIdOf(core);
     const target = give(m, sender, original);
     const beacon = beacons(sender).find((p) => p.meta.sixPlayerBeaconRound === 14);
     const before = held(receiver).map((p) => p.uid);
     assert.deepEqual(m.handle(sender.playerId, { t: 'g.equip', itemUid: beacon.uid, targetUid: target.uid }), { ok: true });
-    assert.deepEqual(held(receiver).map((p) => p.uid), before, 'failed delivery never evicts the recipient inventory');
+    for (const uid of before) assert.ok(receiver.find(uid), 'delivery never evicts the recipient inventory');
     const pending = sender.effects.find((e) => e.id === `gift:${beacon.uid}`);
-    assert.equal(pending?.params.chessId, original, 'full inventories retain the original elite for retry');
-    assert.ok(h.allTo(receiver.playerId, 'm.toast').some((msg) => JSON.stringify(msg).includes('整备区已满')));
+    assert.equal(pending, undefined, 'the expandable queue accepts the immediate gift without a retry');
+    assert.ok(receiver.temp.some(p => p?.kind === 'chess' && p.id === original));
     receiver.hand[0] = null;
     sender.eliminate(14);
     m.startRound(15);
     const gift = held(receiver).find((p) => p.kind === 'chess' && p.id === original);
     assert.ok(gift);
     assert.equal(gift.poolCopies, m.gd.goldenCopies);
-    assert.ok(!sender.effects.some((e) => e.id === pending.id), 'successful retry removes the gift once');
+    assert.ok(!sender.effects.some((e) => e.id === `gift:${beacon.uid}`));
     m.onReconnect(receiver.playerId);
     assert.equal(held(receiver).filter((p) => p.kind === 'chess' && p.id === original).length, 1);
     h.invariants();

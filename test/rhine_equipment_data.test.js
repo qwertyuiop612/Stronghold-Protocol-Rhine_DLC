@@ -63,16 +63,12 @@ test('Rhine equipment: acquiring two copies merges once and normal upgrade effec
     const merged = ps.acquireItem(item(key));
     assert.equal(merged.id, item(key, true)); assert.equal(ps.stats.itemMerges, 1);
     assert.equal(ps.find(first.uid), null);
-    const next = ps.acquireItem(item(key));
-    if (h.m.itemPool.left(item(key)) > 0) {
-      assert.equal(ps.upgradeItem(next), true); assert.equal(next.id, item(key, true));
-      assert.equal(ps.upgradeItem(next), false, 'an elite item cannot upgrade again');
-    } else {
-      // the tier-6 pool holds three copies: the third acquisition drains it, so 整备 waits for a free copy
-      assert.equal(h.m.itemPool.left(item(key)), 0, 'the pool is exhausted');
-      assert.equal(ps.upgradeItem(next), false, 'no free copy to spend on the upgrade');
-    }
-    h.invariants();
+    h.invariants(); h.m.dispose();
+    const fresh = makeMatch({ mode: 'solo', fake: true }).start(); fresh.toPrep(1);
+    const owner = fresh.ps('p_0'), next = owner.acquireItem(item(key));
+    assert.equal(owner.upgradeItem(next), true); assert.equal(next.id, item(key, true));
+    assert.equal(owner.upgradeItem(next), false, 'an elite item cannot upgrade again');
+    fresh.invariants(); fresh.m.dispose();
   }
 });
 
