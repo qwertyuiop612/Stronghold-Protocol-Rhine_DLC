@@ -1658,7 +1658,8 @@ function MatchScreen() {
         <div class="gm__effect-base"><${EffectsList} effects=${watchingOther && field ? (field.effects ?? null) : priv?.effects} /></div>
       </div>
       ${!watchingOther && !pen && !sp ? html`<${RemRally} point=${priv?.remRally} editable=${editable && showPrep}
-        view=${view} placeCtx=${placeCtx} enabled=${(priv?.bonds || []).some(b => b.bondId === 'remShip' && b.count > 0)}
+        view=${view} placeCtx=${placeCtx} contextKey=${`${myId}:${pub?.stageId}:${deployField}`}
+        enabled=${(priv?.bonds || []).some(b => b.bondId === 'remShip' && b.count > 0)}
         onSet=${(row, col) => actions.remRally(row, col)} />` : null}
       ${!watchingOther && !pen && !sp ? html`<${RhineDock} research=${priv?.research} editable=${editable && showPrep}
         view=${view} placeCtx=${placeCtx}
