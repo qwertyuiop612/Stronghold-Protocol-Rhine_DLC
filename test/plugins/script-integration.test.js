@@ -37,9 +37,10 @@ test('same script battle is bit-identical in match child and loadBrowserSim, spe
  const spectator=await loadContentSet(built.cs,{fetch,retryDelays:[]});assert.equal(spectator.canSim,false);assert.equal(spectator.scripts.length,0);assert.ok(!calls.some(x=>x.includes('/scripts/')));
  const accepted=await loadContentSet(built.cs,{fetch,consent:true,retryDelays:[]});assert.equal(accepted.scripts.length,1);
  const runtime=path.join(f.root,'runtime');fs.mkdirSync(path.join(runtime,'server'),{recursive:true});
+ // as the browser gets /sim/: no Node loader (by file name: cpSync passes `\\` paths on Windows), else a cyclic import
+ // simdata.js → nodeData.js → the data.js shim → simdata.js deadlocks loadBrowserSim
  fs.cpSync('server/sim',path.join(runtime,'server/sim'),{recursive:true,filter:src=>path.basename(src)!=='nodeData.js'});
- assert.equal(fs.existsSync(path.join(runtime, 'server/sim/nodeData.js')), false,
-   'browser fixture must omit nodeData.js before importing DATA_SHIM to avoid a top-level-await cycle');
+ assert.equal(fs.existsSync(path.join(runtime,'server/sim/nodeData.js')),false);
  fs.cpSync('shared',path.join(runtime,'shared'),{recursive:true});
  fs.writeFileSync(path.join(runtime,'package.json'),'{"type":"module"}');fs.writeFileSync(path.join(runtime,'server/data.js'),DATA_SHIM_JS);
  const base=pathToFileURL(path.join(runtime,'server/sim')).href+'/';

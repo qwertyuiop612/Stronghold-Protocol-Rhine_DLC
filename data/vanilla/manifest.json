@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
   "profile": "vanilla",
-  "upstreamVersion": "0.3.0",
-  "source": "c24e17eec3af1e6dedfa9935a6d15245cf2f4586",
+  "upstreamVersion": "0.3.1",
+  "source": "b3deebdae4a92642c007d217a1a4573e5d3612c5",
   "files": [
     {
       "path": "assets.json",
-      "size": 1673010,
-      "sha256": "34e427ff8304ea063f6bbc4eb2d6755b1baa43641c15a67f9c60a59ded4113c6"
+      "size": 1901968,
+      "sha256": "15b7593139d1497d1f870d6f801767422b9e133c4a8be634fd09f9b332c3c05b"
     },
     {
       "path": "backups.json",
-      "size": 2056247,
-      "sha256": "1c2e4e1b65df7f10ff3902f8c74a708f57ed8381e6351e19ecdc9c8c140423f2"
+      "size": 2056578,
+      "sha256": "3df06b7d5bfacba9d3d5a7afafb98adb799a32b0fadf7dd1ddea435144195854"
     },
     {
       "path": "bands.json",
@@ -31,8 +31,8 @@
     },
     {
       "path": "chess.json",
-      "size": 1875834,
-      "sha256": "fd463d31c21d3f40524058abb47fe64b6c32ebed22956586a50bee672e6dfa79"
+      "size": 1876337,
+      "sha256": "0b88903c065fc8974158bba2298147844826820d862637990494dc2635cba064"
     },
     {
       "path": "choices.json",
@@ -41,8 +41,8 @@
     },
     {
       "path": "config.json",
-      "size": 63745,
-      "sha256": "a673cc270833eaf75128d66327e4ce50720f1086bbfb0b8b00dac5ea111fd2b8"
+      "size": 65611,
+      "sha256": "3a51093bbbec4578e1d4161e73b90647093fd7a3c7395e4dfc5be1fb864e3888"
     },
     {
       "path": "effects.json",
@@ -61,8 +61,8 @@
     },
     {
       "path": "factions.json",
-      "size": 22026,
-      "sha256": "6bdcf7933eee4b156476769d724d60b34f4b69b095726d1638f02b91d8a22362"
+      "size": 23739,
+      "sha256": "d1bdf2a40ce5fa1e082551f12ce764a7ec3bfbef75c8a306e5b2b50fb34d797b"
     },
     {
       "path": "garrisons.json",

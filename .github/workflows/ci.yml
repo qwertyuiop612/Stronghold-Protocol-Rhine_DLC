@@ -45,8 +45,10 @@ jobs:
       - name: Setup check (no downloads)
         run: node tools/setup.mjs --check --no-local
 
+      # package.json "test": node --test over the test files. A bare `node --test` would also run every helper and
+      # fixture under test/ (Node's default patterns take any .js there for a test file).
       - name: Unit & integration tests
-        run: node --test
+        run: npm run test
 
       - name: Server smoke test (boot, /healthz, index.html, doctor)
         shell: bash

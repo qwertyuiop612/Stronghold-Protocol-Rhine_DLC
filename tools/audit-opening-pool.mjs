@@ -8,7 +8,7 @@ import { GameData } from '../server/match/gamedata.js';
 import { isOpeningShopChess, openingTierCounts, OPENING_TIER_FLOOR } from '../server/match/pool.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const UPSTREAM_PIN = 'c24e17eec3af1e6dedfa9935a6d15245cf2f4586';
+const UPSTREAM_PIN = 'b3deebdae4a92642c007d217a1a4573e5d3612c5';
 const RHINE_BASELINE = '45d962f7d10f6d81cc000e2d49f145d131545529';
 const MAX_COMBINATIONS = 2_000_000;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -149,7 +149,7 @@ function main() {
   const asbestos = Object.values(data.chess).filter(c => c.charId === 'char_378_asbest' && !c.isGolden)
     .map(c => ({ id: c.chessId, bonds: c.bonds }));
   console.log(JSON.stringify({
-    upstream: { tag: 'v0.3.0', commit: UPSTREAM_PIN }, rhineBaseline: RHINE_BASELINE,
+    upstream: { tag: 'v0.3.1', commit: UPSTREAM_PIN }, rhineBaseline: RHINE_BASELINE,
     fileSha256, inputSha256: sha256(JSON.stringify(fileSha256)),
     tierFloor: OPENING_TIER_FLOOR, maxCombinations: MAX_COMBINATIONS, asbestos, cases,
   }, null, 2));

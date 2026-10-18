@@ -87,6 +87,8 @@ function installEntrypoints(root) {
   put(root, 'shared/constants.js', "export const APP_VERSION='0.2.1', DEV_BUILD=false;");
   put(root, 'server/http/config.js', "import {fileURLToPath} from 'node:url'; export const ROOT=fileURLToPath(new URL('../../',import.meta.url));");
   put(root, 'server/net.js', 'export const limitKeyOf=(address)=>address;');
+  // 0.3.1's launcher imports the test-room gate; this fixture opens no listener, so only the three exports matter.
+  put(root, 'server/testMode.js', "export const unrecognizedTestMode=()=>null; export const parseTestModeEnv=(v)=>(String(v??'').trim().toLowerCase()==='force'?'force':'off'); export const testModeGate=(mode,host)=>({mode,host,enabled:mode==='force',warn:null});");
   put(root, 'server/index.js', `import fs from 'node:fs';
 import {runMain} from './http/boot.js';
 await runMain(async()=>{ fs.writeFileSync(new URL('../started.txt',import.meta.url),'started');

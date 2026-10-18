@@ -2,9 +2,9 @@
 
 本轮版本：**v0.3.1-test**（上游 v0.3.1 基座，合入莱茵线 `v0.3.0-rhine.11` 与 DLC 线 `0.3.0`）。Windows x64 整合包、升级工具与验收结果见[本仓库 Releases](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/releases)，以该页的发布状态为准。
 
-上游 0.3.0 起把 3D 棋盘与官方特效作为默认表现；若机器在软件渲染下出现初始化超时，仍可在游戏地址后加 `/?board=2d` 使用 2D 棋盘。本 fork 随源码与整合包一并发布，升级方式见下方「快速开始」，本轮完整改动见[同步报告](docs/RHINE-DLC-SYNC-0.3.0.md)。
+上游 0.3.0 起把 3D 棋盘与官方特效作为默认表现；若机器在软件渲染下出现初始化超时，仍可在游戏地址后加 `/?board=2d` 使用 2D 棋盘。0.3.1 合入插件报价（offers）、干员皮肤与测试房间。本 fork 随源码与整合包一并发布，升级方式见下方「快速开始」，本轮完整改动见[同步报告](docs/RHINE-DLC-SYNC-0.3.1.md)。
 
-本仓库是 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) 的**非官方阵营拓展 fork**（莱茵生命、卡兹戴尔、雷姆必拓，外加盟约 DLC 扩展：收藏品、超限模拟与后期商店），基于上游 **v0.3.0**，固定官方发布标签（提交 [`c24e17ee`](https://github.com/sganggs/Stronghold-Protocol/commit/c24e17eec3af1e6dedfa9935a6d15245cf2f4586)），并逐文件合入莱茵线 [`v0.3.0-rhine.9`](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine)（`bec8e325`）与 DLC 线 `0.3.0`（`d8d10f19`）的改动，本次同步日期为 **2026-10-18**。原项目的开发成果与莱茵线的署名保留；本 fork 由 [qwertyuiop612](https://github.com/qwertyuiop612) 维护，不代表上游作者、莱茵维护者或《明日方舟》官方。正式分支为 `main`。
+本仓库是 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) 的**非官方阵营拓展 fork**（莱茵生命、卡兹戴尔、雷姆必拓，外加盟约 DLC 扩展：收藏品、超限模拟与后期商店），基于上游 **v0.3.1**（提交 [`b3deebd`](https://github.com/sganggs/Stronghold-Protocol/commit/b3deebdae4a92642c007d217a1a4573e5d3612c5)），并逐文件合入莱茵线 [`v0.3.0-rhine.11`](https://github.com/YUYUYUYUYUYUYUTOUA/Stronghold-Protocol-Rhine)（`8f6b98c2`）与 DLC 线 `0.3.0`（`d8d10f19`）的改动，本次同步日期为 **2026-10-18**。原项目的开发成果与莱茵线的署名保留；本 fork 由 [qwertyuiop612](https://github.com/qwertyuiop612) 维护，不代表上游作者、莱茵维护者或《明日方舟》官方。正式分支为 `main`。
 
 扩展代码沿用 **GPL-3.0-or-later**，并保留原有 Spine Runtimes 组合分发附加许可；[LICENSE](LICENSE)、[NOTICE.md](NOTICE.md) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 原文保留。游戏数据、官方阵营标识及其他游戏素材的权属不因此改变，不应将本仓库全部美术视为 GPL 内容。
 
@@ -41,7 +41,7 @@
 
 基于 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) 的非官方玩法扩展 fork，在上游 v0.3.0 与莱茵／卡兹戴尔／雷姆必拓扩展之上，再加入 DLC 战线的**收藏品、超限模拟和后期商店扩展**。DLC 是本 fork 的扩展标识，非鹰角官方 DLC。
 
-![base version](https://img.shields.io/badge/upstream%20base-0.3.0-2ea44f)
+![base version](https://img.shields.io/badge/upstream%20base-0.3.1-2ea44f)
 ![license](https://img.shields.io/badge/code%20license-GPL--3.0--or--later-blue)
 ![node](https://img.shields.io/badge/node-22%20%7C%2024-339933)
 
@@ -84,7 +84,7 @@ English summary: [below](#english).
 
 - **独立模拟**（单人）与**同盟模拟**（1–6 人**合作**，没有 PvP；空位可以加 AI 队友）。
 - 服务器是一个 Node.js 程序，**战斗在各玩家的浏览器里模拟**（和官方一样），服务器只管经济与回合，一台低功耗小主机就能开服。
-- 当前版本 0.3.0：加入插件系统——外观、数据、DSL、脚本与界面插件，浏览器插件工作台和安装工具；可选的「官方特效」用本机客户端提取的官方战斗特效（完整包附带）；官方场景按客户端着色器重新打光并补上水面，伊利昂的木驮兽和「越长尘」会载客，冻结后手动刷新会取消冻结，机器人的布阵、采购和演习也有改进，详见 [CHANGELOG.md](CHANGELOG.md)。仍有少数规则按推断实现，与官方不一致的地方欢迎在 Issue 里反馈。
+- 当前版本 0.3.1：Forge 工坊包导入大幅补齐（主题变量、公告、行为开关、新的盟约 / 装备 / 召唤物 / 驻守与池外官方干员、面板兼容层、特效、皮肤），插件工作台为这些新功能加了图形化模板；设置新增「素材存储」（申请持久保存、清理旧版本素材）；修复余、野鬃、缪尔赛思、瑕光等干员的官方特效和动作，琳琅诗怀雅三技能改为官方的不自动关闭，详见 [CHANGELOG.md](CHANGELOG.md)。仍有少数规则按推断实现，与官方不一致的地方欢迎在 Issue 里反馈。
 
 ## 原版功能一览
 
@@ -101,11 +101,11 @@ English summary: [below](#english).
 - **地形与敌人**：阻隔工事、射击台、源石流吹风机、沼泽、排气格栅、涨潮等地形装置；空中与近地悬浮敌人、悬赏敌人。
 - **联防**：有人漏怪、又有人完美作战时，完美作战的队友带着阵容帮忙拦截漏掉的敌人。
 - **最终攻势与隐秘核心**：两人共享一个战场，全队共同削减同一条领袖血条；10 个敌方领袖，巨型领袖约 5×3 格的受击范围，以及官方的限伤规则。
-- **结算称号**：卫戍之星、不朽盟约、坚若磐石等 6 个称号。
+- **结算**：官方样式的个人战报和同盟结算页，卫戍认证等级（官方 60 级、每日防卫目标，按本机记录计算）；卫戍之星、不朽盟约、坚若磐石等 6 个结算称号。
 - **断线重连**：同盟模拟断线后 10 分钟内重新打开页面即可回到原座位，掉线期间按原阵容自动作战，也可以「暂离」交给 AI 托管；独立模拟 24 小时内可以回来继续（同一个浏览器）。
 - **交互细节**：漏怪时顶栏用红字 + 「−N」标记待扣的目标生命值（结算时才扣除）；点选、拖放和配发装备都按地上的方格；购买、升级和机变选卡都需要点两次确认；只有一名玩家时除作战外不计时。
 - **画面与声音**：真实 Spine 小人、官方 BGM 与音效、表情（6 套 × 6 个）、作战特效；可选的官方 3D 棋盘（需要从本机客户端提取贴图）。
-- **手机与电脑**：触摸拖拽、长按查看详情，推荐横屏；设置里可以调低画质。
+- **手机与电脑**：触摸拖拽、长按查看详情，推荐横屏；设置里可以调低画质；界面被挖孔、刘海或曲面边缘挡住时可以用「异形屏适配」调整四边。
 
 这些扩展会改变成长与战斗平衡：**选择四种基础难度仍会启用收藏品与后期商店扩展**，并不等于回到原项目规则。藏品名称与图标参考明日方舟其他玩法，但档位、数值与效果经过本 fork 适配，不代表官方「卫戍协议」规则。
 
@@ -342,9 +342,9 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 
 An **unofficial, non-commercial fan remake** of Arknights' seasonal auto-chess tower-defense mode *Stronghold Protocol: Alliance*, played in the browser: solo, or 1–6 player co-op (AI teammates can fill seats). Combat is simulated in each player's browser, so a low-power PC can host.
 
-**Rhine + DLC fork:** based on upstream 0.3.0 (`c24e17ee`), this fork merges the Rhine Lab / Kazdel / Rim Billiton faction expansion with the DLC line: 46 match-scoped collectibles, comeback rewards and a next-round shield after three consecutive leaking rounds, cumulative Ascension levels 0–20, and one extra operator offer initially plus one more at rounds 4 and 9 (three extra from round 9). Collectibles and the shop expansion also apply to the four base difficulties. DLC is this fork's label, not an official Arknights release.
+**Rhine + DLC fork:** based on upstream 0.3.1 (`b3deebd`), this fork merges the Rhine Lab / Kazdel / Rim Billiton faction expansion with the DLC line: 52 match-scoped collectibles, comeback rewards and a next-round shield after three consecutive leaking rounds, cumulative Ascension levels 0–20, and one extra operator offer initially plus one more at rounds 4 and 9 (three extra from round 9). Collectibles and the shop expansion also apply to the four base difficulties. DLC is this fork's label, not an official Arknights release.
 
-- **Fork:** this unofficial *Faction Expansion* (Rhine Lab, Kazdel and Rim Billiton) with the Alliance DLC additions (collectibles, ascension simulation, late-wave shop expansion) is maintained by [qwertyuiop612](https://github.com/qwertyuiop612), based on [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) v0.3.0 (`c24e17ee`) and merges the Rhine line `v0.3.0-rhine.9` (`bec8e325`) and the DLC line `0.3.0` (`d8d10f19`). Synced on 2026-10-18. It is not an upstream or official game release; report expansion issues to this fork.
+- **Fork:** this unofficial *Faction Expansion* (Rhine Lab, Kazdel and Rim Billiton) with the Alliance DLC additions (collectibles, ascension simulation, late-wave shop expansion) is maintained by [qwertyuiop612](https://github.com/qwertyuiop612), based on [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) v0.3.1 (`b3deebd`) and merges the Rhine line `v0.3.0-rhine.11` (`8f6b98c2`) and the DLC line `0.3.0` (`d8d10f19`). Synced on 2026-10-18. It is not an upstream or official game release; report expansion issues to this fork.
 - **Run this expansion:** clone this fork, install Node.js 22 or 24, then run `npm ci`, `npm run setup`, and `npm start`. Setup includes the Rhine resource plan; `node tools/fetch-rhine-assets.mjs` can supplement an existing asset download. The [upstream all-in-one bundle](https://github.com/sganggs/Stronghold-Protocol/releases/latest) contains the original game only, not this expansion. The official 3D board needs a local Arknights client to extract; otherwise the 2D board is used.
 - **Play with friends:** create a co-op room and share the 4-letter key or the `?room=KEY` link. On a LAN, use the address printed at start; otherwise use a virtual-LAN tool, a tunnel or a VPS — see [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Plugins:** upstream 0.3.0 plugins, the browser studio, official battle effects, additional voice languages and local asset import are included. With no plugins selected, this fork's DLC rules still apply. See [PLUGINS.md](docs/PLUGINS.md) and [PLUGIN-GUIDE.md](docs/PLUGIN-GUIDE.md).

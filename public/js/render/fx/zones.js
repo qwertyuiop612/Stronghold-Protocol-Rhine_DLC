@@ -166,9 +166,13 @@ export class FxZones {
   }
 
   /** Flash a set of tiles ([[r,c]]) on the ground (telegraphed boxes, blast tiles). */
-  tileFlash(tiles, tint, dur, warn = false, options = undefined) {
+  tileFlash(tiles, tint, dur, warn = false, extra = undefined) {
     if (!Array.isArray(tiles) || !tiles.length) return;
-    const record = { tiles: tiles.slice(0, 60), tint, dur: Math.max(0.2, dur), t: 0, warn, ...options };
+    // `extra` carries either the DLC render options ({ key, steady, anchor, bounds }) or an upstream wall handle
+    // ({ owner, axis, dir }) tied to a skill's lifetime; the two shapes never mix.
+    const wall = extra && extra.owner ? extra : null;
+    const options = wall ? undefined : extra;
+    const record = { tiles: tiles.slice(0, 60), tint, dur: Math.max(0.2, dur), t: 0, warn, wall, ...options };
     const previous = options?.key && this.tileFlashes.find(f => f.key === options.key);
     if (previous) Object.assign(previous, record);
     else this.tileFlashes.push(record);
@@ -188,14 +192,22 @@ export class FxZones {
       if (f.anchor && (!f.anchor.alive || f.anchor.remove || f.anchor.destroyed || f.anchor.prep
         || f.anchor.info?.researchActive === false || !Number.isInteger(f.anchor.info?.researchStage))) continue;
       f.t += dt;
-      if (f.t >= f.dur) continue;
-      const k = f.t / f.dur;
+      const wall = f.wall;
+      if (wall && (wall.owner.destroyed || wall.owner.alive === false || !wall.owner.statuses?.has('skill'))) continue;
+      if (!wall && f.t >= f.dur) continue;
+      const k = wall ? 0 : f.t / f.dur;
       const a = f.steady ? .15 + .025 * Math.sin(f.t * 2)
         : (f.warn ? 0.35 + 0.35 * Math.abs(Math.sin(f.t * 7)) : 0.55 * (1 - k)) * (k > 0.85 ? (1 - k) / 0.15 : 1);
       for (const [r, c] of f.tiles) {
         const z = (this.ctx.heightAt ? this.ctx.heightAt(r, c) : 0) + 0.015;
         const pts = [];
-        for (const [dx, dy] of [[-0.46, 0.46], [0.46, 0.46], [0.46, -0.46], [-0.46, -0.46]]) { cam.project(c + dx, r + dy, z, p); pts.push(p.x, p.y); }
+        // YuS3EffectWithEdgeBehaviour._offset = 0.4. [ASSUMED] In the 2D/off fallback a narrow
+        // ground strip represents the wall; width 0.16 keeps it inside the field's tile edges.
+        const horizontal = wall?.axis === 'row', off = wall ? (wall.dir === 'LEFT' || wall.dir === 'DOWN' ? -0.4 : 0.4) : 0;
+        const hx = wall ? (horizontal ? 0.5 : 0.08) : 0.46, hy = wall ? (horizontal ? 0.08 : 0.5) : 0.46;
+        for (const [dx, dy] of [[-hx, hy], [hx, hy], [hx, -hy], [-hx, -hy]]) {
+          cam.project(c + dx + (horizontal ? 0 : off), r + dy + (horizontal ? off : 0), z, p); pts.push(p.x, p.y);
+        }
         g.lineStyle(Math.max(1, p.s * 0.03), f.tint, Math.min(1, a * 1.6));
         g.beginFill(f.tint, a * 0.6);
         g.drawPolygon(pts);

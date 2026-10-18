@@ -144,7 +144,7 @@ export function install(battle) {
         if (dorothy) setPassive(battle, u, 'rhine:dorothy', { atkFlat: layers * (Number(dorothy.atk_per_layer) || 0) });
         const healing = researchTrait(u, 'RHINE_SARIA_HEALING');
         const inheritance = researchTrait(u, 'RHINE_IFRIT_INHERITANCE');
-        if (healing) setPassive(battle, u, 'rhine:saria', { healingDealtMul: 1 + Math.floor(layers / Math.max(1, Number(healing.layer_step) || B.sariaLayerStep)) * (Number(healing.heal) || 0) });
+        if (healing) setPassive(battle, u, 'rhine:saria', { healingDealtMul: 1 + Math.floor(layers / Math.max(1, Number(healing.layer_step) || B.sariaLayerStep)) * (Number(healing.heal_bonus) || 0) });
         if (inheritance) setPassive(battle, u, 'rhine:ifrit', { atkFlat: highest * (Number(inheritance.atk_scale) || 0) });
         const shared = sharing && alive(u) && !inheritance && charId(u) !== C.ifrit && damageOperator(u) && memberOf(battle, u, RHINE_BOND)
           ? highest * B.researchSharing[elite(u) ? 1 : 0] : 0;

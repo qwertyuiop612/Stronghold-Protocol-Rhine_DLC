@@ -98,9 +98,11 @@ test('watchdog kills a real non-responsive child process and allows the next job
   }, limits: { ...TRIAL_LIMITS, timeoutMs: 400 } });
   t.after(() => b.close());
   await assert.rejects(b.run({ id }), { code: 'PLUGIN_STUDIO_TRIAL_TIMEOUT' });
-  // Windows taskkill terminates the tree before child.kill(); observe the reaped process, not that call's advisory flag.
-  assert.equal(exited, true);
+  // the child never exits by itself, and the job ends on its exit: it was killed. On Windows the watchdog's
+  // taskkill /T /F ends the tree first, so child.kill() finds it gone and `killed` stays false — look at the process
+  assert.ok(child.exitCode !== null || child.signalCode !== null, 'the job ended after the child exited');
   assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' });
+  if (process.platform !== 'win32') assert.equal(child.killed, true);
   assert.equal(b.active(), 0);
 });
 

@@ -11,11 +11,12 @@ import { planUnite } from '../unite.js';
 import { FieldRunner, DeadBattle } from '../fields.js';
 import { DELAYS } from './common.js';
 import { previewPlayer } from '../preview.js';
+import { morphBattleOpt } from '../../../shared/plugins/rules.js';
 
 export class MatchCombat {
   /** Construct a battle; a constructor failure yields a finished stand-in (clean result) and is logged. */
   newBattle(opts, { preview = false } = {}) {
-    const full = { data: this.ds, content: this.battleContent, logger: this.log, ...opts, difficultyLevel: this.difficultyLevel,
+    const full = { data: this.ds, content: this.battleContent, logger: this.log, ...opts, ...morphBattleOpt(this.rules), difficultyLevel: this.difficultyLevel,
       combatSpeed: this.gameSpeed, combatSpeedMode: this.combatSpeedMode,
       ...(preview ? { logger: {}, quiet: true } : {}) };
     try {

@@ -18,7 +18,7 @@ const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve()
 function fixture() {
   const timers = new Map(), requests = [], fallbacks = [], warnings = [], errors = [];
   const window = new EventTarget(), document = Object.assign(new EventTarget(), { visibilityState: 'visible' });
-  const subscriptions = new Set(), effects = [];
+  const subscriptions = new Set(), skinSubs = new Set(), effects = [];
   let timerId = 0;
   const unrelated = { name: 'unrelated' };
   const host = {
@@ -43,7 +43,10 @@ function fixture() {
     useState(initial) { return [initial, () => {}]; },
     useRef(current) { return { current }; },
     useEffect(effect) { effects.push(effect); },
-    audio: {}, data: { get() { return null; } }, settingsStore: {
+    audio: {}, data: { get() { return null; } },
+    // the fork reads the app store in the mount effect (skin identity: me.playerId, match.public.players)
+    store: { get() { return {}; }, subscribe(fn) { skinSubs.add(fn); return () => skinSubs.delete(fn); } },
+    settingsStore: {
       get() { return {}; },
       subscribe(fn) { subscriptions.add(fn); return () => subscriptions.delete(fn); },
     },
@@ -64,7 +67,7 @@ function fixture() {
   });
   vm.runInContext(source + '\nglobalThis.mount = mountFieldView; globalThis.useView = useFieldView;', context, { filename: sourcePath.pathname });
   return {
-    host, unrelated, timers, requests, fallbacks, warnings, errors, view, context, window, document, subscriptions,
+    host, unrelated, timers, requests, fallbacks, warnings, errors, view, context, window, document, subscriptions, skinSubs,
     mount: (signal) => context.mount(host, { signal }),
     // Run the production hook's effect. State updates do not rerender this controlled ownership fixture.
     useView() { context.useView({ current: host }); return effects.shift()(); },

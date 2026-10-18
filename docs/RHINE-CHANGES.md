@@ -354,3 +354,15 @@
 ### 2026-10-18 · 液体化肥 1 血时先由屏障吸收伤害的回归断言
 
 - 复核“干员剩一滴血、被打也还是一滴血”的反馈：液体化肥（我方干员每次攻击流失 50 点生命、至少保留 1 点，获得 100 点屏障、此效果上限为自身最大生命值的 140%）让 1 血干员此后每次受击先被屏障吃掉，血量停在 1，屏障打空后照常死亡；`server/sim/damage.js` 的致命豁免兜底与死亡流程未改，`test/content/relic-low-hp.test.js` 增加这条链路的回归断言，藏品数值与官方文案未改动。
+
+### 2026-10-18 · 合入上游 v0.3.1 与莱茵 v0.3.0-rhine.11
+
+- 三路合并（无共同祖先，按内容合并）：上游 `b3deebd`（tag `v0.3.1`）、莱茵 `8f6b98c2`（tag `v0.3.0-rhine.11`）与已合入的 DLC 线 `d8d10f19`。完整清单见[同步报告](RHINE-DLC-SYNC-0.3.1.md)。
+- 采纳上游机制：插件报价（`room.offer` / `g.offer` / `g.offerRefresh`、`MatchOffers`、`PLUGIN_OFFER_SLOTS`）、干员皮肤（`room.skins`、`freezeSkins`、`setSkins`）、测试房间（`server/testMode.js`、`room.test`、`MatchTestCommands`）、特性层权限（`requiresTraitLayerAuthority`、`morphBattleOpt`、`rangeExpand`）与 0.3.1 的插件工具链/schema 扩充。
+- 莱茵 Rhine.10／11：视图所有权在 `pagehide` 释放、2D 棋盘美术失败容错、视口 scale 等待、legacy dev-hook guard 与发布证据链；不改玩法数值。
+- 扩展规则全部保留：倍速与 `combatSpeedMode`、超限模拟与 `difficultyLevel`、六人席位与共享池、收藏品与 `remRally`。冲突逐文件以「扩展行为优先、上游独立新增并入」裁决；协议、Lobby、入口与键表取并集，语言包按结构合并（合并后再补齐 ja／ko／zh-TW 缺失的 14 条 DLC 文本，四份语言包均为 100% 覆盖）。
+- 重生成数据 15 个文件，实际变化 7 个（`assets`、`backups`、`chess`、`config`、`emotes`、`factions`、`tuning`）；DLC 内容量复核不变（棋子 308、盟约 26、装备 123、卫戍 301、信物 31、效果 372）。
+- `data/assets.json` 由 `node tools/fetch-assets.mjs` 重生成：本机起初缺 `public/assets/local/fx/index.json`，音效槽位回退到文件名字母；放入本地 fx 索引后恢复「槽位来自技能模式表」的 `#679` 口径（16562 个文件、2238 个 Spine；发布口径 484 单位／941 池／952 引用，扩展干员另带 37 条官方技能池引用）。`test/audio-pools-data.test.js` 的硬编码计数改为对锁版 `data/vanilla/assets.json` 计数（清单内所有单位仍逐条校验），`test/local-extract-operators.test.js` 的合成 fixture 兼容 Windows 路径分隔符。
+- 原版数据 `data/vanilla/` 的锁版同步上移到上游 v0.3.1（`b3deebd`，22 个文件逐字节一致）；`tools/build-data.mjs` 只在目标缺少 `manifest.json` 时播种快照（该快照还含 `assets`／`emotes`／`tuning` 与四份语言包，生成器不会产出），不再覆盖已发布的锁版；未部署用户服务器。
+- 合并期修掉的实际缺陷：`server/match/Match.js` 的 `GameData` 二次构造丢了起始席位（六人局悬赏 6→9、开局 BAN 计数恢复）；`public/js/render/units.js` 补回上游的 `_attackForm`／`copyFrom`（形态与替身渲染）；`public/js/ui/fieldHost.js` 的 `store` 调用与 `unsubSkins` 接线；`public/js/data.js` 的 `setContent` 按 `SHARED_DATA_FILES` 把 `assets`／`local`／`emotes` 写给共享数据（插件皮肤覆盖原先落在 profile 上取不到）；`public/js/ui/choiceOverlay.js` 去掉上游已迁到队伍面板的决策顺序条。测试侧只做口径适配：`test/plugins/operator-traits.test.js` 的 `matchModule` 用 `fileURLToPath`（Windows 的 `.pathname` 会变成 `E:\E:\…`）、`test/test-mode.test.js` 的 fixture 插件补 `class: 'content'`（本 fork 的 `contentOf` 只把 content／script／trusted 插件算作非官方）、`test/skins.test.js` 用 `path.sep` 归一化路径、`test/plugins/{gameplay-records,forge-records}` 依赖的官方黑键 `heal` 与 DLC 卫戍黑键冲突，`RHINE_SARIA_HEALING` 的加成键改名 `heal_bonus`（生成器与 `server/sim/content/rhine.js` 同步）。
+- 验证：`test/data.test.js` 30/30（含离线重建逐字节一致）、vanilla／docs／build-data-refresh 46/46、`check-imports` 通过、无头浏览器启动到标题页且无控制台报错；全量套件 9805 用例（67 跳过）除派生子进程的重型用例外全部通过，`setup`／`smoke`／`lint`／`imports`／`typecheck` 五步全绿，重型用例单独成组复跑 30/30。
