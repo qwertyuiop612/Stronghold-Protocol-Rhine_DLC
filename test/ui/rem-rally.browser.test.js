@@ -5,7 +5,7 @@ import { startServer } from '../../server/index.js';
 
 const chrome = process.env.CHROME_PATH || '/usr/bin/chromium';
 const enabled = process.env.SP_E2E === '1' && existsSync(chrome);
-test('rally component selects a legal tile, folds, moves, and becomes read-only during combat', { skip: !enabled }, async () => {
+test('rally component opens folded beside the exit button, selects a legal tile, folds, moves, survives a view switch, and becomes read-only during combat', { skip: !enabled }, async () => {
   const srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
   const puppeteer = (await import('puppeteer-core')).default;
   const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] });
@@ -13,7 +13,7 @@ test('rally component selects a legal tile, folds, moves, and becomes read-only 
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${srv.port}/healthz`);
     await page.evaluate(async () => {
-      const { render, h } = await import('/vendor/preact.module.js');
+      const { render } = await import('/vendor/preact.module.js');
       const { RemRally } = await import('/js/ui/remRally.js');
       document.body.innerHTML = '<main id="test" style="position:relative;width:800px;height:600px"></main>';
       const props = { enabled: true, editable: true, point: null,
@@ -21,11 +21,30 @@ test('rally component selects a legal tile, folds, moves, and becomes read-only 
         view: { highlightTiles(tiles) { window.tiles = tiles; }, tileScreen(r,c) {
           return r === 10 && c === 4 ? { poly: [[400,400],[440,400],[440,440],[400,440]] } : null;
         } }, onSet(row,col) { window.selection = { row,col }; } };
-      window.mountRally = editable => render(h(RemRally, { ...props, editable }), document.querySelector('#test'));
+      // the game's HUD row: the exit button and the rally panel share one positioned box, and the screen drops the
+      // panel (null) while the player watches another field — the same remount this test reproduces
+      const { html } = await import('/js/ui/components.js');
+      window.mountRally = (editable, show = true) => render(html`<div class="gm__hud" style="position:absolute;inset:0">
+        <button class="gtop__exit" style="position:absolute;left:12px;top:6px;width:40px;height:40px">exit</button>
+        ${show ? html`<${RemRally} ...${props} editable=${editable} />` : null}
+      </div>`, document.querySelector('#test'));
       window.mountRally(true);
     });
+    const box = (sel) => page.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; });
+
+    // out of the box: folded, and parked right of the exit button in the top-left corner
+    await page.waitForSelector('[data-testid="rem-rally-drag"]');
+    assert.equal(await page.$('[data-testid="rem-rally-body"]'), null, 'the panel opens folded');
+    const hud = await box('.gm__hud'), exit = await box('.gtop__exit'), opened = await box('.rem-rally');
+    assert.ok(Math.abs(opened.x - hud.x - (exit.x + exit.w - hud.x + 8)) <= 1.5, `the panel sits right of the exit button: ${opened.x} / ${exit.x + exit.w + 8}`);
+    assert.ok(Math.abs(opened.y - exit.y) <= 1.5, `the panel tops out with the exit button: ${opened.y} / ${exit.y}`);
+    assert.ok(opened.w < 250, `the folded panel is a pill, not the full width: ${opened.w}`);
+
+    // unfolding brings the body back
+    await page.click('[data-testid="rem-rally-collapse"]');
+    await page.waitForSelector('[data-testid="rem-rally-body"]');
+
     // the picker button arms the mode; clicking the board picks the tile
-    await page.waitForSelector('[data-testid="rem-rally-set"]');
     await page.click('[data-testid="rem-rally-set"]');
     await page.waitForFunction('window.tiles?.length === 1');
     await page.mouse.click(420,420);
@@ -39,7 +58,6 @@ test('rally component selects a legal tile, folds, moves, and becomes read-only 
     await page.waitForSelector('[data-testid="rem-rally-body"]');
 
     // the header drags the panel; the new position is clamped inside the parent box
-    const box = (sel) => page.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; });
     const before = await box('.rem-rally');
     const handle = await page.$eval('[data-testid="rem-rally-drag"]', e => {
       const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
@@ -58,6 +76,16 @@ test('rally component selects a legal tile, folds, moves, and becomes read-only 
     await page.keyboard.press('ArrowLeft');
     const nudged = await box('.rem-rally');
     assert.ok(nudged.x < after.x - 20, `keyboard moved the panel left: ${after.x} -> ${nudged.x}`);
+
+    // a view switch (the panel unmounts while another field is on screen) keeps both the placement and the fold
+    await page.evaluate(() => window.mountRally(true, false));
+    assert.equal(await page.$('.rem-rally'), null, 'the panel leaves with the own field');
+    await page.evaluate(() => window.mountRally(true, true));
+    await page.waitForSelector('[data-testid="rem-rally-drag"]');
+    const back = await box('.rem-rally');
+    assert.ok(Math.abs(back.x - nudged.x) <= 1.5 && Math.abs(back.y - nudged.y) <= 1.5,
+      `the panel returns where the player left it: ${nudged.x},${nudged.y} -> ${back.x},${back.y}`);
+    assert.ok(await page.$('[data-testid="rem-rally-body"]'), 'the unfold survives the view switch');
 
     // in combat the picker is locked, and the fold/move affordances stay usable
     await page.evaluate(() => window.mountRally(false));

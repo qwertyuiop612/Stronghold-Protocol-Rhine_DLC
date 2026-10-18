@@ -3,13 +3,17 @@ import { t } from '../../../shared/i18n.js';
 import { html } from './components.js';
 import { researchTileAt } from './rhineDock.js';
 
+// The screen drops the panel while the player watches another field (a teammate's defence or the enemy's prep view),
+// which remounts it: the placement and the fold live outside the component so a view switch keeps them.
+const saved = { position:null, collapsed:true, placed:false };
+
 /** Board-space picking stays independent of the movable screen-space control. */
 export function RemRally({ point, enabled, editable, view, placeCtx, contextKey, onSet }) {
   const [armed, updateArmed] = useState(false);
   const armedRef = useRef(false);
   const setArmed = value => { armedRef.current=value; updateArmed(value); };
-  const [collapsed, setCollapsed] = useState(false);
-  const [position, setPosition] = useState({ x:16, y:160 });
+  const [collapsed, setCollapsed] = useState(saved.collapsed);
+  const [position, setPosition] = useState(saved.position ?? { x:16, y:160 });
   const root = useRef(null), drag = useRef(null);
   const clamp = (p) => {
     const el = root.current, parent = el?.offsetParent;
@@ -37,6 +41,16 @@ export function RemRally({ point, enabled, editable, view, placeCtx, contextKey,
     return () => { observer.disconnect(); window.removeEventListener('resize',fit);
       window.visualViewport?.removeEventListener('resize',fit); window.visualViewport?.removeEventListener('scroll',fit); stopDrag(); };
   }, [enabled]);
+  // the opening spot is the top-left HUD row, right of the exit button
+  useLayoutEffect(() => {
+    if (!enabled || saved.placed || !root.current) return;
+    const box = root.current.offsetParent, exit = box?.querySelector?.('.gtop__exit');
+    const r = exit?.getBoundingClientRect?.(), b = box?.getBoundingClientRect?.();
+    if (!r || !b) return;
+    saved.placed = true;
+    setPosition(clamp({ x:r.right-b.left+8, y:r.top-b.top }));
+  }, [enabled]);
+  useLayoutEffect(() => { saved.position = position; saved.collapsed = collapsed; }, [position, collapsed]);
   useEffect(() => {
     if (!view || !enabled) return undefined;
     const style = { group: 'remRally', color: 0xffcd68, fill: .28, line: 1 };
@@ -77,7 +91,7 @@ export function RemRally({ point, enabled, editable, view, placeCtx, contextKey,
   };
   return html`<section ref=${root} class="rem-rally" data-testid="rem-rally"
     onPointerDown=${e=>e.stopPropagation()} onPointerUp=${e=>e.stopPropagation()} onClick=${e=>e.stopPropagation()}
-    style=${{position:'absolute',left:position.x,top:position.y,zIndex:20,background:'#182329ee',color:'#ffe0a0',padding:8,border:'1px solid #8e784e',borderRadius:6,width:'min(250px, calc(100% - 18px))',maxHeight:'100%',overflowY:'auto',boxSizing:'border-box'}}>
+    style=${{position:'absolute',left:position.x,top:position.y,zIndex:20,background:'#182329ee',color:'#ffe0a0',padding:8,border:'1px solid #8e784e',borderRadius:6,width:collapsed?'auto':'min(250px, calc(100% - 18px))',maxHeight:'100%',overflowY:'auto',boxSizing:'border-box'}}>
     <header data-testid="rem-rally-drag" tabIndex="0" aria-label=${t('移动集合点窗口')}
       onPointerDown=${down} onPointerMove=${move} onPointerUp=${stopDrag} onPointerCancel=${stopDrag} onLostPointerCapture=${stopDrag} onKeyDown=${keyboardMove}
       style="display:flex;align-items:center;gap:8px;cursor:move;touch-action:none;user-select:none">
