@@ -1,6 +1,6 @@
 # 卫戍协议：阵营拓展 ＋ DLC · Stronghold-Protocol-Rhine-DLC
 
-本轮版本：**v0.3.0-test**（上游 v0.3.0 基座，合入莱茵线 `v0.3.0-rhine.9` 与 DLC 线 `0.3.0`）。Windows x64 整合包、升级工具与验收结果见[本仓库 Releases](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/releases)，以该页的发布状态为准。
+本轮版本：**v0.3.1-test**（上游 v0.3.1 基座，合入莱茵线 `v0.3.0-rhine.11` 与 DLC 线 `0.3.0`）。Windows x64 整合包、升级工具与验收结果见[本仓库 Releases](https://github.com/qwertyuiop612/Stronghold-Protocol-Rhine_DLC/releases)，以该页的发布状态为准。
 
 上游 0.3.0 起把 3D 棋盘与官方特效作为默认表现；若机器在软件渲染下出现初始化超时，仍可在游戏地址后加 `/?board=2d` 使用 2D 棋盘。本 fork 随源码与整合包一并发布，升级方式见下方「快速开始」，本轮完整改动见[同步报告](docs/RHINE-DLC-SYNC-0.3.0.md)。
 
