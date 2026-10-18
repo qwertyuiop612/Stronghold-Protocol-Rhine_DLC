@@ -72,6 +72,22 @@ test('液体化肥：最低 1 HP、独立 140% 屏障上限、重复安装和再
   healthy(h);
 });
 
+test('液体化肥：1 HP 时伤害先由屏障吸收（血量停在 1），屏障耗尽后照常被打死', () => {
+  const h = setup(['relic_125']), u = h.unit(1);
+  for (let i = 0; i < 40; i++) h.b.emit('attack', { attacker: u });
+  assert.equal(u.hp, 1);
+  assert.equal(barrier(u), 2800, 'the 140 % pool is full');
+  h.b.dealDamage(null, u, { amount: 300, type: 'true' });
+  assert.equal(u.hp, 1, 'a blow inside the pool never moves the last HP point');
+  assert.equal(barrier(u), 2500);
+  h.b.dealDamage(null, u, { amount: 2600, type: 'true' });
+  assert.equal(barrier(u), 0);
+  assert.equal(u.alive, false, 'the pool is spent, so the killing blow still lands');
+  assert.ok(h.runUntil(() => u.alive && u.deployed, 2));
+  assert.equal(u.hp, u.s.maxHp);
+  healthy(h);
+});
+
 test('热辣可可与止痛片：即时血量插值、治疗回落、百分比叠加和最大生命变化', () => {
   const h = setup(['relic_126', 'relic_126', 'relic_127', 'relic_003']), u = h.unit(1);
   for (const [ratio, atkPct, sp] of [[1, 0, 1], [0.65, 0.75, 2], [0.3, 1.5, 3], [0.01, 1.5, 3]]) {
