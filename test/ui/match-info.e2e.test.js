@@ -21,6 +21,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { openingBanCounts } from '../../shared/openingBans.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.join(ROOT, 'test/e2e/out');
@@ -211,8 +212,8 @@ describe('GitHub issue #8 item 1: 本局信息 in the strategy draft (real serve
     assert.equal(status, '轮到你决策', 'solo: untimed — no seconds');
     const box = await page.$eval('.minfo-dlg', (el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; });
     assert.ok(box.top >= 0 && box.bottom <= 1080 && box.left >= 0 && box.right <= 1920, `inside the screen ${JSON.stringify(box)}`);
-    const fits = await page.$eval('.minfo-dlg .modal__body', (el) => el.scrollHeight <= el.clientHeight + 1);
-    assert.ok(fits, 'desktop: everything visible without scrolling');
+    const fits = await page.$eval('.minfo-dlg .modal__body', (el) => ({ sh: el.scrollHeight, ch: el.clientHeight }));
+    assert.ok(fits.sh <= fits.ch + 1, `desktop: everything visible without scrolling (${fits.sh} > ${fits.ch})`);
     await shot(page, 'solo-dialog');
 
     // Esc
@@ -281,7 +282,9 @@ describe('GitHub issue #8 item 1: 本局信息 in the strategy draft (real serve
     for (const p of [a, b]) briefs.set(p, await readInfo(p.page, '.brief__right'));
     const want = await truth(a.page);
     assert.deepEqual(want.off, [], '绝境 switches no bond off');
-    assert.equal(want.greyed.length, 8, '4 core + 4 add-on bonds drawn');
+    // 两个起始席位属于「小厅」：绝境基准 5 核心 + 4 追加，再加 1 核心 + 2 追加（shared/openingBans.js）。
+    const wantBans = openingBanCounts('HARD', 2);
+    assert.equal(want.greyed.length, wantBans.core + wantBans.addon, `${wantBans.core} core + ${wantBans.addon} add-on bonds drawn`);
     for (const [p, info] of briefs) {
       assert.deepEqual(greyedOf(info), want.greyed, `${p.name}: briefing greyed`);
       assert.deepEqual(info.banned, want.names, `${p.name}: briefing banned`);

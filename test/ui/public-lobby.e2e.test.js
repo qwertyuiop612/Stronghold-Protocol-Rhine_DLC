@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { startServer } from '../../server/index.js';
+import { MAX_SEATS } from '../../shared/constants.js';
 import { CHROME, hasChrome, OUT, waitForFunctionLong } from '../e2e/client.mjs';
 
 describe('public lobby and room settings (real browser)', { skip: process.env.SP_E2E !== '1' || !hasChrome() }, () => {
@@ -219,7 +220,7 @@ describe('public lobby and room settings (real browser)', { skip: process.env.SP
     await save(host);
     const viewer = await open('Viewer');
     await viewer.waitForSelector(row(code));
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i < MAX_SEATS; i++) {
       await host.click('.seat--empty button');
       await waitForFunctionLong(host, (count) => globalThis.__SP__.store.get().room.seats.filter((s) => s?.isBot).length === count, {}, i);
     }
@@ -251,7 +252,10 @@ describe('public lobby and room settings (real browser)', { skip: process.env.SP
     await waitForFunctionLong(host, () => globalThis.__SP__.store.get().room.seats.filter(Boolean).length === 2);
     await viewer.setOfflineMode(false);
     await viewer.waitForSelector(row(code));
-    await waitForFunctionLong(viewer, (code) => document.querySelector(`[data-room-code="${code}"]`)?.textContent.includes('博士 2/4'), {}, code);
+    // The expected seat label is built here, not inside the page predicate: a template literal that references an
+    // import throws in the browser and puppeteer retries a throwing predicate until the wait times out.
+    const want = `博士 2/${MAX_SEATS}`;
+    await waitForFunctionLong(viewer, (c, label) => document.querySelector(`[data-room-code="${c}"]`)?.textContent.includes(label), {}, code, want);
     assert.equal(await viewer.$eval(`${row(code)} [data-testid="hall-join"]`, (el) => el.disabled), false);
   });
 
@@ -263,6 +267,11 @@ describe('public lobby and room settings (real browser)', { skip: process.env.SP
     await save(host);
     const viewer = await open('Viewer');
     await viewer.waitForSelector(row(code));
+    // The snap assertions below are about the default motion preference; a host with "reduce motion" on (this Windows
+    // box turns it on system-wide) otherwise starts the test already in the media query's no-snap branch.
+    if (await viewer.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+      await viewer.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+    }
     const layout = await viewer.evaluate(() => {
       const body = document.querySelector('.lobby-body');
       const setup = document.querySelector('.lobby-setup');

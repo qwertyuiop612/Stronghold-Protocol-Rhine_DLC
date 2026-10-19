@@ -102,6 +102,11 @@
   max-height: calc(100vh - .6rem);
   max-height: calc(100svh - .6rem);
 }
+/* The alliance roster carries 26 bonds (23 upstream), so on a wide desktop the 1200px dialog wrapped both rows and
+   needed a scrollbar; let it use the screen it has, and keep the phone rules below untouched. */
+@media (min-width: 1400px) {
+  .modal__box.minfo-dlg { width: min(1860px, calc(100vw - .6rem - var(--sa-l, 0px) - var(--sa-r, 0px))); }
+}
 .minfo-dlg .modal__head { padding: .16rem .3rem .02rem; }
 .minfo-dlg .modal__head .micro { font-size: max(.11rem, 8px); }
 .minfo-dlg .modal__title { font-size: max(.26rem, 15px); }

@@ -375,6 +375,15 @@
   .seats:not(.seats--solo) .seat__art .avatar { --av: .7rem; }
 }
 
+/* Landscape phones (640×360): the phone layout stacks the bar into two rows, which needs ~72px of a 50px bar and pushed
+   设置/开始 past the bottom edge. One row is what the height affords — the difficulty strip keeps its own scroll. */
+@media (max-width: 767px) and (max-height: 460px) {
+  .room-bar { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: none; }
+  .room-bar__left { overflow: hidden; }
+  .room-bar__center { grid-column: 1; grid-row: 1; align-items: flex-start; }
+  .room-bar__right { grid-column: 2; grid-row: 1; }
+}
+
 .room-config-btn { flex: none; }
 .room-config__row { display: flex; justify-content: space-between; align-items: center; gap: .2rem; }
 .room-config__row strong { font-size: calc(.2 * var(--t)); }
@@ -387,6 +396,12 @@
   .room-bar__right { gap: .12rem; }
   .room-config-btn__label { display: none; }
   .room-bar__right .room-config-btn { width: 44px; min-width: 44px; height: 44px; padding: 0; }
+}
+/* A landscape phone (640×360) shows the 19.2×10.8rem design scaled below the root floor, but that 44px touch square is
+   a CSS pixel figure that does not follow the rem: it alone made the 设置 button hang 16px past the viewport. Follow
+   the scale there; the square keeps its 34px floor for a finger. */
+@media (max-width: 1200px) and (max-height: 460px) {
+  .room-bar__right .room-config-btn { width: max(1.2rem, 34px); min-width: max(1.2rem, 34px); height: max(1.2rem, 34px); }
 }
 
 .trusted-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 90; padding: 5px 16px; background: #9b202b; color: #fff; display: flex; justify-content: space-between; gap: 12px; }

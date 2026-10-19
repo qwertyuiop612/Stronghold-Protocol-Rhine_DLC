@@ -398,34 +398,9 @@ export function LobbyScreen() {
             <div class="join-foot">
               ${recent.length ? html`<span class="t-lo">${t('最近的同盟')}</span>
                 ${recent.map((c) => html`<button key=${c} type="button" class="code-chip num" title=${t('填入密钥（不会直接加入）')}
-                  onClick=${() => setCode(c)}>${c}</button>`)}`
+                  onClick=${() => setCode(c)}>${c}${Array.isArray(marks) && marks.includes(c) ? html` <${TestMark} />` : null}</button>`)}`
                 : html`<span class="t-dim">${t('向同伴索取 {ROOM_CODE_LEN} 位同盟密钥，或直接打开邀请链接', { ROOM_CODE_LEN })}</span>`}
             </div>
-          <div class="join-foot">
-            ${recent.length ? html`<span class="t-lo">${t('最近的同盟')}</span>
-              ${recent.map((c) => html`<button key=${c} type="button" class="code-chip num" title=${t('填入密钥（不会直接加入）')}
-                onClick=${() => setCode(c)}>${c}${Array.isArray(marks) && marks.includes(c) ? html` <${TestMark} />` : null}</button>`)}`
-              : html`<span class="t-dim">${t('向同伴索取 {ROOM_CODE_LEN} 位同盟密钥，或直接打开邀请链接', { ROOM_CODE_LEN })}</span>`}
-          </div>
-        <//>
-        <${TipsPanel} />
-      </section>
-
-      <section class="lobby-right">
-        <div class="section-label"><span class="section-label__idx num">02</span>${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></div>
-        <div class="diff-list">
-          ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
-        </div>
-        <div class="create-box">
-          ${testMode ? html`<label class="create-box__test" data-testid="create-test">
-            <input type="checkbox" checked=${asTest} onChange=${(e) => setAsTest(e.target.checked)} />
-            <span>${t('测试房间')}</span>
-            <em class="t-dim">${t('不计入战绩。房间会标明「测试」，只有房主能使用测试指令。')}</em>
-          </label>` : null}
-          <${Tooltip} block=${true} text=${online ? null : t('正在连接服务器…')}>
-            <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
-              ${roomMode === 'solo' ? t('开始独立模拟') : t('创建同盟')}
-            <//>
           <//>
           <${TipsPanel} />
         </section>
@@ -436,6 +411,11 @@ export function LobbyScreen() {
             ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
           </div>
           <div class="create-box">
+            ${testMode ? html`<label class="create-box__test" data-testid="create-test">
+              <input type="checkbox" checked=${asTest} onChange=${(e) => setAsTest(e.target.checked)} />
+              <span>${t('测试房间')}</span>
+              <em class="t-dim">${t('不计入战绩。房间会标明「测试」，只有房主能使用测试指令。')}</em>
+            </label>` : null}
             <${Tooltip} block=${true} text=${online ? null : t('正在连接服务器…')}>
               <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
                 ${roomMode === 'solo' ? t('开始独立模拟') : t('创建同盟')}

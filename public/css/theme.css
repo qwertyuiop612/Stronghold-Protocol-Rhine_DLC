@@ -125,6 +125,17 @@ html {
   background: var(--bg-0);
 }
 
+/* Landscape phones (640×360, 844×390) sit below the 40px floor: the 19.2×10.8rem design needs 768×432 at that size,
+   so the room's bottom bar (设置/开始) hung past the viewport edge. Let the design scale itself there instead — the
+   floor stays for portrait, where the width is the binding side anyway. test/ui/public-lobby.e2e.test.js asserts the
+   room controls are reachable at 640×360. */
+@media (max-height: 460px) {
+  html {
+    font-size: clamp(28px, min(calc(100vw / 19.2), calc(100vh / 10.8)), 240px);
+    font-size: clamp(28px, min(calc(100vw / 19.2), calc(100svh / 10.8)), 240px);
+  }
+}
+
 /* ---- text root: 设置 →「文字大小」 ---------------------------------------------------------------
    1rem above is the LAYOUT root, and five modules convert it to pixels with getComputedStyle:
    ui/fieldHost.js hudPadding / hudBands (the prep camera's HUD clearance), ui/gameLogic/panel.js
